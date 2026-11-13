@@ -1,0 +1,272 @@
+# Kernel messages: entries referenced by internal/core/ (middleware errors, the system domain, display names of
+# kernel permission codes, resources and audit actions). Business entries are in app.*.toml in the same directory, see
+# the comment at its top. The kernel only guarantees that this file and sys.zh-CN.toml have the same key set
+# (internal/i18n/bundle_test.go); other languages a derived repo adds are not checked, and missing entries fall back
+# to English.
+
+# ============ System: middleware errors (core/middleware, localized at emission) ============
+# authz/principal errors bypass sentinel; messages are translated in-place via localized().
+# ErrNotRoot / ErrOTPUsed are shared between middleware and biz.
+
+[ErrUnauthenticated]
+other = "Please sign in first."
+
+[ErrForbidden]
+other = "You do not have permission to perform this action."
+
+[ErrNotRoot]
+other = "Only a super administrator can do this."
+
+[ErrStepUpOTP]
+other = "This sensitive action requires a one-time code. Enter the 6-digit code from your authenticator."
+
+[ErrOTPBindRequired]
+other = "Bind an authenticator in your profile before performing this action."
+
+[ErrOTPUsed]
+other = "This code has no uses left. Wait for the next one in your authenticator."
+
+[ErrOTPVerifyUnavailable]
+other = "The one-time code cannot be checked right now. Try again shortly."
+
+# ============ System: generic fallbacks ============
+
+[ErrInvalidArgument]
+other = "Invalid request. Please check your input."
+
+[ErrUnexpectedError]
+other = "Something went wrong. Please try again later."
+
+# ============ Auth / login domain (core/sys auth) ============
+
+[ErrInvalidCredential]
+other = "Invalid username or password."
+
+[ErrLoginRejected]
+other = "Sign-in failed. Check your username and password; if your account uses an authenticator, also enter the code it currently shows."
+
+[ErrCaptchaInvalid]
+other = "Invalid captcha."
+
+[ErrUserDisabled]
+other = "This account is disabled."
+
+[ErrSessionExpired]
+other = "Session expired. Please sign in again."
+
+[ErrIPNotAllowed]
+other = "This account cannot sign in from your current IP ({{.IP}}). Contact an administrator."
+
+[ErrOTPInvalid]
+other = "Invalid one-time code."
+
+[ErrOTPNotBound]
+other = "No authenticator is bound yet."
+
+[ErrOTPRequired]
+other = "An authenticator must be bound first."
+
+[ErrOTPAlreadyBound]
+other = "An authenticator is already bound. Unbind it, then bind the new one."
+
+# ============ System administration domain (core/sys accounts/depts/roles) ============
+
+[ErrUserNotFound]
+other = "User not found."
+
+[ErrUserExists]
+other = "Username already exists."
+
+[ErrDeptDisabled]
+other = "This department is disabled; choose another one."
+
+[ErrSelfManageForbidden]
+other = "You cannot manage your own account."
+
+[ErrTargetProtected]
+other = "Target account is protected."
+
+[ErrAvatarTooLarge]
+other = "Avatar image is too large. Compress it or pick a smaller one."
+
+[ErrFavoriteLimit]
+other = "You have reached the maximum number of favorites. Remove one before adding another."
+
+[ErrDeptNotFound]
+other = "Department not found."
+
+[ErrDeptNotEmpty]
+other = "This department still has sub-departments, users, or resources, so it cannot be deleted."
+
+[ErrDeptOutOfRange]
+other = "This department is outside your management scope."
+
+[ErrAuditLogNotFound]
+other = "Audit record not found."
+
+[ErrRoleNotFound]
+other = "Role not found."
+
+[ErrDuplicateRole]
+other = "Role code already exists."
+
+[ErrRoleOutOfRange]
+other = "This role is outside the roles you can assign."
+
+[ErrRoleRequired]
+other = "Please assign at least one role."
+
+# ============ Audit action/target display names (localized at read time, see audit.ActionNameKey) ============
+# Every Audit: true operation needs an entry in BOTH sys.en.toml and sys.zh-CN.toml (or,
+# for business audited operations, in both app.en.toml and app.zh-CN.toml); a missing
+# entry fails cmd/admin's TestAuditedOperationsHaveLocalizedNames — that test loads the
+# whole bundle (sys + app), so it doesn't care which file an entry lives in.
+
+[audit.act.AuthService.UpdateMyProfile]
+other = "Update profile"
+
+[audit.act.AuthService.ChangeMyPassword]
+other = "Change own password"
+
+[audit.act.AuthService.UnbindOTP]
+other = "Unbind authenticator"
+
+[audit.act.DeptService.CreateDept]
+other = "Create department"
+
+[audit.act.DeptService.UpdateDept]
+other = "Edit department"
+
+[audit.act.DeptService.DeleteDept]
+other = "Delete department"
+
+[audit.act.UserService.CreateUser]
+other = "Create user"
+
+[audit.act.UserService.UpdateUser]
+other = "Edit user"
+
+[audit.act.UserService.DisableUser]
+other = "Disable user"
+
+[audit.act.UserService.EnableUser]
+other = "Enable user"
+
+[audit.act.UserService.ResetPassword]
+other = "Reset password"
+
+[audit.act.UserService.ResetOTP]
+other = "Reset authenticator"
+
+[audit.act.UserService.KickUser]
+other = "Force sign-out"
+
+[audit.act.UserService.SetUserRoot]
+other = "Set super administrator"
+
+[audit.act.RoleService.CreateRole]
+other = "Create role"
+
+[audit.act.RoleService.UpdateRole]
+other = "Edit role"
+
+[audit.act.RoleService.DeleteRole]
+other = "Delete role"
+
+# -- Legacy actions (endpoints removed/merged; old audit rows still reference
+# them; outside the completeness test) --
+
+[audit.act.RoleService.SetRolePermissions]
+other = "Set role permissions"
+
+[audit.act.RoleService.SetRoleProtected]
+other = "Set role protection"
+
+[audit.act.UserService.AssignDept]
+other = "Assign department"
+
+[audit.act.UserService.AssignRole]
+other = "Assign roles"
+
+[audit.act.UserService.SetIPWhitelist]
+other = "Set IP allowlist"
+
+[audit.tt.Auth]
+other = "Own account"
+
+[audit.tt.Dept]
+other = "Department"
+
+[audit.tt.User]
+other = "User"
+
+[audit.tt.Role]
+other = "Role"
+
+# ============ Permission tree display names (localized at read time by ListPermissions, see perm.Code.NameKey) ============
+# Keys derive from the code/group slug: business domain "sys" → perm.sys, feature module "sys:dept" →
+# perm.sys.dept, feature operation "sys:dept:view" → perm.sys.dept.view.
+#
+# **Quote the whole key**: a bare [perm.sys.dept] parses in TOML as a subtable under perm.sys, while perm.sys is
+# itself a message, and go-i18n rejects the whole file when "reserved and non-reserved keys are mixed". A quoted key
+# is a single flat key with no nesting, so the problem cannot arise.
+#
+# Every code and group the kernel registers needs an entry in both sys.en.toml and sys.zh-CN.toml; a missing one
+# fails cmd/admin's TestPermissionRegistryHasLocalizedNames.
+
+["perm.sys"]
+other = "System"
+
+["perm.sys.dept"]
+other = "Departments"
+
+["perm.sys.dept.view"]
+other = "View departments"
+
+["perm.sys.dept.create"]
+other = "Create department"
+
+["perm.sys.dept.update"]
+other = "Edit department"
+
+["perm.sys.dept.delete"]
+other = "Delete department"
+
+["perm.sys.account"]
+other = "Users"
+
+["perm.sys.account.view"]
+other = "View users"
+
+["perm.sys.account.create"]
+other = "Create user"
+
+["perm.sys.account.update"]
+other = "Edit user"
+
+["perm.sys.account.disable"]
+other = "Disable user"
+
+["perm.sys.account.enable"]
+other = "Enable user"
+
+["perm.sys.account.reset_pwd"]
+other = "Reset password"
+
+["perm.sys.account.reset_otp"]
+other = "Reset authenticator"
+
+["perm.sys.account.kick"]
+other = "Force sign-out"
+
+["perm.sys.audit"]
+other = "Audit Logs"
+
+["perm.sys.audit.view"]
+other = "View audit logs"
+
+["perm.sys.login_log"]
+other = "Sign-in Logs"
+
+["perm.sys.login_log.view"]
+other = "View sign-in logs"

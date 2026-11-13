@@ -1,0 +1,110 @@
+# Files that must match upstream verbatim: <upstream repo directory> <relative path> [norm|seg] [!<subpath>…]
+# Usage, and which side to change on a mismatch: see the top of scripts/check-cross-repo-sync.sh.
+#
+# **First thing after forking: replace the source repository field of every line below with your direct
+# upstream**, the repository you forked, not its upstream. make rename does not touch this file, and
+# forgetting fails silently: a derived repository usually has no sibling repositories locally, so the check
+# takes the green "upstream not local, skipped" path until one is placed there.
+# Repositories derived from keel-admin: change the source field `keel-layout` of the first block (the
+# "source is keel-layout" block below) to `keel-admin` throughout; keel-admin's copies are identical to
+# keel-layout's, so comparing with the direct upstream suffices. Then enable the commented-out block at the
+# end; see its heading.
+#
+# Compare only against the direct upstream, never across levels: it compares against its own upstream, and
+# transitivity keeps the whole chain consistent.
+# This repository's (keel-admin) direct upstream is keel-layout.
+
+# Shared files whose source is keel-layout, one to one with the commented-out entries at the end of
+# keel-layout's list. Convention docs (guides, practices, shared ADRs, the upgrading protocol) and framework
+# scripts are compared whole; AGENTS.md and GLOSSARY.md are registered as seg and compare only the shared
+# segments keel-layout delimits; everything outside them (including the keel-admin segment) belongs to this
+# repository. This repository rewrites none of these; its own rules go outside the segments of the entry files
+# or into docs/admin/.
+keel-layout AGENTS.md seg
+keel-layout GLOSSARY.md seg
+keel-layout scripts/check-doc-links.sh
+keel-layout scripts/check-cross-repo-sync.sh
+keel-layout scripts/sync-proto.sh
+keel-layout buf.yaml
+keel-layout docs/adr/layout-0001-template-upgrade-strategy.md
+keel-layout docs/adr/layout-0002-verbatim-shared-docs-and-segmented-entry-files.md
+keel-layout docs/adr/layout-0003-generated-artifacts-committed.md
+keel-layout docs/adr/layout-0004-adr-naming-and-carry-protocol.md
+keel-layout docs/adr/layout-0005-doc-link-check-distribution-boundary.md
+keel-layout docs/adr/layout-0006-ledger-anchor-values.md
+keel-layout docs/upgrading-protocol.md
+keel-layout docs/practices/go.md
+keel-layout docs/practices/transaction.md
+keel-layout docs/practices/structure.md
+keel-layout docs/practices/database.md
+keel-layout docs/practices/user-text.md
+keel-layout docs/guides/api-endpoint.md
+keel-layout docs/guides/assembly.md
+keel-layout docs/guides/auth.md
+keel-layout docs/guides/config.md
+keel-layout docs/guides/domain-model.md
+keel-layout docs/guides/errors.md
+keel-layout docs/guides/grpc-client.md
+keel-layout docs/guides/mq.md
+keel-layout docs/guides/observability.md
+keel-layout docs/guides/raw-http.md
+keel-layout docs/guides/task.md
+keel-layout docs/guides/testing.md
+keel-layout docs/guides/deploy-nginx.md
+keel-layout deploy/nginx/conf.d/client-ip.conf
+keel-layout deploy/nginx/snippets/client-ip-headers.conf
+keel-layout deploy/nginx/site.conf.example
+
+# Shared files whose source is keel-admin, distributed with forks. Kept commented out in keel-admin: the source
+# path ../keel-admin/… would compare keel-admin with itself and stay green even when broken.
+# A repository derived from keel-admin enables them after forking by changing the leading `#keel-admin` to
+# `keel-admin`.
+# When keel-admin adds or removes a shared file or segment identical across repositories, update this list;
+# make lint-strict names any missing registration.
+# keel-admin's shared segments in AGENTS.md and GLOSSARY.md are not registered separately here: seg compares
+# every segment in the upstream file, so once a derived repository switches the first block's source to
+# keel-admin, those two seg lines already compare the keel-admin segments too.
+# docs/admin is a directory entry: the two file sets must match as well; a derived repository puts its own docs
+# in another directory under docs/.
+#keel-admin docs/admin
+# The kernel trees (internal/core, internal/server, the admin database's schema migrations/admin, the kernel copy
+# internal/i18n/sys.{en,zh-CN}.toml, and the frontend kernel, scoped as in the frontend directory rules of AGENTS.md) differ from upstream only by the module path and proto package segment make rename
+# replaces, so they are compared after norm normalization.
+# components/ui/ is CLI-generated and derived repositories may add components there, so it is not compared.
+# Kernel code carries no shared-file header marker (that is the form for docs and scripts under docs/ and
+# scripts/), so lint-strict cannot flag a missing registration; a new whole directory in a kernel tree relies on
+# a line added here by hand.
+# scripts/rename.sh is deliberately not registered: each repository extends it as needed (this one added CMD).
+#keel-admin internal/core norm
+#keel-admin internal/server norm
+#keel-admin migrations/admin norm
+#keel-admin internal/i18n/sys.en.toml norm
+#keel-admin internal/i18n/sys.zh-CN.toml norm
+#keel-admin scripts/gen-error-reason.mjs norm
+#keel-admin web/src/components norm !web/src/components/ui
+#keel-admin web/src/hooks norm
+#keel-admin web/src/lib norm
+# locales/sys is registered per file, not as a directory: a directory entry requires identical file sets, and
+# this directory differs both ways: the bundled ja-JP.ts is marked as an example to delete after forking, so
+# deleting it per the README would report a missing file, and a <language>.ts a derived repository adds per
+# docs/admin/shell.md (adding a UI language) would report an extra one. The kernel here is just the Chinese and
+# English files (frontend directory rules in AGENTS.md, code areas in GLOSSARY.md); the list follows the rules.
+#keel-admin web/src/locales/sys/en-US.ts norm
+#keel-admin web/src/locales/sys/zh-CN.ts norm
+#keel-admin web/src/routes/_app/sys norm
+#keel-admin web/src/routes/__root.tsx norm
+#keel-admin web/src/routes/login.tsx norm
+#keel-admin web/src/routes/_app.tsx norm
+#keel-admin web/src/routes/403.tsx norm
+#keel-admin docs/adr/admin-0001-frontend-stack-shadcn-and-tanstack.md
+#keel-admin docs/adr/admin-0002-two-databases-and-default-ownership.md
+#keel-admin docs/adr/admin-0003-three-meanings-of-time-and-how-to-pass-them.md
+#keel-admin docs/adr/admin-0004-list-pagination-shape.md
+#keel-admin docs/adr/admin-0005-list-definitions.md
+#keel-admin docs/adr/admin-0006-form-initial-values-fetch-detail.md
+#keel-admin docs/adr/admin-0007-operation-split-and-step-up-placement.md
+#keel-admin docs/adr/admin-0008-option-endpoints-and-page-gates.md
+#keel-admin docs/adr/admin-0009-fetch-failure-affects-only-its-block.md
+#keel-admin docs/adr/admin-0010-languages-and-copy-ownership.md
+#keel-admin docs/adr/admin-0011-user-settings-storage-and-write-granularity.md
+#keel-admin docs/adr/admin-0012-raw-handlers-under-v1.md

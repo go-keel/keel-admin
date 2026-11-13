@@ -1,0 +1,14 @@
+# Both databases are required (config.yaml already configures each). This file is an overlay merged key by key: write
+# only the entry you change on this machine; the other one keeps the value from config.yaml.
+database:
+  default: # business database
+    driver: mysql
+    source: root:123456@tcp(localhost:3306)/keel-biz?charset=utf8mb4&parseTime=True&loc=UTC&time_zone=%27%2B00%3A00%27
+  admin: # admin database (all sys_* tables)
+    driver: mysql
+    source: root:123456@tcp(localhost:3306)/keel-admin?charset=utf8mb4&parseTime=True&loc=UTC&time_zone=%27%2B00%3A00%27
+
+redis:
+  default:
+    addr:
+      - 127.0.0.1:6379

@@ -1,0 +1,292 @@
+syntax = "proto3";
+package api.keel_admin.v1;
+
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "keel/v1/annotations.proto";
+
+option go_package = "github.com/go-keel/keel-admin/api/keel_admin/v1;v1";
+
+service UserService {
+  rpc ListUser(ListUserRequest) returns (ListUserReply) {
+    option (google.api.http) = { get: "/v1/sys/users" };
+  }
+  // User options (the user filter of the login log): the number of users keeps growing with the business, so they
+  // are fetched in batches by keyword (see "option set" in GLOSSARY.md). The threshold follows use and shares the
+  // login log's code; it sees all users with no data scope, consistent with the login log itself (ADR admin-0008,
+  // admin-0017). Must come before GetUser (/users/options and /users/{id} have the same shape, and registration
+  // order decides which matches first).
+  rpc ListUserOptions(ListUserOptionsRequest) returns (ListUserOptionsReply) {
+    option (google.api.http) = { get: "/v1/sys/users/options" };
+  }
+  // User detail: the source of the edit form's initial values. A list row is a snapshot; editing values that are
+  // written back on submit, such as the IP allowlist, from a snapshot overwrites concurrent changes. See AGENTS.md
+  // (form initial values always come from the detail endpoint).
+  rpc GetUser(GetUserRequest) returns (UserInfo) {
+    option (google.api.http) = { get: "/v1/sys/users/{id}" };
+  }
+  rpc CreateUser(CreateUserRequest) returns (UserInfo) {
+    option (google.api.http) = { post: "/v1/sys/users" body: "*" };
+  }
+  // UpdateUser is the single entry of "edit user": nickname/avatar/department/roles/IP allowlist submitted at once,
+  // one form shared with create, one step-up for the whole form. Assigning departments and roles and setting the IP
+  // allowlist all fall under sys:account:update with no codes of their own; the server checks the changed
+  // departments and roles against the operator's manageable departments and assignable roles.
+  // Root status is not here: it needs its own step-up, through SetUserRoot.
+  rpc UpdateUser(UpdateUserRequest) returns (UserInfo) {
+    option (google.api.http) = { put: "/v1/sys/users/{id}" body: "*" };
+  }
+  rpc DisableUser(DisableUserRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = { post: "/v1/sys/users/{id}/disable" body: "*" };
+  }
+  // EnableUser lifts a disable and restores the ability to log in. It and DisableUser have two permission codes
+  // (sys:account:enable / sys:account:disable): unblocking widens access and is not the same thing as blocking, so a
+  // support role can be given unblocking without blocking.
+  rpc EnableUser(EnableUserRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = { post: "/v1/sys/users/{id}/enable" body: "*" };
+  }
+  rpc ResetPassword(ResetPasswordRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = { post: "/v1/sys/users/{id}/reset_pwd" body: "*" };
+  }
+  rpc ResetOTP(ResetOTPRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = { post: "/v1/sys/users/{id}/reset_otp" body: "*" };
+  }
+  rpc KickUser(KickUserRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = { post: "/v1/sys/users/{id}/kick" body: "*" };
+  }
+  // Grant/revoke super admin: root only (binding in service/perm.go), step-up + audit.
+  rpc SetUserRoot(SetUserRootRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = { post: "/v1/sys/users/{id}/root" body: "*" };
+  }
+}
+
+message SetUserRootRequest {
+  int64 id = 1 [(buf.validate.field).int64.gt = 0];
+  bool  is_root = 2;
+}
+
+// UserInfo is the user detail: the reply of GetUser / CreateUser / UpdateUser and the source of the edit form's
+// initial values. The list uses UserListItem rather than sharing this type: the detail keeps gaining fields, and
+// sharing would put a batch of always-empty fields in list rows that are sooner or later taken as "looked up, and
+// really empty".
+message UserInfo {
+  int64  id = 1;
+  string username = 2;
+  string nickname = 3;
+  int64  dept_id = 4;
+  int32  status = 5;
+  bool   is_root = 6;
+  // Roles (with names): the detail renders them directly, with no frontend lookup. Write requests
+  // (UpdateUser/CreateUser) still use role_ids. Names are dynamic values that can change, so the backend resolves them.
+  repeated UserRoleRef roles = 7;
+  // Login IP allowlist, comma-separated IPs / CIDRs; empty string = unrestricted. The edit form fills in the current
+  // value from it.
+  string ip_whitelist = 8;
+  // Whether an authenticator is bound.
+  bool otp_bound = 9;
+  // Department name (resolved by the backend; dynamic values are not mapped in the frontend); empty when dept_id=0.
+  string dept_name = 10;
+  // Whether any role forces OTP: computed by the backend so the frontend need not check force_otp in a role snapshot.
+  bool otp_forced = 11;
+  // Avatar data URI (empty = not set): the edit form fills in the current avatar from it.
+  // bulky: one image can be hundreds of KB; without erasing it, this response could not go into the log.
+  string avatar = 12 [(keel.v1.redact) = { bulky: true }];
+  // UTC RFC3339, converted by the frontend to the display time zone the user chose (time contract: AGENTS.md).
+  string created_at = 13;
+  // Contact details (empty = not set).
+  string email = 14;
+  string phone = 15;
+}
+
+// UserListItem is one row of the user management list: only the fields the list columns and row actions need, not a
+// reuse of the detail UserInfo. No avatar (the list does not show it, and dozens of images per page would bloat the
+// response) and no dept_id (the list shows the department name). A row is a snapshot; the edit form still fetches
+// its initial values fresh with GetUser (see AGENTS.md: form initial values always come from the detail endpoint).
+message UserListItem {
+  reserved 12;
+  reserved "ip_whitelist";
+  int64  id = 1;
+  string username = 2;
+  string nickname = 3;
+  // Contact details (empty = not set). The list has these two columns, and the keyword searches them too.
+  string email = 4;
+  string phone = 5;
+  // Department name (resolved by the backend; dynamic values are not mapped in the frontend); empty without a
+  // department.
+  string dept_name = 6;
+  // Roles (with names, resolved by the backend): the list renders them as tags directly, with no frontend lookup.
+  repeated UserRoleRef roles = 7;
+  int32  status = 8;
+  // Whether root: the row action "make / revoke super admin" switches its label and direction by it.
+  bool   is_root = 9;
+  // Whether an authenticator is bound: administrators judge by it whether to reset the user's OTP, instead of clicking
+  // blind.
+  bool   otp_bound = 10;
+  // Whether any role forces OTP: the UI shows "forced but not bound" from it; computed by the backend so the frontend
+  // need not check force_otp in a role snapshot.
+  bool   otp_forced = 11;
+  // Whether login is limited to an IP allowlist. The list shows only this; the allowlist itself is a security setting
+  // and comes from GetUser (ADR admin-0006).
+  bool has_ip_whitelist = 14;
+  // UTC RFC3339, converted by the frontend to the display time zone the user chose (time contract: AGENTS.md).
+  string created_at = 13;
+}
+
+// Every filter of ListUserRequest uses 0 = no filter (following the existing dept_id convention rather than proto3
+// optional: expressing tri-states with sentinel values is already the convention in this contract, and mixing two
+// styles reads worse).
+//
+// status/otp_bound/role_id answer the three questions permission operations ask most: who is disabled, who has not
+// bound an authenticator, who has a given role. The list rows already return what decides all three, but without
+// these filters they could not be queried, only paged through by hand.
+message ListUserRequest {
+  // Optional filter: 0 means no department filter.
+  int64  dept_id = 1 [(buf.validate.field).int64.gte = 0];
+  // Fuzzy match on username, nickname, email and phone. The limit is the email length limit, so a whole email address
+  // can be searched.
+  string keyword = 2 [(buf.validate.field).string = {max_len: 254}];
+  int32  offset = 3 [(buf.validate.field).int32.gte = 0];
+  // lte must equal the largest of the frontend PAGE_SIZES (web/src/lib/table.ts): otherwise the UI offers a
+  // size that protovalidate rejects with 400. A derived repo that changes pageSizes changes this too.
+  int32  limit = 4 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 200
+  }];
+  // 0=all 1=active 2=disabled
+  int32  status = 5 [(buf.validate.field).int32 = { gte: 0, lte: 2 }];
+  // 0=all 1=authenticator bound 2=not bound
+  int32  otp_bound = 6 [(buf.validate.field).int32 = { gte: 0, lte: 2 }];
+  // 0=all; otherwise only users with that role
+  int64  role_id = 7 [(buf.validate.field).int64.gte = 0];
+}
+message ListUserReply {
+  repeated UserListItem items = 1;
+  int64 total = 2;
+}
+
+// Request for batched options: with ids, only those users are returned (to show the names of selected items),
+// ignoring keyword and paging; without, batches by keyword, and an empty keyword returns the first batch.
+message ListUserOptionsRequest {
+  // Fuzzy match on username or nickname.
+  string keyword = 1 [(buf.validate.field).string = {max_len: 64}];
+  int32  offset = 2 [(buf.validate.field).int32.gte = 0];
+  // The batch limit is set per use; the frontend must not request more per batch for these options than this.
+  int32  limit = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+  repeated int64 ids = 4 [(buf.validate.field).repeated = {
+    max_items: 100
+    items: { int64: { gt: 0 } }
+  }];
+}
+// A slim user for selectors: only the two identifying fields.
+message UserOption {
+  int64  id = 1;
+  string username = 2;
+}
+message ListUserOptionsReply {
+  repeated UserOption items = 1;
+  int64 total = 2;
+}
+
+message CreateUserRequest {
+  string username = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  string password = 2 [
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 128
+    },
+    (keel.v1.redact) = { sensitive: true }
+  ];
+  string nickname = 3 [(buf.validate.field).string.max_len = 64];
+  int64  dept_id = 4;
+  repeated int64 role_ids = 5;
+  // The same editable fields as edit: avatar + IP allowlist can be set on create too. The password is a create-only
+  // credential (edit does not change it; changing it goes through the separate reset operation); username can be set
+  // on create and cannot be edited.
+  string avatar = 6 [(keel.v1.redact) = { bulky: true }];
+  // Comma-separated IPs / CIDRs; empty string = unrestricted.
+  string ip_whitelist = 7 [(buf.validate.field).string = {max_len: 512}];
+  // Email: optional (empty string = not set), validated as an email when set. Contact only: not unique, not used
+  // to log in.
+  string email = 8 [
+    (buf.validate.field).string = {email: true, max_len: 254},
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
+  ];
+  // Phone: optional. A loose format (digits, a leading +, spaces and hyphens in between, 5–20 characters), with no
+  // restriction on country or landline/mobile (the template serves derived repos everywhere). Contact only, not unique.
+  string phone = 9 [
+    (buf.validate.field).string = {min_len: 5, max_len: 20, pattern: "^\\+?[0-9][0-9 -]*[0-9]$"},
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
+  ];
+  // Root status is not part of create: granting/revoking super admin is a separate root-only + step-up operation
+  // (SetUserRoot). Create a regular user, then make them super admin from "Actions".
+}
+
+// UpdateUserRequest submits the whole "edit user" form at once. role_ids/dept_id/ip_whitelist are whole values: the
+// caller fetches the current values with GetUser first and sends unchanged fields back as they are; the handler
+// compares them with the current values, and only fields that really changed are range-checked and saved. So even
+// when the frontend does not show the role selector, it sends the current role_ids back unchanged, or it would be
+// taken as "clear the roles".
+message UpdateUserRequest {
+  int64  id = 1 [(buf.validate.field).int64.gt = 0];
+  string nickname = 2 [(buf.validate.field).string.max_len = 64];
+  // Avatar data URI, empty string = remove the avatar; size/format are validated in biz (see avatar.go).
+  string avatar = 3 [(keel.v1.redact) = { bulky: true }];
+  int64  dept_id = 4;
+  repeated int64 role_ids = 5;
+  // Comma-separated IPs / CIDRs; empty string = unrestricted. Validity is checked in biz.
+  string ip_whitelist = 6 [(buf.validate.field).string = {max_len: 512}];
+  // Email: optional (empty string = not set), validated as an email when set. Contact only: not unique, not used
+  // to log in.
+  string email = 7 [
+    (buf.validate.field).string = {email: true, max_len: 254},
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
+  ];
+  // Phone: optional. A loose format (digits, a leading +, spaces and hyphens in between, 5–20 characters), with no
+  // restriction on country or landline/mobile (the template serves derived repos everywhere). Contact only, not unique.
+  string phone = 8 [
+    (buf.validate.field).string = {min_len: 5, max_len: 20, pattern: "^\\+?[0-9][0-9 -]*[0-9]$"},
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
+  ];
+}
+
+message DisableUserRequest {
+  int64 id = 1 [(buf.validate.field).int64.gt = 0];
+}
+message EnableUserRequest {
+  int64 id = 1 [(buf.validate.field).int64.gt = 0];
+}
+message ResetPasswordRequest {
+  int64  id = 1 [(buf.validate.field).int64.gt = 0];
+  string password = 2 [
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 128
+    },
+    (keel.v1.redact) = { sensitive: true }
+  ];
+}
+message ResetOTPRequest {
+  int64 id = 1 [(buf.validate.field).int64.gt = 0];
+}
+message KickUserRequest {
+  int64 id = 1 [(buf.validate.field).int64.gt = 0];
+}
+
+message GetUserRequest {
+  int64 id = 1 [(buf.validate.field).int64.gt = 0];
+}
+
+// UserRoleRef is a role a user holds. disabled marks a role that is disabled: the membership is kept and grants
+// nothing until the role is enabled again, so pages show it marked rather than hide it.
+message UserRoleRef {
+  int64  id = 1;
+  string name = 2;
+  bool   disabled = 3;
+}

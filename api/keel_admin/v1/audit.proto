@@ -1,0 +1,171 @@
+syntax = "proto3";
+package api.keel_admin.v1;
+
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+
+option go_package = "github.com/go-keel/keel-admin/api/keel_admin/v1;v1";
+
+service AuditService {
+  rpc ListAudit(ListAuditRequest) returns (ListAuditReply) {
+    option (google.api.http) = { get: "/v1/sys/audit-logs" };
+  }
+  rpc ListLogin(ListLoginRequest) returns (ListLoginReply) {
+    option (google.api.http) = { get: "/v1/sys/login-logs" };
+  }
+  // Data source of the filter dropdown: the live registry (the Audit: true operations in perm's binding table), sent
+  // as a tree grouped by feature (audit target type). It deliberately does not read historical data from the
+  // database: the dropdown lists only actions the system currently supports and audits; historical actions (endpoints
+  // since removed) are not filter options, and old rows still display through fallback to historical i18n entries,
+  // so they stay readable.
+  rpc ListAuditActions(ListAuditActionsRequest) returns (ListAuditActionsReply) {
+    option (google.api.http) = { get: "/v1/sys/audit-logs/actions" };
+  }
+  // Detail of one audit entry: beyond the list row, it has the request body and the reason. The list sends only the
+  // fields it shows; the request body can be long and is fetched by id only when viewing the detail.
+  //
+  // Must be declared after ListAuditActions: HTTP routes are registered in declaration order and the first match
+  // wins; declared earlier, /audit-logs/actions would be taken as id=actions and rejected with 400.
+  rpc GetAudit(GetAuditRequest) returns (AuditLogInfo) {
+    option (google.api.http) = { get: "/v1/sys/audit-logs/{id}" };
+  }
+}
+
+message ListAuditActionsRequest {}
+message ListAuditActionsReply { repeated AuditActionGroup groups = 1; }
+
+// Feature group = audit target type (derived from the Service name, the same source as target_type of list rows).
+// name is localized by Accept-Language (audit.tt.* entries).
+message AuditActionGroup {
+  string target = 1;
+  string name = 2;
+  repeated AuditActionOption actions = 3;
+}
+
+// An action within a group. action is the stable contract identifier (ListAuditRequest.action filters by it); name
+// is localized by Accept-Language (audit.act.* entries in internal/i18n), and equals action when no entry exists.
+message AuditActionOption {
+  string action = 1;
+  string name = 2;
+}
+
+// LoginLogListItem is one row of the login log list. "Recent logins" in the personal center uses RecentLogin from
+// auth.proto rather than sharing this type.
+message LoginLogListItem {
+  int64  id = 1;
+  int64  user_id = 2;
+  string username = 3;
+  bool   success = 4;
+  string ip = 5;
+  string msg = 6;
+  // UTC RFC3339, converted by the frontend to the display time zone the user chose.
+  string created_at = 7;
+}
+
+// A zero value in any filter = no filter.
+message ListLoginRequest {
+  int32 offset = 1 [(buf.validate.field).int32.gte = 0];
+  // lte must equal the largest of the frontend PAGE_SIZES (web/src/lib/table.ts): otherwise the UI offers a
+  // size that protovalidate rejects with 400. A derived repo that changes pageSizes changes this too.
+  int32 limit = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 200
+  }];
+  // Fuzzy match. In failure rows, username is exactly what was typed and may not be an existing account.
+  string username = 3 [(buf.validate.field).string = {max_len: 64}];
+  // 0=all 1=success 2=failure
+  int32  status = 4 [(buf.validate.field).int32 = { gte: 0, lte: 2 }];
+  string ip = 5 [(buf.validate.field).string = {max_len: 45}];
+  // Time as an instant range: UTC RFC3339 (such as "2026-09-01T00:00:00Z"), half-open (>= from, < to); an empty
+  // end is unbounded. How to pass it: ADR admin-0003.
+  string created_from_at = 6;
+  string created_to_at = 7;
+  // Exact match on the account ID (0 = any): use it to see one account's own logins, since username is a fuzzy match
+  // and "zhang" also brings in "zhangsan". Failure rows without a matching account have user_id 0.
+  int64 user_id = 8 [(buf.validate.field).int64.gte = 0];
+}
+message ListLoginReply {
+  repeated LoginLogListItem items = 1;
+  int64 total = 2;
+}
+
+// AuditLogListItem is one row of the audit log list, with only the fields the list shows; the request body and the
+// reason are in the detail (GetAudit).
+message AuditLogListItem {
+  int64  id = 1;
+  int64  operator_id = 2;
+  string action = 3;
+  string target_type = 4;
+  string target_id = 5;
+  string ip = 6;
+  // UTC RFC3339, converted by the frontend to the display time zone the user chose.
+  string created_at = 7;
+
+  // Operator's username; empty when the operator was deleted (audit entries outlive accounts), and the UI then shows
+  // the ID.
+  string operator_name = 8;
+  // Localized display names of the action and target type, looked up at read time by Accept-Language (audit.act.* /
+  // audit.tt.* entries in internal/i18n). The database stores only stable identifiers (action / target_type); a
+  // missing entry falls back to the raw value, so this is never empty.
+  string action_name = 9;
+  string target_name = 10;
+}
+
+message GetAuditRequest {
+  int64 id = 1 [(buf.validate.field).int64.gt = 0];
+}
+
+// AuditLogInfo is the detail of one audit entry: the list row's fields plus the request body and the reason.
+message AuditLogInfo {
+  int64  id = 1;
+  int64  operator_id = 2;
+  string action = 3;
+  string target_type = 4;
+  string target_id = 5;
+  string ip = 6;
+  // UTC RFC3339.
+  string created_at = 7;
+  // Same as AuditLogListItem.
+  string operator_name = 8;
+  string action_name = 9;
+  string target_name = 10;
+  // Request body (JSON), with fields marked (keel.v1.redact) erased on the server: sensitive becomes "***", bulky
+  // (base64 images such as avatars) becomes "[omitted N bytes]". Empty string = the operation has no serializable
+  // request body (not a proto request).
+  //
+  // Before/after snapshots of the data are deliberately not recorded: only business code knows their shape, so the
+  // framework can neither redact them nor guarantee completeness. The cost is that delete operations are audited with
+  // only target_id; the trade-off and how to add snapshots back: the package comment of internal/core/audit.
+  string request_payload = 11;
+  // The reason the operator attached through the X-Audit-Reason header; may be empty.
+  string reason = 12;
+}
+
+// A zero value in any filter = no filter. operator_id / action match the composite indexes of sys_audit_log that end
+// in created_at (idx_operator / idx_action).
+message ListAuditRequest {
+  int32 offset = 1 [(buf.validate.field).int32.gte = 0];
+  // lte must equal the largest of the frontend PAGE_SIZES (web/src/lib/table.ts): otherwise the UI offers a
+  // size that protovalidate rejects with 400. A derived repo that changes pageSizes changes this too.
+  int32 limit = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 200
+  }];
+  int64  operator_id = 3 [(buf.validate.field).int64.gte = 0];
+  string action = 4 [(buf.validate.field).string = {max_len: 64}];
+  string target_type = 5 [(buf.validate.field).string = {max_len: 32}];
+  string target_id = 6 [(buf.validate.field).string = {max_len: 64}];
+  string ip = 7 [(buf.validate.field).string = {max_len: 45}];
+  // Time as an instant range: UTC RFC3339 (such as "2026-09-01T00:00:00Z"), half-open (>= from, < to); an empty
+  // end is unbounded. How to pass it: ADR admin-0003.
+  string created_from_at = 8;
+  string created_to_at = 9;
+  // Fuzzy match on the operator's username or nickname. Audit entries store only the operator ID, so the server first
+  // finds matching accounts in sys_user and then filters by operator_id (still using idx_operator); deleted accounts
+  // do not match. operator_id is an exact match on one account; both may be given.
+  string operator_keyword = 10 [(buf.validate.field).string = {max_len: 64}];
+}
+message ListAuditReply {
+  repeated AuditLogListItem items = 1;
+  int64 total = 2;
+}

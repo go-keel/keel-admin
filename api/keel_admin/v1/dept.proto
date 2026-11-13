@@ -1,0 +1,118 @@
+syntax = "proto3";
+package api.keel_admin.v1;
+
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/go-keel/keel-admin/api/keel_admin/v1;v1";
+
+service DeptService {
+  rpc ListDept(ListDeptRequest) returns (ListDeptReply) {
+    option (google.api.http) = { get: "/v1/sys/depts" };
+  }
+  // Department selector options (a tree, assembled by the client from parent_id; a slim payload without management
+  // fields such as status/user_count).
+  //
+  // It is separate from ListDept not because of the payload but because of the **threshold**: this group is bound to
+  // sys:dept:view (department management), while this data serves the department filter and the "department" picker
+  // of the user management page, whose users need only sys:account:view (see perm.go). The observed consequence of
+  // sharing one endpoint: someone with only account permissions hits 403 on opening user management, although the
+  // page needs that data to render.
+  //
+  // The scope, like ListDept and the user list itself, goes through ARBAC.ManageableDeptIDs (everything for root), so
+  // it fits both uses: the department picker offers nothing outside the manageable range (picking it would be
+  // rejected with DEPT_OUT_OF_RANGE anyway), and the filter options cover exactly the departments that can appear in
+  // the list.
+  //
+  // Must come before GetDept (/depts/options and /depts/{id} have the same shape, and registration order decides which
+  // matches first).
+  rpc ListDeptOptions(ListDeptOptionsRequest) returns (ListDeptOptionsReply) {
+    option (google.api.http) = { get: "/v1/sys/depts/options" };
+  }
+  // Department detail: the source of the edit form's initial values (fetched fresh, not from a list or tree node
+  // snapshot).
+  rpc GetDept(GetDeptRequest) returns (DeptInfo) {
+    option (google.api.http) = { get: "/v1/sys/depts/{id}" };
+  }
+  rpc CreateDept(CreateDeptRequest) returns (DeptInfo) {
+    option (google.api.http) = { post: "/v1/sys/depts" body: "*" };
+  }
+  rpc UpdateDept(UpdateDeptRequest) returns (DeptInfo) {
+    option (google.api.http) = { put: "/v1/sys/depts/{id}" body: "*" };
+  }
+  rpc DeleteDept(DeleteDeptRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = { delete: "/v1/sys/depts/{id}" };
+  }
+}
+
+// DeptInfo is the department detail: the reply of GetDept / CreateDept / UpdateDept and the source of the edit form's
+// initial values. Department tree nodes use DeptListItem rather than sharing this type.
+message DeptInfo {
+  int64  id = 1;
+  int64  parent_id = 2;
+  string name = 3;
+  int32  sort = 4;
+  int32  status = 5;
+}
+
+message ListDeptRequest {}
+message ListDeptReply { repeated DeptListItem items = 1; }
+
+// DeptListItem is one node of the department management tree (assembled by the client from parent_id): only the
+// fields the tree table's columns and row actions need, not a reuse of the detail DeptInfo.
+message DeptListItem {
+  int64  id = 1;
+  int64  parent_id = 2;
+  string name = 3;
+  int32  sort = 4;
+  int32  status = 5;
+  // Number of users directly in the department. Deleting requires an empty department (no children, no users, no
+  // business data occupancy), and all three return the same DEPT_NOT_EMPTY; carrying the user count lets the UI say
+  // "cannot delete because 3 people are still here" before the click, instead of a vague error after it.
+  // The UI counts children from the tree itself; business data occupancy is extensible and still goes through the
+  // error message. Only the list computes it, in bulk (one GROUP BY); the detail does not carry it.
+  int32  user_count = 6;
+}
+
+// DeptOption is a slim department for selectors: only the three fields needed to build the tree and submit.
+message DeptOption {
+  int64  id = 1;
+  int64  parent_id = 2;
+  string name = 3;
+  // disabled: the department cannot be chosen as a user's department (it still appears for filtering).
+  bool   disabled = 4;
+}
+message ListDeptOptionsRequest {}
+message ListDeptOptionsReply { repeated DeptOption items = 1; }
+
+message CreateDeptRequest {
+  // 0 means under the root node.
+  int64  parent_id = 1;
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  int32  sort = 3;
+}
+
+message UpdateDeptRequest {
+  int64  id = 1 [(buf.validate.field).int64.gt = 0];
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  int32  sort = 3;
+  int32  status = 4 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1
+  }];
+}
+
+message DeleteDeptRequest {
+  int64 id = 1 [(buf.validate.field).int64.gt = 0];
+}
+
+message GetDeptRequest {
+  int64 id = 1 [(buf.validate.field).int64.gt = 0];
+}

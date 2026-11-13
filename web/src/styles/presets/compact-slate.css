@@ -1,0 +1,83 @@
+/* compact-slate: one of the example presets, more compact and squarer.
+ *
+ * It changes both --radius and --spacing, which proves the mechanism: Tailwind v4 derives h-8 / p-4 / gap-2 from
+ * --spacing and shadcn derives every rounded-* from --radius, so changing these two lines changes the radius and
+ * density of the whole site without touching a single component.
+ *
+ * A non-default preset must define both the light and the dark set: color mode is an independent axis, and defining
+ * only one makes the other fall back to neutral, mixing two color sets on one page. */
+:root[data-theme-preset="compact-slate"] {
+  --background: oklch(0.995 0.002 250);
+  --foreground: oklch(0.21 0.03 258);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.03 258);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.03 258);
+  --primary: oklch(0.45 0.13 258);
+  --primary-foreground: oklch(0.985 0.005 250);
+  --secondary: oklch(0.96 0.006 250);
+  --secondary-foreground: oklch(0.28 0.04 258);
+  --muted: oklch(0.96 0.006 250);
+  --muted-foreground: oklch(0.52 0.02 256);
+  --accent: oklch(0.94 0.012 252);
+  --accent-foreground: oklch(0.28 0.04 258);
+  --destructive: oklch(0.577 0.245 27.325);
+  --success: oklch(0.53 0.12 160);
+  --warning: oklch(0.6 0.14 72);
+  --border: oklch(0.9 0.008 252);
+  --input: oklch(0.9 0.008 252);
+  --ring: oklch(0.45 0.13 258);
+  --chart-1: oklch(0.45 0.13 258);
+  --chart-2: oklch(0.6 0.1 220);
+  --chart-3: oklch(0.68 0.09 190);
+  --chart-4: oklch(0.55 0.12 285);
+  --chart-5: oklch(0.72 0.08 160);
+  --sidebar: oklch(0.975 0.005 250);
+  --sidebar-foreground: oklch(0.21 0.03 258);
+  --sidebar-primary: oklch(0.45 0.13 258);
+  --sidebar-primary-foreground: oklch(0.985 0.005 250);
+  --sidebar-accent: oklch(0.94 0.012 252);
+  --sidebar-accent-foreground: oklch(0.28 0.04 258);
+  --sidebar-border: oklch(0.9 0.008 252);
+  --sidebar-ring: oklch(0.45 0.13 258);
+  --radius: 0.3rem;
+  --spacing: 0.22rem;
+}
+
+:root.dark[data-theme-preset="compact-slate"] {
+  --background: oklch(0.19 0.02 258);
+  --foreground: oklch(0.96 0.005 250);
+  --card: oklch(0.24 0.024 258);
+  --card-foreground: oklch(0.96 0.005 250);
+  --popover: oklch(0.24 0.024 258);
+  --popover-foreground: oklch(0.96 0.005 250);
+  --primary: oklch(0.72 0.11 250);
+  --primary-foreground: oklch(0.19 0.02 258);
+  --secondary: oklch(0.3 0.026 258);
+  --secondary-foreground: oklch(0.96 0.005 250);
+  --muted: oklch(0.3 0.026 258);
+  --muted-foreground: oklch(0.72 0.018 254);
+  --accent: oklch(0.33 0.03 258);
+  --accent-foreground: oklch(0.96 0.005 250);
+  --destructive: oklch(0.704 0.191 22.216);
+  --success: oklch(0.7 0.14 160);
+  --warning: oklch(0.78 0.14 75);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.72 0.11 250);
+  --chart-1: oklch(0.72 0.11 250);
+  --chart-2: oklch(0.68 0.1 220);
+  --chart-3: oklch(0.74 0.09 190);
+  --chart-4: oklch(0.66 0.12 285);
+  --chart-5: oklch(0.78 0.08 160);
+  --sidebar: oklch(0.22 0.022 258);
+  --sidebar-foreground: oklch(0.96 0.005 250);
+  --sidebar-primary: oklch(0.72 0.11 250);
+  --sidebar-primary-foreground: oklch(0.19 0.02 258);
+  --sidebar-accent: oklch(0.33 0.03 258);
+  --sidebar-accent-foreground: oklch(0.96 0.005 250);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.72 0.11 250);
+  --radius: 0.3rem;
+  --spacing: 0.22rem;
+}

@@ -1,0 +1,16 @@
+syntax = "proto3";
+package api.keel_admin.v1;
+
+option go_package = "github.com/go-keel/keel-admin/api/keel_admin/v1;v1";
+
+// Messages shared by several protos go here, not into one domain's file; otherwise referencing files would have to
+// import an unrelated domain contract. Upstream provides the baseline and derived repos append (like
+// error_reason.proto; see "assembly seam" in GLOSSARY.md).
+
+// NamedRef is "id + display name resolved by the backend", used to render names of dynamic entities (roles,
+// departments and so on) in lists and details directly, instead of the anti-pattern of the frontend looking the name
+// up in a snapshot with .find().
+message NamedRef {
+  int64  id = 1;
+  string name = 2;
+}

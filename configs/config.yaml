@@ -1,0 +1,63 @@
+# This is the real main config: production deploys config.yaml (with real values injected or replaced by the
+# deployment layer). The credentials and secrets committed here are local-development placeholders only; real values
+# are never committed.
+# Local overrides during development go in config.dev.yaml (ignored by .gitignore; development only, never used in
+# production).
+app:
+  domain: keel
+  name: keel-admin
+  version: 1.0.0
+  node_id: 0 # Node ID for snowflake ID generation. Range: 0-1023 (static), -1 (auto-allocate via Redis)
+  stop_timeout: 20s # shutdown budget of each server; this is the default; a negative value fails startup
+
+logger:
+  level: info
+  stacktrace_level: error    # attach stack traces at this level and above
+  console: true
+  format: text               # console encoding: text | json
+
+otel:
+  enabled: false
+  endpoint: "localhost:4317"
+  insecure: true
+
+server:
+  http:
+    default:
+      addr: "0.0.0.0:8080"
+      timeout: 10s
+      auth:
+        enabled: true
+        algorithm: HS256
+        jwt_secret: "dev-secret-change-me" # Keel auth verifies; login signs with same secret
+        # The session token travels in an httpOnly cookie (the frontend never touches it, so XSS cannot steal it);
+        # issuing, clearing and the authentication middleware share this name. The Authorization header still takes
+        # precedence: the restricted token of the OTP binding bootstrap flow uses that explicit header.
+        cookie_name: "keel_session"
+      # Trusted proxies; unset trusts only localhost. Setting it replaces that, so list localhost too if still needed. See docs/guides/deploy-nginx.md.
+      # client_ip:
+      #   trusted_proxies: ["10.0.0.5", "127.0.0.1"]
+
+# Both databases are required; startup fails if either is missing. Derived repos are encouraged to really deploy two
+# databases. For a single-database deployment, set both sources to the same DSN; there is no fallback shorthand
+# (trade-off: ADR admin-0002).
+# Connections are always UTC, and both parameters are required: loc decides how Go interprets the DATETIMEs it reads
+# and writes, time_zone decides which time zone CURRENT_TIMESTAMP reads in the database (ADR admin-0003).
+database:
+  # default = business database: the business area's own tables. default belongs to the derived repo's own code.
+  # The scripts in migrations/business/ run against this database.
+  default:
+    driver: mysql # the table scripts are MySQL only; another dialect needs ported DDL and a blank import of its kdb dialect package
+    source: root:123456a!@tcp(localhost:3306)/keel-biz?charset=utf8mb4&parseTime=True&loc=UTC&time_zone=%27%2B00%3A00%27
+  # admin = admin database: all sys_* tables (the kernel's system-domain data).
+  # The scripts in migrations/admin/ run against this database.
+  # Data scope filtering uses no cross-database JOIN, so two databases and one behave the same.
+  admin:
+    driver: mysql
+    source: root:123456a!@tcp(localhost:3306)/keel-admin?charset=utf8mb4&parseTime=True&loc=UTC&time_zone=%27%2B00%3A00%27
+
+redis:
+  default:
+    addr:
+      - 127.0.0.1:6379
+

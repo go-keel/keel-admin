@@ -1,0 +1,83 @@
+/* portfolio-theme: community preset "Porfolio theme" by Atul Verma, from the tweakcn community
+ * (https://tweakcn.com/themes/cmkqudn9u000904l4h6ii267o). The original name is spelled that way; this repo corrects it
+ * to Portfolio.
+ *
+ * Only colors, radius and spacing are taken: the font stays the default (the original uses Inter, which needs a network
+ * load), and shadows and letter spacing are not wired in this repo. The original has no --success / --warning status
+ * colors: success reuses neutral; the primary is a low-saturation golden brown (hue about 85), too close to the yellow
+ * of neutral, so warning moves to orange (hue 55). */
+:root[data-theme-preset="portfolio-theme"] {
+  --background: oklch(0.9755 0.0067 97.351);
+  --foreground: oklch(0.2178 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2178 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2178 0 0);
+  --primary: oklch(0.7414 0.0738 84.5946);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.9096 0.0167 91.5611);
+  --secondary-foreground: oklch(0.2178 0 0);
+  --muted: oklch(0.9459 0.0165 91.5544);
+  --muted-foreground: oklch(0.5022 0.0278 85.7741);
+  --accent: oklch(0.7414 0.0738 84.5946);
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.568 0.2002 26.4057);
+  --success: oklch(0.55 0.13 155);
+  --warning: oklch(0.62 0.16 55);
+  --border: oklch(0.8986 0.0258 97.1423);
+  --input: oklch(0.8986 0.0258 97.1423);
+  --ring: oklch(0.7414 0.0738 84.5946);
+  --chart-1: oklch(0.7414 0.0738 84.5946);
+  --chart-2: oklch(0.3738 0.0116 258.366);
+  --chart-3: oklch(0.9096 0.0167 91.5611);
+  --chart-4: oklch(0.5933 0.0472 87.9063);
+  --chart-5: oklch(0.2958 0.0084 255.5667);
+  --sidebar: oklch(0.9459 0.0165 91.5544);
+  --sidebar-foreground: oklch(0.2178 0 0);
+  --sidebar-primary: oklch(0.7414 0.0738 84.5946);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.8986 0.0258 97.1423);
+  --sidebar-accent-foreground: oklch(0.2178 0 0);
+  --sidebar-border: oklch(0.8986 0.0258 97.1423);
+  --sidebar-ring: oklch(0.7414 0.0738 84.5946);
+  --radius: 0.75rem;
+  --spacing: 0.25rem;
+}
+
+:root.dark[data-theme-preset="portfolio-theme"] {
+  --background: oklch(0.1904 0.004 106.7692);
+  --foreground: oklch(0.9755 0.0067 97.351);
+  --card: oklch(0.2343 0.0038 106.6863);
+  --card-foreground: oklch(0.9755 0.0067 97.351);
+  --popover: oklch(0.2343 0.0038 106.6863);
+  --popover-foreground: oklch(0.9755 0.0067 97.351);
+  --primary: oklch(0.8039 0.0702 84.7579);
+  --primary-foreground: oklch(0.1904 0.004 106.7692);
+  --secondary: oklch(0.2901 0.0061 78.232);
+  --secondary-foreground: oklch(0.9755 0.0067 97.351);
+  --muted: oklch(0.2596 0.0037 106.6523);
+  --muted-foreground: oklch(0.7006 0.0154 84.5911);
+  --accent: oklch(0.8039 0.0702 84.7579);
+  --accent-foreground: oklch(0.1904 0.004 106.7692);
+  --destructive: oklch(0.6368 0.2078 25.3313);
+  --success: oklch(0.72 0.15 155);
+  --warning: oklch(0.78 0.15 60);
+  --border: oklch(0.2901 0.0061 78.232);
+  --input: oklch(0.2901 0.0061 78.232);
+  --ring: oklch(0.8039 0.0702 84.7579);
+  --chart-1: oklch(0.8039 0.0702 84.7579);
+  --chart-2: oklch(0.5498 0.0111 252.878);
+  --chart-3: oklch(0.3142 0.006 78.2414);
+  --chart-4: oklch(0.6926 0.0459 87.9527);
+  --chart-5: oklch(0.217 0.0038 106.7146);
+  --sidebar: oklch(0.1904 0.004 106.7692);
+  --sidebar-foreground: oklch(0.9755 0.0067 97.351);
+  --sidebar-primary: oklch(0.8039 0.0702 84.7579);
+  --sidebar-primary-foreground: oklch(0.1904 0.004 106.7692);
+  --sidebar-accent: oklch(0.2901 0.0061 78.232);
+  --sidebar-accent-foreground: oklch(0.9755 0.0067 97.351);
+  --sidebar-border: oklch(0.2901 0.0061 78.232);
+  --sidebar-ring: oklch(0.8039 0.0702 84.7579);
+  --radius: 0.75rem;
+  --spacing: 0.25rem;
+}

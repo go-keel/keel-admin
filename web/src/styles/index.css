@@ -1,0 +1,140 @@
+/* The assembly seam for global styles and design tokens. A derived repo customizes the look here and in presets/,
+ * without touching component source.
+ *
+ * Division of work:
+ *   - this file: Tailwind and shadcn wiring, the font variable, mapping semantic tokens to Tailwind;
+ *   - presets/*.css: one file per appearance preset, selected by <html data-theme-preset>.
+ * Color mode is an independent axis, toggled by <html class="dark"> (see src/lib/theme.ts). */
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+@import "./presets/neutral.css";
+@import "./presets/compact-slate.css";
+@import "./presets/light-green.css";
+@import "./presets/portfolio-theme.css";
+@import "./presets/sage-green.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* The font is one variable: change the font by editing this line, or override it in a preset (switching to that
+ * preset switches the font). By default Geist renders Latin text and digits; it has no CJK glyphs, so CJK characters
+ * fall through to the system font stack after it. Geist is bundled with the frontend by the
+ * @fontsource-variable/geist import above (OFL license), so offline deployments work; the browser downloads only the
+ * subsets for the characters in use. To drop Geist, delete that @import line and the "Geist Variable" below to fall
+ * back to the system fonts alone. */
+:root {
+  --app-font-sans:
+    "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Noto Sans CJK SC", sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji";
+  /* Sidebar width (an assembly seam, see the style prop routes/_app.tsx passes to SidebarProvider). The default is
+   * sized for English; Chinese menu names are shorter, so it is overridden per language with :lang(). A derived repo
+   * adding a language likewise appends a :lang() rule here and leaves components/ui/sidebar.tsx alone. */
+  --keel-sidebar-width: 16rem;
+}
+
+/* Sized for 6-character Chinese menu names: measured in a browser, at 188px the 6-character names of first- and
+ * second-level items just fit without clipping; rounded up to 12rem for margin. */
+:root:lang(zh) {
+  --keel-sidebar-width: 12rem;
+}
+
+/* Example: delete after forking. Japanese menu names are longer than Chinese (kana mixed with kanji): the longest item
+ * is the notices folder "コミュニティのお知らせ", measured at 154px of text width; 15rem includes the icon, spacing, expand
+ * arrow and margin. */
+:root:lang(ja) {
+  --keel-sidebar-width: 15rem;
+}
+
+@theme inline {
+  --font-sans: var(--app-font-sans);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  /* Status colors are semantic and deliberately do not follow the brand preset: green = holds, yellow = to do, red =
+     something is wrong, which reads the same under any preset. Each preset still supplies its own pair, to fine-tune
+     for warm or cool tones; a preset whose primary is orange or yellow must move the warning hue away, or the two
+     cannot be told apart. */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  /* antialiased: macOS's default font smoothing renders text heavy and blurry; grayscale antialiasing gives thin, crisp
+     strokes, CJK text included; on other platforms the rule has no effect and no side effects. */
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* Required asterisk (form rules): a control declares aria-required, and the label of its Field gets a red asterisk;
+ * when a group of checkboxes is required as a whole, set data-required on the FieldSet and the asterisk follows the
+ * legend. Pure styling, no wrapper component: pages write fields the official shadcn way, and screen readers learn the
+ * field is required from aria-required. */
+[data-slot="field"]:has([aria-required="true"])
+> [data-slot="field-label"]::after,
+[data-slot="field-set"][data-required] > [data-slot="field-legend"]::after {
+  content: " *";
+  color: var(--destructive);
+}
+
+/* A dropdown popup is at least as wide as its trigger and grows with longer content. shadcn pins the popup width to
+ * --anchor-width (the trigger width): a menu on an icon button such as "⋯" gets only the small fallback width, and a
+ * longer Chinese item wraps onto two or three lines; the same approach in Select clips long options. The lower bound in
+ * max() reuses the min-w-32 / min-w-36 that come with the components; check these two numbers when upgrading shadcn.
+ * components/ui/ is generated by the CLI and never edited by hand (upgrades overwrite it file by file), so the override
+ * lives here. */
+[data-slot="dropdown-menu-content"] {
+  width: max-content;
+  min-width: max(var(--anchor-width), 8rem);
+  max-width: var(--available-width);
+}
+[data-slot="select-content"] {
+  width: max-content;
+  min-width: max(var(--anchor-width), 9rem);
+  max-width: var(--available-width);
+}

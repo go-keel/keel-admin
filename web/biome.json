@@ -1,0 +1,88 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "files": {
+    "includes": [
+      "**",
+      "!dist",
+      "!src/routeTree.gen.ts",
+      "!src/generated",
+      "!src/components/ui",
+      "!src/hooks/use-mobile.ts"
+    ]
+  },
+  "css": {
+    "parser": {
+      "cssModules": false,
+      "tailwindDirectives": true
+    }
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 80
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "jsxQuoteStyle": "double"
+    }
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "linter": {
+    "rules": {
+      "preset": "recommended",
+      "style": {
+        "useImportType": "error",
+        "noNonNullAssertion": "off"
+      },
+      "correctness": {
+        "useUniqueElementIds": "off"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["src/routes/**", "!src/routes/_app.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@tanstack/react-query": {
+                    "importNames": [
+                      "useSuspenseQuery",
+                      "useSuspenseQueries",
+                      "useSuspenseInfiniteQuery"
+                    ],
+                    "message": "A failed request affects only the block that uses that data: fetch page data with useQuery and let DataRegion / DataTable / FormDialog draw the failed state; do not throw the error to the route (docs/admin/errors.md, \"A failed fetch affects only its block\")."
+                  }
+                }
+              }
+            }
+          },
+          "nursery": {
+            "noJsRestrictedProperties": {
+              "level": "error",
+              "options": {
+                "entries": [
+                  {
+                    "property": "ensureQueryData",
+                    "message": "A failed prefetch is thrown to the route and the whole page becomes an error page. Prefetch with void queryClient.prefetchQuery(...) and let the data region show the failure (docs/admin/errors.md, \"A failed fetch affects only its block\")."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

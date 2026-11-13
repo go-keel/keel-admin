@@ -1,0 +1,122 @@
+syntax = "proto3";
+package api.keel_admin.v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "github.com/go-keel/keel-admin/api/keel_admin/v1;v1";
+
+service MetaService {
+  // Full code-fixed permission registry (root only — for role config UI).
+  rpc ListPermissions(ListPermissionsRequest) returns (ListPermissionsReply) {
+    option (google.api.http) = { get: "/v1/sys/meta/permissions" };
+  }
+  // Caller's own effective permission codes (any authenticated user).
+  rpc MyPermissions(MyPermissionsRequest) returns (MyPermissionsReply) {
+    option (google.api.http) = { get: "/v1/sys/meta/my-permissions" };
+  }
+  // Registered data-scope resources (root only — for role data-scope UI).
+  rpc ListResources(ListResourcesRequest) returns (ListResourcesReply) {
+    option (google.api.http) = { get: "/v1/sys/meta/resources" };
+  }
+  // System-wide read-only information (any logged-in user): independent of who is logged in, one value for the
+  // whole system.
+  rpc SystemInfo(SystemInfoRequest) returns (SystemInfoReply) {
+    option (google.api.http) = { get: "/v1/sys/meta/system-info" };
+  }
+}
+
+// PermissionDef is one **feature operation** (a grantable leaf).
+//
+// A code always has three segments `<business domain>:<feature module>:<feature operation>`; the server derives
+// domain/module from the segments (not a second hand-written declaration, so it cannot disagree with the code).
+// Business domains and feature modules are **not permissions** and cannot be granted; they are only groups, whose
+// display names are in groups.
+message PermissionDef {
+  string code = 1;
+  // Display name of the feature operation, localized by Accept-Language (the key derives from the code, see
+  // perm.Code.NameKey; a missing entry falls back to the operation slug).
+  string name = 2;
+  // Feature module slug (the code's 2nd segment). Display name: ListPermissionsReply.groups.
+  string module = 3;
+  // Prerequisite codes, possibly across business domains and modules. Granting this code implicitly grants the deps
+  // closure (expanded by the server's Effective()), so the configuration UI ticks and locks the deps too; otherwise
+  // what it shows differs from what takes effect.
+  repeated string deps = 4;
+  // Whether the code covers an operation that needs step-up, so the UI can mark it high-risk. Derived by the server
+  // from the bindings (see perm.Seal), not declared by hand, so it cannot drift from the real authz decision.
+  bool require_otp = 5;
+  // Business domain slug (the code's 1st segment). Display name: ListPermissionsReply.groups.
+  string domain = 6;
+  // Feature operation slug (the code's 3rd segment).
+  string action = 7;
+}
+
+// PermGroup is the group metadata of a business domain or feature module: only a display name and order, with no
+// permission meaning. The UI uses it as an expandable container and a select-all entry; it matches no code and
+// cannot be granted.
+message PermGroup {
+  string domain = 1;
+  // Empty = this is the business domain's name; non-empty = the name of this feature module in that business domain.
+  string module = 2;
+  // Group display name, localized by Accept-Language (the key derives from the slug, see perm.Group.NameKey; a missing
+  // entry falls back to the slug).
+  string name = 3;
+  int32  sort = 4;
+}
+
+// ResourceDef describes one data scope resource type, so the role data scope UI can turn "resource type" from free
+// text into a dropdown and disable scope_types its anchors cannot support.
+message ResourceDef {
+  string res = 1;
+  // Resource display name, localized by Accept-Language (empty = the resource declares no NameKey, and the frontend
+  // shows res). See perm.ResourceDef.NameKey.
+  string name = 6;
+  // Anchors decide which scope_types are valid (see biz.scopeCompatible):
+  // anchor_self ↔ SELF allowed; anchor_dept ↔ DEPT/ALL_SUB allowed;
+  // RESOURCE_GRANT needs grantable (a declared ListGrantable callback); ALL is always valid.
+  bool anchor_self = 2;
+  bool anchor_dept = 3;
+  // Derived resource: ownership derives from the parent resource, with no owner columns of its own. Empty = an
+  // anchored resource.
+  string via_parent = 4;
+  string via_fk = 5;
+  // Whether the resource supports explicit assignment (RESOURCE_GRANT): true when its registration declares a
+  // ListGrantable callback. When false, the frontend disables RESOURCE_GRANT.
+  bool grantable = 7;
+  // Grantable instance options (fetched by the server calling ListGrantable on the spot): the explicit-assignment UI
+  // builds its multi-select from them. The framework does not interpret what an instance is (brand group, category,
+  // store); the business provides label.
+  repeated GrantOption grant_options = 8;
+}
+
+message GrantOption {
+  int64  id = 1;    // primary key of the resource instance stored in the grant configuration
+  string label = 2; // display name provided by the business (business data, not an i18n entry)
+}
+
+message ListPermissionsRequest {}
+message ListPermissionsReply {
+  repeated PermissionDef items = 1;
+  // Group display names, returned together with items: the UI needs them to organize codes into three levels
+  // (business domain / feature module / feature operation); two endpoints would only add a round trip and an
+  // in-between state of "codes received, names not yet".
+  repeated PermGroup groups = 2;
+}
+
+message ListResourcesRequest {}
+message ListResourcesReply { repeated ResourceDef items = 1; }
+
+message MyPermissionsRequest {}
+message MyPermissionsReply {
+  bool is_root = 1;
+  repeated string codes = 2;
+}
+
+message SystemInfoRequest {}
+
+message SystemInfoReply {
+  // Business time zone (IANA name, such as Asia/Shanghai), from sys.business_time_zone. The frontend only uses it to
+  // label fixed filters and to get "today" in the business time zone; converting business days to instants happens on
+  // the server (see ADR admin-0003).
+  string business_time_zone = 1;
+}

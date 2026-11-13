@@ -1,0 +1,86 @@
+# Business messages: entries referenced by internal/biz|data|service/. Kernel messages are in sys.*.toml in the same
+# directory, see the comment at its top. The kernel does not check whether this file is fully translated; a derived
+# repo that wants that guarantee adds its own check on its message files. Missing entries fall back to English
+# (internal/i18n.MustLocalizeMessage).
+
+# ============ Business domain (internal/biz, extend here) ============
+
+# Example: delete after forking
+[ErrNoticeNotFound]
+other = "公告不存在。"
+
+# Example: delete after forking
+[ErrNoticeCategoryNotFound]
+other = "公告栏目不存在。"
+
+# Example: delete after forking
+[ErrNoticeCategoryInUse]
+other = "栏目下仍有公告，不可删除。"
+
+# Example: delete after forking
+[ErrNoticeCategoryExists]
+other = "栏目名称已存在。"
+
+# ============ Data scope resource display names (localized at read time by ListResources, see perm.ResourceDef.NameKey) ============
+
+# Example: delete after forking
+[resource.notice]
+other = "公告"
+
+# Example: delete after forking
+[resource.notice_category]
+other = "公告栏目"
+
+# ============ Audit action/target display names (localized at read time, see audit.ActionNameKey) ============
+# Completeness check: see the comment of the audit.act section in sys.zh-CN.toml.
+
+# Example: delete after forking
+[audit.act.NoticeService.CreateNotice]
+other = "新建公告"
+
+# Example: delete after forking
+[audit.act.NoticeService.DeleteNotice]
+other = "删除公告"
+
+# Example: delete after forking
+[audit.act.NoticeService.BatchDeleteNotice]
+other = "批量删除公告"
+
+# Example: delete after forking
+[audit.act.NoticeService.CreateNoticeCategory]
+other = "新建公告栏目"
+
+# Example: delete after forking
+[audit.act.NoticeService.DeleteNoticeCategory]
+other = "删除公告栏目"
+
+# Example: delete after forking
+[audit.tt.Notice]
+other = "公告"
+
+# ============ Permission tree display names (localized at read time by ListPermissions, see perm.Code.NameKey) ============
+# How keys derive and why they are quoted: see the comment of the same section in sys.en.toml.
+
+# Example: delete after forking
+["perm.ops"]
+other = "运营管理"
+
+# Example: delete after forking
+["perm.ops.notice"]
+other = "公告"
+
+# Example: delete after forking
+["perm.ops.notice.view"]
+other = "查看公告"
+
+# Example: delete after forking
+["perm.ops.notice.create"]
+other = "新建公告"
+
+# Example: delete after forking
+["perm.ops.notice.delete"]
+other = "删除公告"
+
+# Example: delete after forking
+["perm.ops.notice.category"]
+other = "管理公告栏目"

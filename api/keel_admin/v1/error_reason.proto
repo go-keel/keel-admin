@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package api.keel_admin.v1;
+
+import "errors/errors.proto";
+
+option go_package = "github.com/go-keel/keel-admin/api/keel_admin/v1;v1";
+
+// Separate number ranges: **the kernel uses numbers below 1000, business reasons start at 1000** (AppReasonMin in
+// `internal/core/seal`, checked by the seal test). Within a range, numbers are tiered by meaning: 10 authentication,
+// 20 OTP, 100 not found, 110 conflict, 120 permission boundary; business reasons may reuse the same tiers offset by
+// +1000 for convenience, but that is not a rule.
+// Without separate ranges, upstream and derived repos would both take the next number at the end of the same tier,
+// and a collision would only be a matter of time.
+enum ErrorReason {
+  option (errors.default_code) = 500;
+
+  UNEXPECTED_ERROR = 0 [(errors.code) = 500];
+  INVALID_ARGUMENT = 1 [(errors.code) = 400];
+
+  // Authentication / account
+  // INVALID_CREDENTIAL: the credentials do not hold. After login passes human verification, every rejection except
+  // IP_NOT_ALLOWED (no such account, disabled, locked, one-time code missing or wrong, wrong password) reports this,
+  // indistinguishable from outside.
+  INVALID_CREDENTIAL = 10 [(errors.code) = 401];
+  USER_DISABLED = 11 [(errors.code) = 403];
+  SESSION_EXPIRED = 12 [(errors.code) = 401];
+  // CAPTCHA_INVALID: step 0 of the login state machine (before looking up the user): captcha is on and verification
+  // failed, fail-closed (consistent with the OTP fail-closed below; reason in the comment on Login in biz/auth.go).
+  CAPTCHA_INVALID = 13 [(errors.code) = 401];
+
+  // OTP
+  // OTP_INVALID: a code was sent but failed verification (X-OTP-Code of a require_otp operation, authz middleware;
+  // login does not report it, see INVALID_CREDENTIAL). It must be reported separately from "no code" (OTP_STEPUP):
+  // the latter's message is "please enter the code", and answering a just-filled input with it makes the user think
+  // the code was not sent and refill it again and again.
+  OTP_INVALID = 20 [(errors.code) = 401];
+  OTP_NOT_BOUND = 21 [(errors.code) = 412];
+  OTP_REQUIRED = 22 [(errors.code) = 412];
+
+  // Resource not found
+  DEPT_NOT_FOUND = 100 [(errors.code) = 404];
+  ROLE_NOT_FOUND = 101 [(errors.code) = 404];
+  AUDIT_LOG_NOT_FOUND = 102 [(errors.code) = 404];
+  // Example: delete after forking
+  // NOTICE_NOT_FOUND: the notice example business module (internal/biz|data|service, business area, not core/sys):
+  // the id does not exist or is outside the actor's data scope, indistinguishably.
+  NOTICE_NOT_FOUND = 1100 [(errors.code) = 404];
+  // Example: delete after forking
+  // NOTICE_CATEGORY_NOT_FOUND: the category id does not exist or is outside the actor's category grants,
+  // indistinguishably (existence does not leak).
+  NOTICE_CATEGORY_NOT_FOUND = 1101 [(errors.code) = 404];
+
+  // Conflict
+  // DEPT_NOT_EMPTY: only an empty department can be deleted; all three kinds of occupancy (child departments, users,
+  // resources) report this reason without telling them apart (see docs/admin/permission-model/management-boundary.md).
+  DEPT_NOT_EMPTY = 110 [(errors.code) = 412];
+  DUPLICATE_ROLE = 111 [(errors.code) = 409];
+  USER_EXISTS = 112 [(errors.code) = 409];
+  // DEPT_DISABLED: a disabled department cannot be chosen as a user's department; its existing members are not
+  // affected.
+  DEPT_DISABLED = 113 [(errors.code) = 409];
+  // Example: delete after forking
+  // NOTICE_CATEGORY_IN_USE: the category still has notices and cannot be deleted.
+  NOTICE_CATEGORY_IN_USE = 1110 [(errors.code) = 412];
+  // Example: delete after forking
+  // NOTICE_CATEGORY_EXISTS: duplicate category name (categories are explicit-assignment options; equal names could not
+  // be told apart).
+  NOTICE_CATEGORY_EXISTS = 1111 [(errors.code) = 409];
+
+  // Permission boundary
+  NOT_ROOT = 120 [(errors.code) = 403];
+  SELF_MANAGE_FORBIDDEN = 121 [(errors.code) = 403];
+  TARGET_PROTECTED = 122 [(errors.code) = 403];
+  DEPT_OUT_OF_RANGE = 123 [(errors.code) = 403];
+  ROLE_OUT_OF_RANGE = 124 [(errors.code) = 403];
+  // OTP_BIND_REQUIRED: the operation requires step-up OTP, but the operator has not bound an authenticator; the
+  // frontend shows the binding guide, and the operation is retried after binding (see middleware/authz.go).
+  OTP_BIND_REQUIRED = 125 [(errors.code) = 401];
+  // AVATAR_TOO_LARGE: the decoded avatar exceeds the server limit (biz.MaxAvatarBytes).
+  AVATAR_TOO_LARGE = 126 [(errors.code) = 400];
+  // IP_NOT_ALLOWED: the client IP is not on the account's login allowlist; the message includes the current IP. At
+  // login it is checked before the code and the password, and is the only rejection reported explicitly: it is how
+  // the account owner learns which address to ask an administrator to add.
+  IP_NOT_ALLOWED = 127 [(errors.code) = 403];
+  // OTP_ALREADY_USED: the code is correct but already used (one use per code, RFC 6238 §5.2). Separate from
+  // OTP_INVALID so the frontend can say "wait for the next code" rather than "wrong code".
+  OTP_ALREADY_USED = 128 [(errors.code) = 401];
+  // OTP_ALREADY_BOUND: an authenticator is already bound; unbind it first (with the password) to bind again.
+  OTP_ALREADY_BOUND = 129 [(errors.code) = 409];
+  // ROLE_REQUIRED: an account needs at least one role (when creating or editing a user).
+  ROLE_REQUIRED = 130 [(errors.code) = 400];
+  // FAVORITE_LIMIT: the number of favorites reached the limit (biz.MaxFavorites). A reason of its own rather than
+  // INVALID_ARGUMENT: the person needs to know "favorites are full, remove one first", not "invalid argument".
+  FAVORITE_LIMIT = 131 [(errors.code) = 412];
+}

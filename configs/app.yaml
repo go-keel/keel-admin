@@ -1,0 +1,64 @@
+# sys: runtime parameters of the admin kernel and template, read once at startup (restart after a change).
+# Fields are ordered by how much a new project has to change them: brand, business time zone (required) → session →
+# login protection → OTP key.
+# Dynamic configuration of the business itself is left to business development, implemented when needed.
+# This file is the main config production deploys: the repo commits development placeholders, and the deployment
+# layer injects or replaces real values. Do not edit it for local development: create app.dev.yaml (gitignored) in
+# the same directory with the keys to override, and NewDynamic overlays it on this file. sys.* is read once at
+# startup, so an overlay change also needs a restart.
+# Never commit real values of secrets (otp.aes_key and others).
+sys:
+  # Brand (deployment-time config, no frontend rebuild needed). title is required; empty fails startup.
+  # logo is tri-state; one setting serves as both the in-page logo and the favicon. All three states share the one
+  # endpoint /v1/sys/brand/logo, and the server sets Content-Type from the real file:
+  #   empty               → the embedded default web/public/logo.png (a derived repo may replace it with logo.svg;
+  #                          replacing the file needs no code change)
+  #   disk path           → the endpoint serves the file from disk; replacing its content in place takes effect
+  #                          immediately; the path is relative to the process working directory
+  #   http(s):// URL      → the endpoint redirects there with 302; the server does not proxy the content
+  brand:
+    title: "Keel Admin"
+    # logo: "/etc/keel/logo.png"
+    # logo: "https://cdn.example.com/logo.svg"
+  # Business time zone (required, IANA name): the time zone in which a business "day" is counted. Fixed-date filters
+  # convert by it, and filters label it. Missing or unrecognized fails startup.
+  business_time_zone: "Asia/Shanghai"
+  # Session token lifetime (30 days). There is no separate "remember me": the checkbox only decides whether the session
+  # cookie the server sets is persistent (Max-Age, survives closing the browser) or session-only (lost when the
+  # browser closes); the token's own lifetime is always this value. The token is an httpOnly cookie the frontend can
+  # neither read nor store.
+  # There is no renewal, so this is a hard limit: set too short, it logs out people in the middle of their work.
+  # It is also the window a stolen token stays valid; a password change, disabling or forced logout bumps
+  # token_version and invalidates it at once.
+  session_ttl: 2592000s
+  cookie_secure: true        # Secure attribute of the session cookie; must be true in production
+  captcha:
+    enabled: false           # human verification at login on/off
+    provider: base64         # base64 | turnstile (extension: internal/core/captcha)
+    base64_length: 6         # number of characters in the image code
+    base64_ttl: 300s         # challenge lifetime
+    turnstile:               # read only when provider: turnstile
+      site_key: ""           # public value, sent to the login page with login-meta
+      secret_key: ""         # empty placeholder in the repo, injected by the deployment layer in production; empty fails startup when provider=turnstile
+  lockout:
+    enabled: true            # login brute-force protection on/off
+    max_failures: 5          # failure threshold
+    lock_minutes: 15         # lock duration (minutes)
+    # Counter key: username_ip | username
+    #   username_ip (default): the lock applies only to the attacker's IP; the account owner still logs in from
+    #     elsewhere. Requires nginx in front of the program to be set up per docs/guides/deploy-nginx.md (overwriting
+    #     XFF); if nginx is misconfigured, an attacker changes XFF to get a new counter bucket and this gate is void.
+    #   username: locks the account globally; stronger against brute force, but anyone who knows the username can lock
+    #     it out (DoS).
+    scope: username_ip
+  otp:
+    aes_key: "dev-otp-aes-key-change-in-production"   # development placeholder in the repo, injected by the deployment layer in production; empty fails startup
+    # How many times the same one-time code may be used (empty/0 means the default 3).
+    #   1: one use per code (recommended by RFC 6238 §5.2, the safest). The cost: for two sensitive operations in a
+    #     row, the authenticator still shows the same code within 90s, and the second operation must wait for it to
+    #     change.
+    #   N>1: trades replay risk for convenience: the same code can be submitted N times within its 90s validity
+    #     window, including by an attacker who intercepted it; the risk grows linearly with N.
+    # If you want to raise it because "one flow asks for the code several times", first see whether those steps can be
+    # merged into a single endpoint (see UpdateRole); that path spends no uses at all.
+    max_uses: 3

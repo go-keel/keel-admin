@@ -1,0 +1,22 @@
+# Example file: delete the whole file after forking. It shows "the kernel partly translated, the rest falls back to
+# English", in the same batch as the frontend locales/sys/ja-JP.ts: only a few system-level errors common to all pages
+# are translated; the auth / login domain, the system administration domain, audit action names and permission tree
+# display names are deliberately left out. A missing entry falls back to English in
+# internal/i18n.MustLocalizeMessage, which is not an omission: signing in with a wrong user name or password after
+# switching to Japanese still shows the error in English, and that is exactly what this sample demonstrates (see
+# docs/adr/admin-0010-languages-and-copy-ownership.md). The kernel only guarantees that sys.en.toml and sys.zh-CN.toml
+# have the same key set (bundle_test.go); this partial file is not subject to that check.
+
+# ============ System: generic fallbacks (can appear on almost any page, shared across domains) ============
+
+[ErrUnauthenticated]
+other = "先にログインしてください。"
+
+[ErrForbidden]
+other = "この操作を行う権限がありません。"
+
+[ErrInvalidArgument]
+other = "リクエストが正しくありません。入力内容をご確認ください。"
+
+[ErrUnexpectedError]
+other = "エラーが発生しました。しばらくしてからもう一度お試しください。"

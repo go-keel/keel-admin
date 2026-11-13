@@ -1,0 +1,208 @@
+// Example file: delete the whole file after forking
+
+syntax = "proto3";
+package api.keel_admin.v1;
+
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/go-keel/keel-admin/api/keel_admin/v1;v1";
+
+// NoticeService is the notice/announcement business reference module:
+// implemented in internal/biz|data|service (the business area, not
+// core/sys), demonstrating the default owner_user_id/owner_dept_id data
+// scope columns end to end.
+//
+// Categories demonstrate the second kind of data scope, explicit assignment (RESOURCE_GRANT): a category is
+// registered as a grantable resource (notice_category, Anchors=0 + ListGrantable callback), and a role ticks specific
+// categories in its data scope configuration; notice visibility = row-level scope (whose notices) ∩ category grants
+// (which categories).
+service NoticeService {
+  rpc ListNotice(ListNoticeRequest) returns (ListNoticeReply) {
+    option (google.api.http) = { get: "/v1/notices" };
+  }
+  rpc CreateNotice(CreateNoticeRequest) returns (NoticeReply) {
+    option (google.api.http) = { post: "/v1/notices" body: "*" };
+  }
+  rpc DeleteNotice(DeleteNoticeRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = { delete: "/v1/notices/{id}" };
+  }
+  // Batch delete from the table's multi-select calls this, **not** a frontend loop over DeleteNotice: a loop writes N
+  // audit entries, and an in-between state like "2 deleted, the 3rd failed" cannot be explained to the person using
+  // it. One request, one audit entry, all or nothing in a transaction.
+  //
+  // POST rather than DELETE: a DELETE with a body is unreliable through proxies and some clients. The path does not
+  // collide with `/v1/notices/{id}`, which is a DELETE.
+  rpc BatchDeleteNotice(BatchDeleteNoticeRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = { post: "/v1/notices/batch-delete" body: "*" };
+  }
+
+  // Category options (id/name): used by the notice page's filter dropdown, the category selector of the submission
+  // form and the category names of list rows. An option set, unpaged: a dropdown must be able to pick any item.
+  //
+  // Bound to ops:notice:view (see notice_perm.go): the threshold follows **use**; this is data the notice page needs
+  // to render, so whoever can open the page can fetch it. Category **management** is another matter, see below.
+  //
+  // Must come before DeleteNoticeCategory: `/categories/options` and `/categories/{id}` have the same shape, and
+  // registration order decides which matches first.
+  rpc ListNoticeCategoryOptions(ListNoticeCategoryOptionsRequest) returns (ListNoticeCategoryOptionsReply) {
+    option (google.api.http) = { get: "/v1/notices/categories/options" };
+  }
+  // Category management list: shown paged, so paged on the server. Bound to ops:notice:category: it serves the
+  // category management dialog (create/delete). It and the option set above are two uses of the same data, split into
+  // two endpoints. Merging them breaks one side: with the management list as a dropdown, categories on page two
+  // cannot be picked; with the option set as the management list, people with only view permission would see the
+  // management surface.
+  //
+  // Both are filtered by the data scope (the same ScopeSpec filters local rows through permdata.ApplyScope; the
+  // notice list's use of spec.ResourceIDs is another use of the same grant).
+  rpc ListNoticeCategory(ListNoticeCategoryRequest) returns (ListNoticeCategoryReply) {
+    option (google.api.http) = { get: "/v1/notices/categories" };
+  }
+  rpc CreateNoticeCategory(CreateNoticeCategoryRequest) returns (NoticeCategoryReply) {
+    option (google.api.http) = { post: "/v1/notices/categories" body: "*" };
+  }
+  // Deleting requires the category to have no notices; afterwards the category's explicit-assignment rows are cleaned
+  // up through the kernel's GrantRevoker port (business code never writes sys_* tables directly).
+  rpc DeleteNoticeCategory(DeleteNoticeCategoryRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = { delete: "/v1/notices/categories/{id}" };
+  }
+}
+
+// NoticeReply is the reply of CreateNotice. List rows use NoticeListItem rather than sharing this type: only the list
+// resolves department and creator names in bulk, so sharing would add two fields here that are always empty.
+message NoticeReply {
+  int64  id = 1;
+  string title = 2;
+  string content = 3;
+  int64  owner_user_id = 4;
+  int64  owner_dept_id = 5;
+  // UTC RFC3339, converted by the frontend to the display time zone the user chose.
+  string created_at = 6;
+  int64  category_id = 7;
+}
+
+// NoticeListItem is one row of the notice list: only the fields the list columns, export and row actions need.
+message NoticeListItem {
+  int64  id = 1;
+  string title = 2;
+  // Body: the list shows an excerpt, export needs the full text.
+  string content = 3;
+  int64  category_id = 4;
+  int64  owner_user_id = 5;
+  int64  owner_dept_id = 6;
+  // Display names of the department and the creator, resolved by the backend; empty when deleted, and the frontend
+  // then shows #id.
+  string owner_dept_name = 7;
+  string owner_user_name = 8;
+  // UTC RFC3339, converted by the frontend to the display time zone the user chose.
+  string created_at = 9;
+}
+
+message ListNoticeRequest {
+  // Fuzzy match on the title; an empty string does not filter.
+  string keyword = 1 [(buf.validate.field).string = {max_len: 128}];
+  // Pagination has the same shape as the kernel's: offset/limit. The business area does not introduce page/page_size:
+  // the server would convert it straight back to offset, buying nothing, while every list page would need its own
+  // pagination adapter and the frontend would lose its single shared component.
+  int32 offset = 2 [(buf.validate.field).int32.gte = 0];
+  // lte must equal the largest of the frontend PAGE_SIZES (web/src/lib/table.ts): otherwise the UI offers a
+  // size that protovalidate rejects with 400. A derived repo that changes pageSizes changes this too.
+  int32 limit = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 200
+  }];
+  // 0 = no category filter (category grants still apply); >0 = only that category (must be within the grants).
+  int64 category_id = 4 [(buf.validate.field).int64.gte = 0];
+  // Business-day range of the creation time: YYYY-MM-DD, both ends inclusive, converted by the server to instants in
+  // the business time zone; an empty end is unbounded. The example of a fixed filter; how to pass it: ADR admin-0003.
+  string created_from_date = 5;
+  string created_to_date = 6;
+}
+message ListNoticeReply {
+  repeated NoticeListItem items = 1;
+  int64 total = 2;
+}
+
+message CreateNoticeRequest {
+  string title = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+  string content = 2 [(buf.validate.field).string.min_len = 1];
+  // Category: required, and must be within the operator's category grants (no posting to an invisible category).
+  int64 category_id = 3 [(buf.validate.field).int64.gt = 0];
+}
+
+message DeleteNoticeRequest {
+  int64 id = 1 [(buf.validate.field).int64.gt = 0];
+}
+
+message BatchDeleteNoticeRequest {
+  // max_items equals the lte of limit: table selection does not span pages (changing page clears it), so at most a
+  // whole page is selected at once, and a page holds at most the largest of PAGE_SIZES.
+  repeated int64 ids = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 200
+    // Duplicates are stopped at this layer: biz decides all or nothing by "rows deleted == items selected", and
+    // duplicate ids would make it misjudge that "some record is outside the scope".
+    unique: true
+    items: {
+      int64: { gt: 0 }
+    }
+  }];
+}
+
+// NoticeCategoryReply is the reply of CreateNoticeCategory. Rows of the category management list use
+// NoticeCategoryListItem and options use NoticeCategoryOption, each its own type.
+message NoticeCategoryReply {
+  int64  id = 1;
+  string name = 2;
+  // UTC RFC3339, converted by the frontend to the display time zone the user chose.
+  string created_at = 3;
+}
+
+// NoticeCategoryListItem is one row of the category management list. Its fields currently equal
+// NoticeCategoryReply's, but it is defined separately so either can gain fields without affecting the other.
+message NoticeCategoryListItem {
+  int64  id = 1;
+  string name = 2;
+  // UTC RFC3339, converted by the frontend to the display time zone the user chose.
+  string created_at = 3;
+}
+
+// A slim category for selectors: only the two identifying fields. created_at matters only to the management surface;
+// a dropdown does not need it.
+message NoticeCategoryOption {
+  int64  id = 1;
+  string name = 2;
+}
+message ListNoticeCategoryOptionsRequest {}
+// The option set's reply: no total.
+message ListNoticeCategoryOptionsReply { repeated NoticeCategoryOption items = 1; }
+
+message ListNoticeCategoryRequest {
+  int32 offset = 1 [(buf.validate.field).int32.gte = 0];
+  // lte must equal the largest of the frontend PAGE_SIZES (web/src/lib/table.ts): otherwise the UI offers a
+  // size that protovalidate rejects with 400. A derived repo that changes pageSizes changes this too.
+  int32 limit = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 200
+  }];
+}
+message ListNoticeCategoryReply {
+  repeated NoticeCategoryListItem items = 1;
+  int64 total = 2;
+}
+
+message CreateNoticeCategoryRequest {
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+}
+
+message DeleteNoticeCategoryRequest {
+  int64 id = 1 [(buf.validate.field).int64.gt = 0];
+}

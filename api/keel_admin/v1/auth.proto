@@ -1,0 +1,314 @@
+syntax = "proto3";
+package api.keel_admin.v1;
+
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "keel_admin/v1/types.proto";
+import "keel/v1/annotations.proto";
+
+option go_package = "github.com/go-keel/keel-admin/api/keel_admin/v1;v1";
+
+service AuthService {
+  rpc Login(LoginRequest) returns (LoginReply) {
+    option (google.api.http) = { post: "/v1/sys/auth/login" body: "*" };
+    option (keel.v1.auth) = { allow_anonymous: true }; // Keel auth: skip token check
+  }
+  // LoginMeta is read by the login page before it starts: whether captcha is on and which provider.
+  rpc LoginMeta(LoginMetaRequest) returns (LoginMetaReply) {
+    option (google.api.http) = { get: "/v1/sys/auth/login-meta" };
+    option (keel.v1.auth) = { allow_anonymous: true }; // Keel auth: skip token check
+  }
+  // Logout clears the session cookie. The cookie is httpOnly, so the frontend cannot delete it; only the server can.
+  rpc Logout(LogoutRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = { post: "/v1/sys/auth/logout" body: "*" };
+    option (keel.v1.auth) = { allow_anonymous: true }; // an expired session must be clearable too
+  }
+  rpc Profile(ProfileRequest) returns (ProfileReply) {
+    option (google.api.http) = { get: "/v1/sys/auth/profile" };
+  }
+  // GetMyAccount is the own-account detail the personal center needs: contact details, department, roles,
+  // authenticator binding time, IP allowlist, recent logins. Not merged into Profile: Profile is fetched on every page
+  // change and every return to the browser tab, while these need extra queries on departments, roles and the login
+  // log, and only the personal center uses them.
+  // It is also the source of the "edit profile" form's initial values (fetched fresh on open).
+  rpc GetMyAccount(GetMyAccountRequest) returns (MyAccountReply) {
+    option (google.api.http) = { get: "/v1/sys/auth/account" };
+  }
+  // BindOTP generates a new secret for the caller, returns provisioning URI.
+  rpc BindOTP(BindOTPRequest) returns (BindOTPReply) {
+    option (google.api.http) = { post: "/v1/sys/auth/otp/bind" body: "*" };
+  }
+  // UnbindOTP unbinds the authenticator and requires the password again.
+  //
+  // Why unbinding is a separate step guarded by the password: letting "rebind" overwrite directly would mean one click
+  // voids the authenticator still in use (without the user knowing), and whoever hijacked the session could install
+  // their own authenticator without the password and take over. Two steps with a password gate make unbinding an
+  // explicit, auditable decision.
+  //
+  // No step-up OTP: that would leave someone who lost their authenticator unable to help themselves. The password is
+  // the gate of this path.
+  rpc UnbindOTP(UnbindOTPRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = { post: "/v1/sys/auth/otp/unbind" body: "*" };
+  }
+  // ConfirmOTP verifies the first code and activates the binding.
+  // In the binding bootstrap flow (bind-scope token) it returns an access token directly and completes the login: the
+  // password was verified when the bind token was issued and the OTP just now, so both factors are present, equivalent
+  // to a full login.
+  rpc ConfirmOTP(ConfirmOTPRequest) returns (ConfirmOTPReply) {
+    option (google.api.http) = { post: "/v1/sys/auth/otp/confirm" body: "*" };
+  }
+  // UpdateMyProfile changes one's own nickname/avatar/email/phone. The avatar is a data URI; size limit in
+  // biz.MaxAvatarBytes (enforced by the server, the frontend is not trusted).
+  rpc UpdateMyProfile(UpdateMyProfileRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = { put: "/v1/sys/auth/profile" body: "*" };
+  }
+  // ChangeMyPassword changes one's own password (verifying the old one); an administrator resets others through
+  // UserService.ResetPassword.
+  rpc ChangeMyPassword(ChangeMyPasswordRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = { post: "/v1/sys/auth/password" body: "*" };
+  }
+  // AddFavorite / RemoveFavorite add or remove one of one's favorite menus and return the full user settings after the
+  // change. Idempotent: adding an existing favorite or removing a missing one succeeds with the list unchanged.
+  //
+  // Login is enough, with no Audit and no step-up: favorites only change one's own sidebar, touching neither
+  // permissions nor others' data. Writes are per item rather than whole overwrites, so two browsers each adding one do
+  // not erase each other.
+  rpc AddFavorite(AddFavoriteRequest) returns (UserSettings) {
+    option (google.api.http) = { post: "/v1/sys/auth/favorites/add" body: "*" };
+  }
+  rpc RemoveFavorite(RemoveFavoriteRequest) returns (UserSettings) {
+    option (google.api.http) = { post: "/v1/sys/auth/favorites/remove" body: "*" };
+  }
+  // ReorderFavorites reorders favorites, **overwriting the whole order**, deliberately unlike the per-item add and
+  // remove: when dragging to sort, the person really means "this is the whole order", so overwriting is what they want
+  // (see ADR admin-0011).
+  //
+  // It accepts only a **permutation** of the current set: extra paths are rejected, missing paths stay at the end as
+  // they are. Without this restriction it would be a whole-overwrite path around the per-item writes: when two browsers
+  // each add a favorite, the drag submitted later would erase the one submitted earlier, with nothing showing the
+  // person what was lost.
+  rpc ReorderFavorites(ReorderFavoritesRequest) returns (UserSettings) {
+    option (google.api.http) = { post: "/v1/sys/auth/favorites/reorder" body: "*" };
+  }
+  // IssueCaptcha issues one human verification challenge (an empty structure when the current provider needs none).
+  rpc IssueCaptcha(IssueCaptchaRequest) returns (IssueCaptchaReply) {
+    option (google.api.http) = { post: "/v1/sys/auth/captcha" body: "*" };
+    option (keel.v1.auth) = { allow_anonymous: true }; // Keel auth: skip token check
+  }
+}
+
+message BindOTPRequest {}
+
+message UnbindOTPRequest {
+  string password = 1 [
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 128
+    },
+    (keel.v1.redact) = { sensitive: true }
+  ];
+}
+message BindOTPReply {
+  // The otpauth:// URI contains the OTP seed, and response bodies go into the request log too.
+  string provisioning_uri = 1 [(keel.v1.redact) = { sensitive: true }];
+}
+message ConfirmOTPRequest {
+  string code = 1 [
+    (buf.validate.field).string = {
+      min_len: 6
+      max_len: 8
+    },
+    (keel.v1.redact) = { sensitive: true }
+  ];
+  // Same as LoginRequest.remember: decides whether the cookie set when the bootstrap completes is persistent.
+  bool remember = 2;
+}
+
+message ConfirmOTPReply {
+  // When the bootstrap completes, the response sets the session cookie and the caller enters the system directly,
+  // without logging in again (logging in again would also hit one use per code: the code this Confirm consumed cannot
+  // be used to log in). Not set when rebinding self-service while logged in: the caller already has a session.
+  bool logged_in = 1;
+}
+
+message LoginRequest {
+  string username = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  string password = 2 [
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 128
+    },
+    (keel.v1.redact) = { sensitive: true }
+  ];
+  // Optional: verified by the server only when the account has bound or is forced to use OTP; empty is valid.
+  string otp_code = 3 [(keel.v1.redact) = { sensitive: true }];
+  // Optional: verified by the server only when sys.captcha.enabled is on; empty is valid (on but empty counts as a
+  // failed verification, see step 0 of the login state machine).
+  string captcha_id = 4;
+  string captcha_answer = 5 [(keel.v1.redact) = { sensitive: true }];
+  // "Remember me": decides only whether the session cookie is persistent (Max-Age) or session-only (lost when the
+  // browser closes). The token's own lifetime is independent of it and always sys.session_ttl.
+  bool remember = 6;
+}
+
+message LoginReply {
+  // The token is not returned to the frontend: it is set in an httpOnly cookie that JS cannot read, so XSS cannot
+  // steal it.
+  reserved 1;
+  reserved "token";
+  int64  user_id = 2;
+  string username = 3;
+  bool   is_root = 4;
+  // When OTP is forced but not bound: no token; a short-lived restricted token is issued instead (scope=otp_bind,
+  // callable only for BindOTP/ConfirmOTP), and the user logs in again after binding.
+  string bind_token = 5 [(keel.v1.redact) = { sensitive: true }];
+}
+
+message ChangeMyPasswordRequest {
+  string old_password = 1 [
+    (buf.validate.field).string = {min_len: 1, max_len: 128},
+    (keel.v1.redact) = { sensitive: true }
+  ];
+  string new_password = 2 [
+    (buf.validate.field).string = {min_len: 8, max_len: 128},
+    (keel.v1.redact) = { sensitive: true }
+  ];
+}
+
+message LogoutRequest {}
+
+message ProfileRequest {}
+
+message UpdateMyProfileRequest {
+  string nickname = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  // Avatar data URI (data:image/<png|jpeg|webp>;base64,...); empty string = remove the avatar.
+  // The length limit is decided in biz by the decoded byte count (see MaxAvatarBytes); this only stops messages that
+  // are obviously too large.
+  // bulky: changing the avatar is audited, and this field can be 1.4MB; without erasing it, one entry would crowd out
+  // every field after it.
+  string avatar = 2 [
+    (buf.validate.field).string = {max_len: 1400000},
+    (keel.v1.redact) = { bulky: true }
+  ];
+  // Email: optional (empty string = not set), validated as an email when set. Contact only: not unique, not used
+  // to log in.
+  string email = 3 [
+    (buf.validate.field).string = {email: true, max_len: 254},
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
+  ];
+  // Phone: optional. A loose format (digits, a leading +, spaces and hyphens in between, 5–20 characters), with no
+  // restriction on country or landline/mobile (the template serves derived repos everywhere). Contact only, not unique.
+  string phone = 4 [
+    (buf.validate.field).string = {min_len: 5, max_len: 20, pattern: "^\\+?[0-9][0-9 -]*[0-9]$"},
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE
+  ];
+}
+
+message GetMyAccountRequest {}
+
+message MyAccountReply {
+  string username = 1;
+  string nickname = 2;
+  string avatar = 3 [(keel.v1.redact) = { bulky: true }]; // data URI, empty string = not set
+  string email = 4;
+  string phone = 5;
+  // Department name (resolved by the backend); empty without a department.
+  string dept_name = 6;
+  repeated NamedRef roles = 7;
+  // UTC RFC3339, converted by the frontend to the display time zone.
+  string created_at = 8;
+  bool otp_bound = 9;
+  // When the authenticator was bound, UTC RFC3339; empty if not bound.
+  string otp_bound_at = 10;
+  // Login IP allowlist, comma-separated; empty string = unrestricted. Read-only for the account owner, set by an
+  // administrator.
+  string ip_whitelist = 11;
+  // The most recent login attempts (successes and failures), newest first. One's own, so no login log view permission
+  // is needed.
+  repeated RecentLogin recent_logins = 12;
+}
+
+// RecentLogin is one entry of "recent logins" in the personal center: one's own, so it carries no account; only the
+// result, time and client IP the UI shows. It does not reuse the login log list's row type LoginLogListItem.
+message RecentLogin {
+  int64  id = 1;
+  bool   success = 2;
+  string ip = 3;
+  // UTC RFC3339, converted by the frontend to the display time zone.
+  string created_at = 4;
+}
+
+message LoginMetaRequest {}
+
+message LoginMetaReply {
+  bool   captcha_enabled  = 1;
+  string captcha_provider = 2;
+  // Public site key of a widget provider (turnstile), which the login page needs to render the widget.
+  // Empty for the image code and when captcha is off: it is provider-specific, not a general field.
+  string captcha_site_key = 3;
+}
+
+message IssueCaptchaRequest {}
+
+message IssueCaptchaReply {
+  // Empty string = the current provider needs no challenge held by the frontend (such as a client-rendered widget).
+  string captcha_id = 1;
+  string image_base64 = 2 [(keel.v1.redact) = { bulky: true }];
+}
+
+message ProfileReply {
+  int64  user_id = 1;
+  string username = 2;
+  string nickname = 3;
+  int64  dept_id = 4;
+  bool   is_root = 5;
+  repeated string perms = 6;
+  string avatar = 7 [(keel.v1.redact) = { bulky: true }]; // data URI, empty string = not set
+  // Whether an authenticator is bound: the personal center shows "bound / bind now" from it; otherwise users could not
+  // tell after a refresh whether they had bound one.
+  bool otp_bound = 8;
+  // Personal settings that follow the account. Sent with the profile, so the frontend needs no extra request for the
+  // sidebar's favorites group.
+  UserSettings settings = 9;
+}
+
+// UserSettings are personal settings that follow the account, stored as JSON in the sys_user.settings column
+// (MEDIUMTEXT, not MySQL's JSON column type, see docs/practices/database.md, types).
+//
+// **Field numbers 1–99 belong to the kernel; derived repos append from 100.** Each side adds fields in its own range,
+// so a template upgrade overwriting this message's whole file cannot collide; the server ignores unknown fields when
+// parsing, so after a rollback to an older version new fields are simply not read, with no error.
+//
+// What belongs here: choices that follow the account and serve only one's own UI. What does not: data the server
+// queries across users, security-related data that must be audited, and business system data; each has its own
+// table.
+message UserSettings {
+  // Favorite menus, identified by route path, in favorite order. Limit: biz.MaxFavorites.
+  repeated string favorite_menus = 1;
+}
+
+message AddFavoriteRequest {
+  string path = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+}
+
+message RemoveFavoriteRequest {
+  string path = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+}
+
+message ReorderFavoritesRequest {
+  // The complete desired order. The limit matches favorites themselves (biz.MaxFavorites).
+  repeated string paths = 1 [(buf.validate.field).repeated = { max_items: 30 }];
+}

@@ -1,0 +1,85 @@
+# Example file: delete the whole file after forking. Japanese is the sample language shipped upstream; it shows
+# "business copy fully translated and self-checked", with the same entries as the frontend locales/app/ja-JP.ts. The
+# kernel does not check whether this file is fully translated; see the comment at the top of app.en.toml.
+
+# ============ Business domain (internal/biz, extend here) ============
+
+# Example: delete after forking
+[ErrNoticeNotFound]
+other = "お知らせが見つかりません。"
+
+# Example: delete after forking
+[ErrNoticeCategoryNotFound]
+other = "カテゴリーが見つかりません。"
+
+# Example: delete after forking
+[ErrNoticeCategoryInUse]
+other = "このカテゴリーはまだお知らせに使用されているため、削除できません。"
+
+# Example: delete after forking
+[ErrNoticeCategoryExists]
+other = "この名前のカテゴリーはすでに存在します。"
+
+# ============ Data scope resource display names (localized at read time by ListResources, see perm.ResourceDef.NameKey) ============
+
+# Example: delete after forking
+[resource.notice]
+other = "お知らせ"
+
+# Example: delete after forking
+[resource.notice_category]
+other = "お知らせカテゴリー"
+
+# ============ Audit action/target display names (localized at read time, see audit.ActionNameKey) ============
+# Completeness check: see the comment of the audit.act section in sys.en.toml.
+
+# Example: delete after forking
+[audit.act.NoticeService.CreateNotice]
+other = "お知らせを作成"
+
+# Example: delete after forking
+[audit.act.NoticeService.DeleteNotice]
+other = "お知らせを削除"
+
+# Example: delete after forking
+[audit.act.NoticeService.BatchDeleteNotice]
+other = "お知らせを一括削除"
+
+# Example: delete after forking
+[audit.act.NoticeService.CreateNoticeCategory]
+other = "カテゴリーを作成"
+
+# Example: delete after forking
+[audit.act.NoticeService.DeleteNoticeCategory]
+other = "カテゴリーを削除"
+
+# Example: delete after forking
+[audit.tt.Notice]
+other = "お知らせ"
+
+# ============ Permission tree display names (localized at read time by ListPermissions, see perm.Code.NameKey) ============
+# How keys derive and why they are quoted: see the comment of the same section in sys.en.toml.
+
+# Example: delete after forking
+["perm.ops"]
+other = "運用管理"
+
+# Example: delete after forking
+["perm.ops.notice"]
+other = "お知らせ"
+
+# Example: delete after forking
+["perm.ops.notice.view"]
+other = "お知らせを閲覧"
+
+# Example: delete after forking
+["perm.ops.notice.create"]
+other = "お知らせを作成"
+
+# Example: delete after forking
+["perm.ops.notice.delete"]
+other = "お知らせを削除"
+
+# Example: delete after forking
+["perm.ops.notice.category"]
+other = "カテゴリーを管理"

@@ -1,0 +1,261 @@
+syntax = "proto3";
+package api.keel_admin.v1;
+
+import "buf/validate/validate.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "keel_admin/v1/types.proto";
+
+option go_package = "github.com/go-keel/keel-admin/api/keel_admin/v1;v1";
+
+service RoleService {
+  // Role management list: shown paged, so paged on the server (offset/limit), with filtering pushed down to the
+  // database as well.
+  //
+  // Filtering **cannot** stay in the frontend: with pagination, the frontend has only the current page, so it filters
+  // "the matches on this page", not "the first page of matches"; requests go out and the page renders, it just misses
+  // results.
+  rpc ListRole(ListRoleRequest) returns (ListRoleReply) {
+    option (google.api.http) = { get: "/v1/sys/roles" };
+  }
+  // Roles the operator may assign (union of assignable ∩ enabled ∖ sensitive; everything for root).
+  // For the assignment dropdown of the user management page; binding in service/perm.go (not root-only).
+  //
+  // An option set, unpaged: a dropdown must be able to pick any item, and paging would mean "what you cannot page to,
+  // you cannot pick". The reply therefore **has no total** and is a different type from ListRole's: if one reply served
+  // both a paged list and an option set, total would be a meaningless but required number in half the cases.
+  //
+  // Must come before GetRole: `/v1/sys/roles/assignable` and `/v1/sys/roles/{id}` have the same shape, and
+  // registration order decides which matches first; placed later, {id} swallows it.
+  rpc ListAssignableRoleOptions(ListAssignableRoleOptionsRequest) returns (ListAssignableRoleOptionsReply) {
+    option (google.api.http) = { get: "/v1/sys/roles/assignable" };
+  }
+  // Role selector options (three fields: id/code/name). An option set, unpaged: a dropdown must be able to pick any
+  // item.
+  //
+  // It deliberately does not reuse ListRole: that is a paged list, and a dropdown using it would see only the first
+  // page. Both are slim, but differently: this one has only the three identifying fields plus exclude filters; that
+  // one also carries status and code count for the list columns. Two uses of the same data are split into two
+  // endpoints, see AGENTS.md.
+  // Filtering by parameter happens at the endpoint: exclude_id excludes a given role (the role itself when editing),
+  // exclude_sensitive excludes sensitive roles (only for assignment; filters must leave it false, or users with
+  // sensitive roles cannot be found).
+  //
+  // The binding is sys:account:view rather than this group's root-only (see perm.go): the URL sits in the role domain
+  // by resource ownership, while the threshold follows **use**: it serves the role filter of the user list and the
+  // "assignable roles" dropdown, and the former has only account view permission. Role names are no new information
+  // (the role tags of user list rows already show them one by one); the sensitive perms and configuration surface stay
+  // behind GetRolePermissions / GetRole.
+  //
+  // Must come before GetRole (/roles/options and /roles/{id} have the same shape, and registration order decides which
+  // matches first; placed later, {id} swallows it).
+  rpc ListRoleOptions(ListRoleOptionsRequest) returns (ListRoleOptionsReply) {
+    option (google.api.http) = { get: "/v1/sys/roles/options" };
+  }
+  // Which feature permission codes a role grants. For business administrators with assignment rights (not root-only,
+  // binding in service/perm.go): before handing a role to someone, they need to see what it actually grants.
+  //
+  // Separate from GetRole rather than lowering GetRole's threshold: GetRole carries the role's whole configuration
+  // surface (the three boundaries), which belongs to root; this returns only the code set. Non-root can query only
+  // roles within their own assignable range; beyond it -> ROLE_OUT_OF_RANGE (otherwise this would be a hole for
+  // enumerating any role's permissions).
+  rpc GetRolePermissions(GetRolePermissionsRequest) returns (GetRolePermissionsReply) {
+    option (google.api.http) = { get: "/v1/sys/roles/{id}/permissions" };
+  }
+  // Role detail: the source of the edit form's initial values. A list row is a snapshot; prefilling from it silently
+  // writes old values over concurrent changes, and perms/assignable/manage_depts/scopes all replace as a whole, so one
+  // missing element deletes a setting. See AGENTS.md (form initial values always come from the detail endpoint).
+  rpc GetRole(GetRoleRequest) returns (RoleInfo) {
+    option (google.api.http) = { get: "/v1/sys/roles/{id}" };
+  }
+  rpc CreateRole(CreateRoleRequest) returns (RoleInfo) {
+    option (google.api.http) = { post: "/v1/sys/roles" body: "*" };
+  }
+  // Everything editable about a role, submitted at once: basic info + permissions + the three boundaries.
+  //
+  // They have exactly the same threshold (root-only + step-up + audit), so splitting them has no permission basis. The
+  // merge must happen in this one endpoint: a step-up code may be used sys.otp.max_uses times (ReplayGuard in
+  // biz/otp.go), and a frontend that assembled dialogs and called five endpoints in sequence would exceed that and hit
+  // OTP_ALREADY_USED. Do not count on raising that limit: it is an allowance bought with replay risk, while a merged
+  // endpoint spends none. See AGENTS.md (operations split along permission boundaries).
+  rpc UpdateRole(UpdateRoleRequest) returns (RoleInfo) {
+    option (google.api.http) = { put: "/v1/sys/roles/{id}" body: "*" };
+  }
+  rpc DeleteRole(DeleteRoleRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = { delete: "/v1/sys/roles/{id}" };
+  }
+}
+
+message DataScopeItem {
+  string resource_type = 1;
+  string scope_type = 2; // SELF/DEPT/ALL_SUB/RESOURCE_GRANT/ALL
+  // RESOURCE_GRANT only: the ids of resource instances explicitly granted to the role (such as primary keys of brand
+  // groups or categories). The framework does not interpret what an instance is; the option list comes from the
+  // ListGrantable callback declared when the resource is registered (grant_options of meta ListResources). Must be
+  // empty for every other scope_type.
+  repeated int64 resource_ids = 3;
+}
+
+// The role's complete configuration surface: basic info + perms + the three boundaries.
+//
+// **Only GetRole / CreateRole / UpdateRole use it**: it is the edit form's initial values and the write receipt. The
+// list uses RoleListItem and both option sets use RoleOption, each its own type: one type serving both detail and
+// list leaves half its fields empty in half the cases, and an empty field is sooner or later taken as "looked up, and
+// it is empty".
+message RoleInfo {
+  int64  id = 1;
+  string code = 2;
+  string name = 3;
+  // Sensitive role: non-root cannot assign it to other users (filtered by ListAssignable, backstopped by
+  // ARBAC.CanAssignRoles). That is its only meaning: it does not stop root from editing or deleting the role.
+  int32  sensitive = 4;
+  int32  force_otp = 5;
+  int32  status = 6;
+  repeated string perms = 7;
+
+  // Current configuration of the three boundaries.
+  // Assignable roles (with names, resolved by the backend): the detail renders them directly. The write request
+  // UpdateRole still uses assignable_role_ids.
+  repeated NamedRef assignable_roles = 8;
+  // Manageable departments (with names, resolved by the backend): each implies its whole subtree. The write request
+  // still uses manage_dept_ids.
+  repeated NamedRef manage_depts = 9;
+  repeated DataScopeItem scopes = 10;
+}
+
+message ListRoleRequest {
+  // matches code / name
+  string keyword = 1 [(buf.validate.field).string = {max_len: 64}];
+  // The three tri-state filters all use 0=all 1=yes 2=no, the same sentinel convention as status/otp_bound of
+  // ListUserRequest. Do not switch to the column's 1/0 for "enabled/disabled": 0 would then mean both "all" and
+  // "disabled".
+  int32  status = 2 [(buf.validate.field).int32 = { gte: 0, lte: 2 }];
+  int32  sensitive = 3 [(buf.validate.field).int32 = { gte: 0, lte: 2 }];
+  int32  force_otp = 4 [(buf.validate.field).int32 = { gte: 0, lte: 2 }];
+  int32  offset = 5 [(buf.validate.field).int32.gte = 0];
+  // lte must equal the largest of the frontend PAGE_SIZES (web/src/lib/table.ts): otherwise the UI offers a
+  // size that protovalidate rejects with 400. A derived repo that changes pageSizes changes this too.
+  int32  limit = 6 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 200
+  }];
+}
+// One row of the role management list: only the fields the list columns really use.
+//
+// A separate type rather than reusing RoleInfo: the list wants "how many codes", the detail wants "which codes".
+// Reuse would send perms and the three boundaries (whole-replace configuration only the edit form needs) with every
+// row: besides bloating the response, it invites the next person to "use what is at hand to prefill the form", which
+// AGENTS.md explicitly forbids: a list row is a snapshot, and submitting its old values silently overwrites others'
+// concurrent changes.
+message RoleListItem {
+  int64  id = 1;
+  string code = 2;
+  string name = 3;
+  int32  sensitive = 4;
+  int32  force_otp = 5;
+  int32  status = 6;
+  // The **number** of feature permission codes granted. The list shows only this number and does not need the codes.
+  int32  perm_count = 7;
+  // UTC RFC3339, converted by the frontend to the display time zone the user chose (time contract: AGENTS.md).
+  string created_at = 8;
+}
+message ListRoleReply {
+  repeated RoleListItem items = 1;
+  int64 total = 2;
+}
+
+message ListAssignableRoleOptionsRequest {}
+// The option set's reply: slim RoleOption elements and no total (reason in the comment on ListAssignableRoleOptions).
+// Sharing the element type with ListRoleOptions is right: both are role selector options with the same field needs;
+// they are two rpcs because **threshold and set** differ (all / assignable), not because the shape differs.
+message ListAssignableRoleOptionsReply { repeated RoleOption items = 1; }
+
+message GetRoleRequest {
+  int64 id = 1 [(buf.validate.field).int64.gt = 0];
+}
+
+message GetRolePermissionsRequest {
+  int64 id = 1 [(buf.validate.field).int64.gt = 0];
+}
+message GetRolePermissionsReply { repeated string perms = 1; }
+
+// RoleOption is a slim role for selectors: only the three identifying fields, without perms / the three boundaries;
+// keeping only identifying fields in the payload is also what lets the threshold drop to account:view.
+//
+// Both option sets share it: ListRoleOptions (all roles, for filters and the assignable-roles multi-select of the
+// role configuration page) and ListAssignableRoleOptions (the assignable subset, for the role dropdown when editing a
+// user).
+message RoleOption {
+  int64  id = 1;
+  string code = 2;
+  string name = 3;
+}
+message ListRoleOptionsRequest {
+  int64 exclude_id = 1 [(buf.validate.field).int64.gte = 0]; // 0 = exclude nothing
+  bool  exclude_sensitive = 2;
+}
+message ListRoleOptionsReply { repeated RoleOption items = 1; }
+
+message CreateRoleRequest {
+  string code = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  int32  force_otp = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1
+  }];
+  // Create as a sensitive role (recommended for technical roles): non-root can never assign it.
+  int32  sensitive = 4 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1
+  }];
+  // Create and edit share one form and one set of editable fields: permissions + the three boundaries + status are
+  // saved together, with one step-up code. The only difference: Code can be set only on create and cannot be edited.
+  repeated string perms = 5;
+  repeated int64 assignable_role_ids = 6;
+  repeated int64 manage_dept_ids = 7;
+  repeated DataScopeItem scopes = 8;
+  // Status: 0=disabled 1=enabled, saved as passed; as with edit, omitted means 0 (disabled).
+  int32  status = 9 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1
+  }];
+}
+
+// UpdateRoleRequest overwrites everything editable about a role, in one submission.
+//
+// perms / assignable_role_ids / manage_depts / scopes all **replace as a whole** (the server deletes all and
+// inserts), so omitting one clears it. The submitter must therefore fetch the current values with GetRole first and
+// send them back in full, never only the part it wants to change.
+message UpdateRoleRequest {
+  int64  id = 1 [(buf.validate.field).int64.gt = 0];
+  string name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+  int32  force_otp = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1
+  }];
+  int32  status = 4 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1
+  }];
+  int32  sensitive = 5 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1
+  }];
+  repeated string perms = 6;
+  repeated int64 assignable_role_ids = 7;
+  repeated int64 manage_dept_ids = 8;
+  repeated DataScopeItem scopes = 9;
+}
+
+message DeleteRoleRequest {
+  int64 id = 1 [(buf.validate.field).int64.gt = 0];
+}

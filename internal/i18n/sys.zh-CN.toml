@@ -1,0 +1,264 @@
+# Kernel messages: entries referenced by internal/core/ (middleware errors, the system domain, display names of
+# kernel permission codes, resources and audit actions). Business entries are in app.*.toml in the same directory, see
+# the comment at its top. The kernel only guarantees that this file and sys.en.toml have the same key set
+# (internal/i18n/bundle_test.go); other languages a derived repo adds are not checked, and missing entries fall back
+# to English.
+
+# ============ System: middleware errors (core/middleware, localized at emission) ============
+# authz/principal errors bypass sentinel; messages are translated in-place via localized().
+# ErrNotRoot / ErrOTPUsed are shared between middleware and biz.
+
+[ErrUnauthenticated]
+other = "请先登录。"
+
+[ErrForbidden]
+other = "没有权限执行此操作。"
+
+[ErrNotRoot]
+other = "仅超级管理员可以执行此操作。"
+
+[ErrStepUpOTP]
+other = "敏感操作需要动态验证码，请输入认证器当前显示的 6 位数字。"
+
+[ErrOTPBindRequired]
+other = "请先在个人中心绑定认证器，再执行此操作。"
+
+[ErrOTPUsed]
+other = "该动态验证码的可用次数已用尽，请等待认证器显示下一个。"
+
+[ErrOTPVerifyUnavailable]
+other = "动态验证码暂时无法校验，请稍后重试。"
+
+# ============ System: generic fallbacks ============
+
+[ErrInvalidArgument]
+other = "输入有误，请检查后再试。"
+
+[ErrUnexpectedError]
+other = "出错了，请稍后再试。"
+
+# ============ Auth / login domain (core/sys auth) ============
+
+[ErrInvalidCredential]
+other = "用户名或密码错误。"
+
+[ErrLoginRejected]
+other = "登录失败，请核对用户名和密码；账号已绑定认证器的，还需填写认证器当前显示的动态验证码。"
+
+[ErrCaptchaInvalid]
+other = "图形验证码错误。"
+
+[ErrUserDisabled]
+other = "该账号已被禁用。"
+
+[ErrSessionExpired]
+other = "登录会话已失效，请重新登录。"
+
+[ErrIPNotAllowed]
+other = "该账号不允许从当前 IP（{{.IP}}）登录，请联系管理员。"
+
+[ErrOTPInvalid]
+other = "动态验证码错误。"
+
+[ErrOTPNotBound]
+other = "尚未绑定认证器。"
+
+[ErrOTPRequired]
+other = "需要先绑定认证器。"
+
+[ErrOTPAlreadyBound]
+other = "已绑定认证器，请先解绑后再重新绑定。"
+
+# ============ System administration domain (core/sys accounts/depts/roles) ============
+
+[ErrUserNotFound]
+other = "用户不存在。"
+
+[ErrUserExists]
+other = "用户名已存在。"
+
+[ErrDeptDisabled]
+other = "该部门已停用，请选择其他部门。"
+
+[ErrSelfManageForbidden]
+other = "不能管理自己的账号。"
+
+[ErrTargetProtected]
+other = "目标账号受保护。"
+
+[ErrAvatarTooLarge]
+other = "头像图片过大，请压缩或换一张更小的。"
+
+[ErrFavoriteLimit]
+other = "收藏数量已达上限，请先取消一个再收藏。"
+
+[ErrDeptNotFound]
+other = "部门不存在。"
+
+[ErrDeptNotEmpty]
+other = "部门下仍有子部门、用户或资源，不能删除。"
+
+[ErrDeptOutOfRange]
+other = "部门超出你的管理范围。"
+
+[ErrAuditLogNotFound]
+other = "审计记录不存在。"
+
+[ErrRoleNotFound]
+other = "角色不存在。"
+
+[ErrDuplicateRole]
+other = "角色编码已存在。"
+
+[ErrRoleOutOfRange]
+other = "角色超出你的可分配范围。"
+
+[ErrRoleRequired]
+other = "请至少为该账号分配一个角色。"
+
+# ============ Audit action/target display names (localized at read time, see audit.ActionNameKey) ============
+# Every Audit: true operation needs an entry in BOTH sys.en.toml and sys.zh-CN.toml (or,
+# for business audited operations, in both app.en.toml and app.zh-CN.toml); a missing
+# entry fails cmd/admin's TestAuditedOperationsHaveLocalizedNames — that test loads the
+# whole bundle (sys + app), so it doesn't care which file an entry lives in.
+
+[audit.act.AuthService.UpdateMyProfile]
+other = "修改个人资料"
+
+[audit.act.AuthService.ChangeMyPassword]
+other = "修改本人密码"
+
+[audit.act.AuthService.UnbindOTP]
+other = "解绑认证器"
+
+[audit.act.DeptService.CreateDept]
+other = "新建部门"
+
+[audit.act.DeptService.UpdateDept]
+other = "编辑部门"
+
+[audit.act.DeptService.DeleteDept]
+other = "删除部门"
+
+[audit.act.UserService.CreateUser]
+other = "新建用户"
+
+[audit.act.UserService.UpdateUser]
+other = "编辑用户"
+
+[audit.act.UserService.DisableUser]
+other = "禁用用户"
+
+[audit.act.UserService.EnableUser]
+other = "启用用户"
+
+[audit.act.UserService.ResetPassword]
+other = "重置密码"
+
+[audit.act.UserService.ResetOTP]
+other = "重置认证器"
+
+[audit.act.UserService.KickUser]
+other = "强制下线"
+
+[audit.act.UserService.SetUserRoot]
+other = "设置超级管理员"
+
+[audit.act.RoleService.CreateRole]
+other = "新建角色"
+
+[audit.act.RoleService.UpdateRole]
+other = "编辑角色"
+
+[audit.act.RoleService.DeleteRole]
+other = "删除角色"
+
+# -- Legacy actions (endpoints removed/merged; old audit rows still reference
+# them; outside the completeness test) --
+
+[audit.act.RoleService.SetRolePermissions]
+other = "配置角色权限"
+
+[audit.act.RoleService.SetRoleProtected]
+other = "设置角色保护"
+
+[audit.act.UserService.AssignDept]
+other = "分配部门"
+
+[audit.act.UserService.AssignRole]
+other = "分配角色"
+
+[audit.act.UserService.SetIPWhitelist]
+other = "设置 IP 白名单"
+
+[audit.tt.Auth]
+other = "个人账号"
+
+[audit.tt.Dept]
+other = "部门"
+
+[audit.tt.User]
+other = "用户"
+
+[audit.tt.Role]
+other = "角色"
+
+# ============ Permission tree display names (localized at read time by ListPermissions, see perm.Code.NameKey) ============
+# How keys derive and why they are quoted: see the comment of the same section in sys.en.toml.
+
+["perm.sys"]
+other = "系统管理"
+
+["perm.sys.dept"]
+other = "部门管理"
+
+["perm.sys.dept.view"]
+other = "查看部门"
+
+["perm.sys.dept.create"]
+other = "新建部门"
+
+["perm.sys.dept.update"]
+other = "编辑部门"
+
+["perm.sys.dept.delete"]
+other = "删除部门"
+
+["perm.sys.account"]
+other = "用户管理"
+
+["perm.sys.account.view"]
+other = "查看用户"
+
+["perm.sys.account.create"]
+other = "新建用户"
+
+["perm.sys.account.update"]
+other = "编辑用户"
+
+["perm.sys.account.disable"]
+other = "禁用用户"
+
+["perm.sys.account.enable"]
+other = "启用用户"
+
+["perm.sys.account.reset_pwd"]
+other = "重置密码"
+
+["perm.sys.account.reset_otp"]
+other = "重置认证器"
+
+["perm.sys.account.kick"]
+other = "强制下线"
+
+["perm.sys.audit"]
+other = "审计日志"
+
+["perm.sys.audit.view"]
+other = "查看审计日志"
+
+["perm.sys.login_log"]
+other = "登录日志"
+
+["perm.sys.login_log.view"]
+other = "查看登录日志"

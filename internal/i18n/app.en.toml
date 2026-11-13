@@ -1,0 +1,86 @@
+# Business messages: entries referenced by internal/biz|data|service/. Kernel messages are in sys.*.toml in the same
+# directory, see the comment at its top. The kernel does not check whether this file is fully translated; a derived
+# repo that wants that guarantee adds its own check on its message files. Missing entries fall back to English
+# (internal/i18n.MustLocalizeMessage).
+
+# ============ Business domain (internal/biz, extend here) ============
+
+# Example: delete after forking
+[ErrNoticeNotFound]
+other = "Announcement not found."
+
+# Example: delete after forking
+[ErrNoticeCategoryNotFound]
+other = "Announcement category not found."
+
+# Example: delete after forking
+[ErrNoticeCategoryInUse]
+other = "This category still has announcements, so it cannot be deleted."
+
+# Example: delete after forking
+[ErrNoticeCategoryExists]
+other = "An announcement category with this name already exists."
+
+# ============ Data scope resource display names (localized at read time by ListResources, see perm.ResourceDef.NameKey) ============
+
+# Example: delete after forking
+[resource.notice]
+other = "Announcement"
+
+# Example: delete after forking
+[resource.notice_category]
+other = "Announcement category"
+
+# ============ Audit action/target display names (localized at read time, see audit.ActionNameKey) ============
+# Completeness check: see the comment of the audit.act section in sys.en.toml.
+
+# Example: delete after forking
+[audit.act.NoticeService.CreateNotice]
+other = "Create announcement"
+
+# Example: delete after forking
+[audit.act.NoticeService.DeleteNotice]
+other = "Delete announcement"
+
+# Example: delete after forking
+[audit.act.NoticeService.BatchDeleteNotice]
+other = "Batch delete announcements"
+
+# Example: delete after forking
+[audit.act.NoticeService.CreateNoticeCategory]
+other = "Create announcement category"
+
+# Example: delete after forking
+[audit.act.NoticeService.DeleteNoticeCategory]
+other = "Delete announcement category"
+
+# Example: delete after forking
+[audit.tt.Notice]
+other = "Announcement"
+
+# ============ Permission tree display names (localized at read time by ListPermissions, see perm.Code.NameKey) ============
+# How keys derive and why they are quoted: see the comment of the same section in sys.en.toml.
+
+# Example: delete after forking
+["perm.ops"]
+other = "Operations"
+
+# Example: delete after forking
+["perm.ops.notice"]
+other = "Announcements"
+
+# Example: delete after forking
+["perm.ops.notice.view"]
+other = "View announcements"
+
+# Example: delete after forking
+["perm.ops.notice.create"]
+other = "Create announcement"
+
+# Example: delete after forking
+["perm.ops.notice.delete"]
+other = "Delete announcement"
+
+# Example: delete after forking
+["perm.ops.notice.category"]
+other = "Manage announcement categories"

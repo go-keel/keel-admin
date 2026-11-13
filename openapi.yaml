@@ -1,0 +1,2604 @@
+# Generated with protoc-gen-openapi
+# https://github.com/google/gnostic/tree/master/cmd/protoc-gen-openapi
+
+openapi: 3.0.3
+info:
+    title: ""
+    version: 0.0.1
+paths:
+    /v1/notices:
+        get:
+            tags:
+                - NoticeService
+            operationId: NoticeService_ListNotice
+            parameters:
+                - name: keyword
+                  in: query
+                  description: Fuzzy match on the title; an empty string does not filter.
+                  schema:
+                    type: string
+                - name: offset
+                  in: query
+                  description: |-
+                    Pagination has the same shape as the kernel's: offset/limit. The business area does not introduce page/page_size:
+                     the server would convert it straight back to offset, buying nothing, while every list page would need its own
+                     pagination adapter and the frontend would lose its single shared component.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: limit
+                  in: query
+                  description: |-
+                    lte must equal the largest of the frontend PAGE_SIZES (web/src/lib/table.ts): otherwise the UI offers a
+                     size that protovalidate rejects with 400. A derived repo that changes pageSizes changes this too.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: categoryId
+                  in: query
+                  description: 0 = no category filter (category grants still apply); >0 = only that category (must be within the grants).
+                  schema:
+                    type: string
+                - name: createdFromDate
+                  in: query
+                  description: |-
+                    Business-day range of the creation time: YYYY-MM-DD, both ends inclusive, converted by the server to instants in
+                     the business time zone; an empty end is unbounded. The example of a fixed filter; how to pass it: ADR admin-0003.
+                  schema:
+                    type: string
+                - name: createdToDate
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.ListNoticeReply'
+        post:
+            tags:
+                - NoticeService
+            operationId: NoticeService_CreateNotice
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.CreateNoticeRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.NoticeReply'
+    /v1/notices/batch-delete:
+        post:
+            tags:
+                - NoticeService
+            description: |-
+                Batch delete from the table's multi-select calls this, **not** a frontend loop over DeleteNotice: a loop writes N
+                 audit entries, and an in-between state like "2 deleted, the 3rd failed" cannot be explained to the person using
+                 it. One request, one audit entry, all or nothing in a transaction.
+
+                 POST rather than DELETE: a DELETE with a body is unreliable through proxies and some clients. The path does not
+                 collide with `/v1/notices/{id}`, which is a DELETE.
+            operationId: NoticeService_BatchDeleteNotice
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.BatchDeleteNoticeRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /v1/notices/categories:
+        get:
+            tags:
+                - NoticeService
+            description: |-
+                Category management list: shown paged, so paged on the server. Bound to ops:notice:category: it serves the
+                 category management dialog (create/delete). It and the option set above are two uses of the same data, split into
+                 two endpoints. Merging them breaks one side: with the management list as a dropdown, categories on page two
+                 cannot be picked; with the option set as the management list, people with only view permission would see the
+                 management surface.
+
+                 Both are filtered by the data scope (the same ScopeSpec filters local rows through permdata.ApplyScope; the
+                 notice list's use of spec.ResourceIDs is another use of the same grant).
+            operationId: NoticeService_ListNoticeCategory
+            parameters:
+                - name: offset
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: limit
+                  in: query
+                  description: |-
+                    lte must equal the largest of the frontend PAGE_SIZES (web/src/lib/table.ts): otherwise the UI offers a
+                     size that protovalidate rejects with 400. A derived repo that changes pageSizes changes this too.
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.ListNoticeCategoryReply'
+        post:
+            tags:
+                - NoticeService
+            operationId: NoticeService_CreateNoticeCategory
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.CreateNoticeCategoryRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.NoticeCategoryReply'
+    /v1/notices/categories/options:
+        get:
+            tags:
+                - NoticeService
+            description: |-
+                Category options (id/name): used by the notice page's filter dropdown, the category selector of the submission
+                 form and the category names of list rows. An option set, unpaged: a dropdown must be able to pick any item.
+
+                 Bound to ops:notice:view (see notice_perm.go): the threshold follows **use**; this is data the notice page needs
+                 to render, so whoever can open the page can fetch it. Category **management** is another matter, see below.
+
+                 Must come before DeleteNoticeCategory: `/categories/options` and `/categories/{id}` have the same shape, and
+                 registration order decides which matches first.
+            operationId: NoticeService_ListNoticeCategoryOptions
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.ListNoticeCategoryOptionsReply'
+    /v1/notices/categories/{id}:
+        delete:
+            tags:
+                - NoticeService
+            description: |-
+                Deleting requires the category to have no notices; afterwards the category's explicit-assignment rows are cleaned
+                 up through the kernel's GrantRevoker port (business code never writes sys_* tables directly).
+            operationId: NoticeService_DeleteNoticeCategory
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /v1/notices/{id}:
+        delete:
+            tags:
+                - NoticeService
+            operationId: NoticeService_DeleteNotice
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /v1/sys/audit-logs:
+        get:
+            tags:
+                - AuditService
+            operationId: AuditService_ListAudit
+            parameters:
+                - name: offset
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: limit
+                  in: query
+                  description: |-
+                    lte must equal the largest of the frontend PAGE_SIZES (web/src/lib/table.ts): otherwise the UI offers a
+                     size that protovalidate rejects with 400. A derived repo that changes pageSizes changes this too.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: operatorId
+                  in: query
+                  schema:
+                    type: string
+                - name: action
+                  in: query
+                  schema:
+                    type: string
+                - name: targetType
+                  in: query
+                  schema:
+                    type: string
+                - name: targetId
+                  in: query
+                  schema:
+                    type: string
+                - name: ip
+                  in: query
+                  schema:
+                    type: string
+                - name: createdFromAt
+                  in: query
+                  description: |-
+                    Time as an instant range: UTC RFC3339 (such as "2026-09-01T00:00:00Z"), half-open (>= from, < to); an empty
+                     end is unbounded. How to pass it: ADR admin-0003.
+                  schema:
+                    type: string
+                - name: createdToAt
+                  in: query
+                  schema:
+                    type: string
+                - name: operatorKeyword
+                  in: query
+                  description: |-
+                    Fuzzy match on the operator's username or nickname. Audit entries store only the operator ID, so the server first
+                     finds matching accounts in sys_user and then filters by operator_id (still using idx_operator); deleted accounts
+                     do not match. operator_id is an exact match on one account; both may be given.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.ListAuditReply'
+    /v1/sys/audit-logs/actions:
+        get:
+            tags:
+                - AuditService
+            description: |-
+                Data source of the filter dropdown: the live registry (the Audit: true operations in perm's binding table), sent
+                 as a tree grouped by feature (audit target type). It deliberately does not read historical data from the
+                 database: the dropdown lists only actions the system currently supports and audits; historical actions (endpoints
+                 since removed) are not filter options, and old rows still display through fallback to historical i18n entries,
+                 so they stay readable.
+            operationId: AuditService_ListAuditActions
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.ListAuditActionsReply'
+    /v1/sys/audit-logs/{id}:
+        get:
+            tags:
+                - AuditService
+            description: |-
+                Detail of one audit entry: beyond the list row, it has the request body and the reason. The list sends only the
+                 fields it shows; the request body can be long and is fetched by id only when viewing the detail.
+
+                 Must be declared after ListAuditActions: HTTP routes are registered in declaration order and the first match
+                 wins; declared earlier, /audit-logs/actions would be taken as id=actions and rejected with 400.
+            operationId: AuditService_GetAudit
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.AuditLogInfo'
+    /v1/sys/auth/account:
+        get:
+            tags:
+                - AuthService
+            description: |-
+                GetMyAccount is the own-account detail the personal center needs: contact details, department, roles,
+                 authenticator binding time, IP allowlist, recent logins. Not merged into Profile: Profile is fetched on every page
+                 change and every return to the browser tab, while these need extra queries on departments, roles and the login
+                 log, and only the personal center uses them.
+                 It is also the source of the "edit profile" form's initial values (fetched fresh on open).
+            operationId: AuthService_GetMyAccount
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.MyAccountReply'
+    /v1/sys/auth/captcha:
+        post:
+            tags:
+                - AuthService
+            description: IssueCaptcha issues one human verification challenge (an empty structure when the current provider needs none).
+            operationId: AuthService_IssueCaptcha
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.IssueCaptchaRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.IssueCaptchaReply'
+    /v1/sys/auth/favorites/add:
+        post:
+            tags:
+                - AuthService
+            description: |-
+                AddFavorite / RemoveFavorite add or remove one of one's favorite menus and return the full user settings after the
+                 change. Idempotent: adding an existing favorite or removing a missing one succeeds with the list unchanged.
+
+                 Login is enough, with no Audit and no step-up: favorites only change one's own sidebar, touching neither
+                 permissions nor others' data. Writes are per item rather than whole overwrites, so two browsers each adding one do
+                 not erase each other.
+            operationId: AuthService_AddFavorite
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.AddFavoriteRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.UserSettings'
+    /v1/sys/auth/favorites/remove:
+        post:
+            tags:
+                - AuthService
+            operationId: AuthService_RemoveFavorite
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.RemoveFavoriteRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.UserSettings'
+    /v1/sys/auth/favorites/reorder:
+        post:
+            tags:
+                - AuthService
+            description: |-
+                ReorderFavorites reorders favorites, **overwriting the whole order**, deliberately unlike the per-item add and
+                 remove: when dragging to sort, the person really means "this is the whole order", so overwriting is what they want
+                 (see ADR admin-0011).
+
+                 It accepts only a **permutation** of the current set: extra paths are rejected, missing paths stay at the end as
+                 they are. Without this restriction it would be a whole-overwrite path around the per-item writes: when two browsers
+                 each add a favorite, the drag submitted later would erase the one submitted earlier, with nothing showing the
+                 person what was lost.
+            operationId: AuthService_ReorderFavorites
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.ReorderFavoritesRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.UserSettings'
+    /v1/sys/auth/login:
+        post:
+            tags:
+                - AuthService
+            operationId: AuthService_Login
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.LoginRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.LoginReply'
+    /v1/sys/auth/login-meta:
+        get:
+            tags:
+                - AuthService
+            description: 'LoginMeta is read by the login page before it starts: whether captcha is on and which provider.'
+            operationId: AuthService_LoginMeta
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.LoginMetaReply'
+    /v1/sys/auth/logout:
+        post:
+            tags:
+                - AuthService
+            description: Logout clears the session cookie. The cookie is httpOnly, so the frontend cannot delete it; only the server can.
+            operationId: AuthService_Logout
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.LogoutRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /v1/sys/auth/otp/bind:
+        post:
+            tags:
+                - AuthService
+            description: BindOTP generates a new secret for the caller, returns provisioning URI.
+            operationId: AuthService_BindOTP
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.BindOTPRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.BindOTPReply'
+    /v1/sys/auth/otp/confirm:
+        post:
+            tags:
+                - AuthService
+            description: |-
+                ConfirmOTP verifies the first code and activates the binding.
+                 In the binding bootstrap flow (bind-scope token) it returns an access token directly and completes the login: the
+                 password was verified when the bind token was issued and the OTP just now, so both factors are present, equivalent
+                 to a full login.
+            operationId: AuthService_ConfirmOTP
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.ConfirmOTPRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.ConfirmOTPReply'
+    /v1/sys/auth/otp/unbind:
+        post:
+            tags:
+                - AuthService
+            description: |-
+                UnbindOTP unbinds the authenticator and requires the password again.
+
+                 Why unbinding is a separate step guarded by the password: letting "rebind" overwrite directly would mean one click
+                 voids the authenticator still in use (without the user knowing), and whoever hijacked the session could install
+                 their own authenticator without the password and take over. Two steps with a password gate make unbinding an
+                 explicit, auditable decision.
+
+                 No step-up OTP: that would leave someone who lost their authenticator unable to help themselves. The password is
+                 the gate of this path.
+            operationId: AuthService_UnbindOTP
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.UnbindOTPRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /v1/sys/auth/password:
+        post:
+            tags:
+                - AuthService
+            description: |-
+                ChangeMyPassword changes one's own password (verifying the old one); an administrator resets others through
+                 UserService.ResetPassword.
+            operationId: AuthService_ChangeMyPassword
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.ChangeMyPasswordRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /v1/sys/auth/profile:
+        get:
+            tags:
+                - AuthService
+            operationId: AuthService_Profile
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.ProfileReply'
+        put:
+            tags:
+                - AuthService
+            description: |-
+                UpdateMyProfile changes one's own nickname/avatar/email/phone. The avatar is a data URI; size limit in
+                 biz.MaxAvatarBytes (enforced by the server, the frontend is not trusted).
+            operationId: AuthService_UpdateMyProfile
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.UpdateMyProfileRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /v1/sys/depts:
+        get:
+            tags:
+                - DeptService
+            operationId: DeptService_ListDept
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.ListDeptReply'
+        post:
+            tags:
+                - DeptService
+            operationId: DeptService_CreateDept
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.CreateDeptRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.DeptInfo'
+    /v1/sys/depts/options:
+        get:
+            tags:
+                - DeptService
+            description: |-
+                Department selector options (a tree, assembled by the client from parent_id; a slim payload without management
+                 fields such as status/user_count).
+
+                 It is separate from ListDept not because of the payload but because of the **threshold**: this group is bound to
+                 sys:dept:view (department management), while this data serves the department filter and the "department" picker
+                 of the user management page, whose users need only sys:account:view (see perm.go). The observed consequence of
+                 sharing one endpoint: someone with only account permissions hits 403 on opening user management, although the
+                 page needs that data to render.
+
+                 The scope, like ListDept and the user list itself, goes through ARBAC.ManageableDeptIDs (everything for root), so
+                 it fits both uses: the department picker offers nothing outside the manageable range (picking it would be
+                 rejected with DEPT_OUT_OF_RANGE anyway), and the filter options cover exactly the departments that can appear in
+                 the list.
+
+                 Must come before GetDept (/depts/options and /depts/{id} have the same shape, and registration order decides which
+                 matches first).
+            operationId: DeptService_ListDeptOptions
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.ListDeptOptionsReply'
+    /v1/sys/depts/{id}:
+        get:
+            tags:
+                - DeptService
+            description: |-
+                Department detail: the source of the edit form's initial values (fetched fresh, not from a list or tree node
+                 snapshot).
+            operationId: DeptService_GetDept
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.DeptInfo'
+        put:
+            tags:
+                - DeptService
+            operationId: DeptService_UpdateDept
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.UpdateDeptRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.DeptInfo'
+        delete:
+            tags:
+                - DeptService
+            operationId: DeptService_DeleteDept
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /v1/sys/login-logs:
+        get:
+            tags:
+                - AuditService
+            operationId: AuditService_ListLogin
+            parameters:
+                - name: offset
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: limit
+                  in: query
+                  description: |-
+                    lte must equal the largest of the frontend PAGE_SIZES (web/src/lib/table.ts): otherwise the UI offers a
+                     size that protovalidate rejects with 400. A derived repo that changes pageSizes changes this too.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: username
+                  in: query
+                  description: Fuzzy match. In failure rows, username is exactly what was typed and may not be an existing account.
+                  schema:
+                    type: string
+                - name: status
+                  in: query
+                  description: 0=all 1=success 2=failure
+                  schema:
+                    type: integer
+                    format: int32
+                - name: ip
+                  in: query
+                  schema:
+                    type: string
+                - name: createdFromAt
+                  in: query
+                  description: |-
+                    Time as an instant range: UTC RFC3339 (such as "2026-09-01T00:00:00Z"), half-open (>= from, < to); an empty
+                     end is unbounded. How to pass it: ADR admin-0003.
+                  schema:
+                    type: string
+                - name: createdToAt
+                  in: query
+                  schema:
+                    type: string
+                - name: userId
+                  in: query
+                  description: |-
+                    Exact match on the account ID (0 = any): use it to see one account's own logins, since username is a fuzzy match
+                     and "zhang" also brings in "zhangsan". Failure rows without a matching account have user_id 0.
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.ListLoginReply'
+    /v1/sys/meta/my-permissions:
+        get:
+            tags:
+                - MetaService
+            description: Caller's own effective permission codes (any authenticated user).
+            operationId: MetaService_MyPermissions
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.MyPermissionsReply'
+    /v1/sys/meta/permissions:
+        get:
+            tags:
+                - MetaService
+            description: Full code-fixed permission registry (root only — for role config UI).
+            operationId: MetaService_ListPermissions
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.ListPermissionsReply'
+    /v1/sys/meta/resources:
+        get:
+            tags:
+                - MetaService
+            description: Registered data-scope resources (root only — for role data-scope UI).
+            operationId: MetaService_ListResources
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.ListResourcesReply'
+    /v1/sys/meta/system-info:
+        get:
+            tags:
+                - MetaService
+            description: |-
+                System-wide read-only information (any logged-in user): independent of who is logged in, one value for the
+                 whole system.
+            operationId: MetaService_SystemInfo
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.SystemInfoReply'
+    /v1/sys/roles:
+        get:
+            tags:
+                - RoleService
+            description: |-
+                Role management list: shown paged, so paged on the server (offset/limit), with filtering pushed down to the
+                 database as well.
+
+                 Filtering **cannot** stay in the frontend: with pagination, the frontend has only the current page, so it filters
+                 "the matches on this page", not "the first page of matches"; requests go out and the page renders, it just misses
+                 results.
+            operationId: RoleService_ListRole
+            parameters:
+                - name: keyword
+                  in: query
+                  description: matches code / name
+                  schema:
+                    type: string
+                - name: status
+                  in: query
+                  description: |-
+                    The three tri-state filters all use 0=all 1=yes 2=no, the same sentinel convention as status/otp_bound of
+                     ListUserRequest. Do not switch to the column's 1/0 for "enabled/disabled": 0 would then mean both "all" and
+                     "disabled".
+                  schema:
+                    type: integer
+                    format: int32
+                - name: sensitive
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: forceOtp
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: offset
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: limit
+                  in: query
+                  description: |-
+                    lte must equal the largest of the frontend PAGE_SIZES (web/src/lib/table.ts): otherwise the UI offers a
+                     size that protovalidate rejects with 400. A derived repo that changes pageSizes changes this too.
+                  schema:
+                    type: integer
+                    format: int32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.ListRoleReply'
+        post:
+            tags:
+                - RoleService
+            operationId: RoleService_CreateRole
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.CreateRoleRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.RoleInfo'
+    /v1/sys/roles/assignable:
+        get:
+            tags:
+                - RoleService
+            description: |-
+                Roles the operator may assign (union of assignable ∩ enabled ∖ sensitive; everything for root).
+                 For the assignment dropdown of the user management page; binding in service/perm.go (not root-only).
+
+                 An option set, unpaged: a dropdown must be able to pick any item, and paging would mean "what you cannot page to,
+                 you cannot pick". The reply therefore **has no total** and is a different type from ListRole's: if one reply served
+                 both a paged list and an option set, total would be a meaningless but required number in half the cases.
+
+                 Must come before GetRole: `/v1/sys/roles/assignable` and `/v1/sys/roles/{id}` have the same shape, and
+                 registration order decides which matches first; placed later, {id} swallows it.
+            operationId: RoleService_ListAssignableRoleOptions
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.ListAssignableRoleOptionsReply'
+    /v1/sys/roles/options:
+        get:
+            tags:
+                - RoleService
+            description: |-
+                Role selector options (three fields: id/code/name). An option set, unpaged: a dropdown must be able to pick any
+                 item.
+
+                 It deliberately does not reuse ListRole: that is a paged list, and a dropdown using it would see only the first
+                 page. Both are slim, but differently: this one has only the three identifying fields plus exclude filters; that
+                 one also carries status and code count for the list columns. Two uses of the same data are split into two
+                 endpoints, see AGENTS.md.
+                 Filtering by parameter happens at the endpoint: exclude_id excludes a given role (the role itself when editing),
+                 exclude_sensitive excludes sensitive roles (only for assignment; filters must leave it false, or users with
+                 sensitive roles cannot be found).
+
+                 The binding is sys:account:view rather than this group's root-only (see perm.go): the URL sits in the role domain
+                 by resource ownership, while the threshold follows **use**: it serves the role filter of the user list and the
+                 "assignable roles" dropdown, and the former has only account view permission. Role names are no new information
+                 (the role tags of user list rows already show them one by one); the sensitive perms and configuration surface stay
+                 behind GetRolePermissions / GetRole.
+
+                 Must come before GetRole (/roles/options and /roles/{id} have the same shape, and registration order decides which
+                 matches first; placed later, {id} swallows it).
+            operationId: RoleService_ListRoleOptions
+            parameters:
+                - name: excludeId
+                  in: query
+                  schema:
+                    type: string
+                - name: excludeSensitive
+                  in: query
+                  schema:
+                    type: boolean
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.ListRoleOptionsReply'
+    /v1/sys/roles/{id}:
+        get:
+            tags:
+                - RoleService
+            description: |-
+                Role detail: the source of the edit form's initial values. A list row is a snapshot; prefilling from it silently
+                 writes old values over concurrent changes, and perms/assignable/manage_depts/scopes all replace as a whole, so one
+                 missing element deletes a setting. See AGENTS.md (form initial values always come from the detail endpoint).
+            operationId: RoleService_GetRole
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.RoleInfo'
+        put:
+            tags:
+                - RoleService
+            description: |-
+                Everything editable about a role, submitted at once: basic info + permissions + the three boundaries.
+
+                 They have exactly the same threshold (root-only + step-up + audit), so splitting them has no permission basis. The
+                 merge must happen in this one endpoint: a step-up code may be used sys.otp.max_uses times (ReplayGuard in
+                 biz/otp.go), and a frontend that assembled dialogs and called five endpoints in sequence would exceed that and hit
+                 OTP_ALREADY_USED. Do not count on raising that limit: it is an allowance bought with replay risk, while a merged
+                 endpoint spends none. See AGENTS.md (operations split along permission boundaries).
+            operationId: RoleService_UpdateRole
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.UpdateRoleRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.RoleInfo'
+        delete:
+            tags:
+                - RoleService
+            operationId: RoleService_DeleteRole
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /v1/sys/roles/{id}/permissions:
+        get:
+            tags:
+                - RoleService
+            description: |-
+                Which feature permission codes a role grants. For business administrators with assignment rights (not root-only,
+                 binding in service/perm.go): before handing a role to someone, they need to see what it actually grants.
+
+                 Separate from GetRole rather than lowering GetRole's threshold: GetRole carries the role's whole configuration
+                 surface (the three boundaries), which belongs to root; this returns only the code set. Non-root can query only
+                 roles within their own assignable range; beyond it -> ROLE_OUT_OF_RANGE (otherwise this would be a hole for
+                 enumerating any role's permissions).
+            operationId: RoleService_GetRolePermissions
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.GetRolePermissionsReply'
+    /v1/sys/users:
+        get:
+            tags:
+                - UserService
+            operationId: UserService_ListUser
+            parameters:
+                - name: deptId
+                  in: query
+                  description: 'Optional filter: 0 means no department filter.'
+                  schema:
+                    type: string
+                - name: keyword
+                  in: query
+                  description: |-
+                    Fuzzy match on username, nickname, email and phone. The limit is the email length limit, so a whole email address
+                     can be searched.
+                  schema:
+                    type: string
+                - name: offset
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: limit
+                  in: query
+                  description: |-
+                    lte must equal the largest of the frontend PAGE_SIZES (web/src/lib/table.ts): otherwise the UI offers a
+                     size that protovalidate rejects with 400. A derived repo that changes pageSizes changes this too.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: status
+                  in: query
+                  description: 0=all 1=active 2=disabled
+                  schema:
+                    type: integer
+                    format: int32
+                - name: otpBound
+                  in: query
+                  description: 0=all 1=authenticator bound 2=not bound
+                  schema:
+                    type: integer
+                    format: int32
+                - name: roleId
+                  in: query
+                  description: 0=all; otherwise only users with that role
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.ListUserReply'
+        post:
+            tags:
+                - UserService
+            operationId: UserService_CreateUser
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.CreateUserRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.UserInfo'
+    /v1/sys/users/options:
+        get:
+            tags:
+                - UserService
+            description: |-
+                User options (the user filter of the login log): the number of users keeps growing with the business, so they
+                 are fetched in batches by keyword (see "option set" in GLOSSARY.md). The threshold follows use and shares the
+                 login log's code; it sees all users with no data scope, consistent with the login log itself (ADR admin-0008,
+                 admin-0017). Must come before GetUser (/users/options and /users/{id} have the same shape, and registration
+                 order decides which matches first).
+            operationId: UserService_ListUserOptions
+            parameters:
+                - name: keyword
+                  in: query
+                  description: Fuzzy match on username or nickname.
+                  schema:
+                    type: string
+                - name: offset
+                  in: query
+                  schema:
+                    type: integer
+                    format: int32
+                - name: limit
+                  in: query
+                  description: The batch limit is set per use; the frontend must not request more per batch for these options than this.
+                  schema:
+                    type: integer
+                    format: int32
+                - name: ids
+                  in: query
+                  schema:
+                    type: array
+                    items:
+                        type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.ListUserOptionsReply'
+    /v1/sys/users/{id}:
+        get:
+            tags:
+                - UserService
+            description: |-
+                User detail: the source of the edit form's initial values. A list row is a snapshot; editing values that are
+                 written back on submit, such as the IP allowlist, from a snapshot overwrites concurrent changes. See AGENTS.md
+                 (form initial values always come from the detail endpoint).
+            operationId: UserService_GetUser
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.UserInfo'
+        put:
+            tags:
+                - UserService
+            description: |-
+                UpdateUser is the single entry of "edit user": nickname/avatar/department/roles/IP allowlist submitted at once,
+                 one form shared with create, one step-up for the whole form. Assigning departments and roles and setting the IP
+                 allowlist all fall under sys:account:update with no codes of their own; the server checks the changed
+                 departments and roles against the operator's manageable departments and assignable roles.
+                 Root status is not here: it needs its own step-up, through SetUserRoot.
+            operationId: UserService_UpdateUser
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.UpdateUserRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.keel_admin.v1.UserInfo'
+    /v1/sys/users/{id}/disable:
+        post:
+            tags:
+                - UserService
+            operationId: UserService_DisableUser
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.DisableUserRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /v1/sys/users/{id}/enable:
+        post:
+            tags:
+                - UserService
+            description: |-
+                EnableUser lifts a disable and restores the ability to log in. It and DisableUser have two permission codes
+                 (sys:account:enable / sys:account:disable): unblocking widens access and is not the same thing as blocking, so a
+                 support role can be given unblocking without blocking.
+            operationId: UserService_EnableUser
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.EnableUserRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /v1/sys/users/{id}/kick:
+        post:
+            tags:
+                - UserService
+            operationId: UserService_KickUser
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.KickUserRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /v1/sys/users/{id}/reset_otp:
+        post:
+            tags:
+                - UserService
+            operationId: UserService_ResetOTP
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.ResetOTPRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /v1/sys/users/{id}/reset_pwd:
+        post:
+            tags:
+                - UserService
+            operationId: UserService_ResetPassword
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.ResetPasswordRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+    /v1/sys/users/{id}/root:
+        post:
+            tags:
+                - UserService
+            description: 'Grant/revoke super admin: root only (binding in service/perm.go), step-up + audit.'
+            operationId: UserService_SetUserRoot
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.keel_admin.v1.SetUserRootRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content: {}
+components:
+    schemas:
+        api.keel_admin.v1.AddFavoriteRequest:
+            type: object
+            properties:
+                path:
+                    type: string
+        api.keel_admin.v1.AuditActionGroup:
+            type: object
+            properties:
+                target:
+                    type: string
+                name:
+                    type: string
+                actions:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.AuditActionOption'
+            description: |-
+                Feature group = audit target type (derived from the Service name, the same source as target_type of list rows).
+                 name is localized by Accept-Language (audit.tt.* entries).
+        api.keel_admin.v1.AuditActionOption:
+            type: object
+            properties:
+                action:
+                    type: string
+                name:
+                    type: string
+            description: |-
+                An action within a group. action is the stable contract identifier (ListAuditRequest.action filters by it); name
+                 is localized by Accept-Language (audit.act.* entries in internal/i18n), and equals action when no entry exists.
+        api.keel_admin.v1.AuditLogInfo:
+            type: object
+            properties:
+                id:
+                    type: string
+                operatorId:
+                    type: string
+                action:
+                    type: string
+                targetType:
+                    type: string
+                targetId:
+                    type: string
+                ip:
+                    type: string
+                createdAt:
+                    type: string
+                    description: UTC RFC3339.
+                operatorName:
+                    type: string
+                    description: Same as AuditLogListItem.
+                actionName:
+                    type: string
+                targetName:
+                    type: string
+                requestPayload:
+                    type: string
+                    description: |-
+                        Request body (JSON), with fields marked (keel.v1.redact) erased on the server: sensitive becomes "***", bulky
+                         (base64 images such as avatars) becomes "[omitted N bytes]". Empty string = the operation has no serializable
+                         request body (not a proto request).
+
+                         Before/after snapshots of the data are deliberately not recorded: only business code knows their shape, so the
+                         framework can neither redact them nor guarantee completeness. The cost is that delete operations are audited with
+                         only target_id; the trade-off and how to add snapshots back: the package comment of internal/core/audit.
+                reason:
+                    type: string
+                    description: The reason the operator attached through the X-Audit-Reason header; may be empty.
+            description: 'AuditLogInfo is the detail of one audit entry: the list row''s fields plus the request body and the reason.'
+        api.keel_admin.v1.AuditLogListItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                operatorId:
+                    type: string
+                action:
+                    type: string
+                targetType:
+                    type: string
+                targetId:
+                    type: string
+                ip:
+                    type: string
+                createdAt:
+                    type: string
+                    description: UTC RFC3339, converted by the frontend to the display time zone the user chose.
+                operatorName:
+                    type: string
+                    description: |-
+                        Operator's username; empty when the operator was deleted (audit entries outlive accounts), and the UI then shows
+                         the ID.
+                actionName:
+                    type: string
+                    description: |-
+                        Localized display names of the action and target type, looked up at read time by Accept-Language (audit.act.* /
+                         audit.tt.* entries in internal/i18n). The database stores only stable identifiers (action / target_type); a
+                         missing entry falls back to the raw value, so this is never empty.
+                targetName:
+                    type: string
+            description: |-
+                AuditLogListItem is one row of the audit log list, with only the fields the list shows; the request body and the
+                 reason are in the detail (GetAudit).
+        api.keel_admin.v1.BatchDeleteNoticeRequest:
+            type: object
+            properties:
+                ids:
+                    type: array
+                    items:
+                        type: string
+                    description: |-
+                        max_items equals the lte of limit: table selection does not span pages (changing page clears it), so at most a
+                         whole page is selected at once, and a page holds at most the largest of PAGE_SIZES.
+        api.keel_admin.v1.BindOTPReply:
+            type: object
+            properties:
+                provisioningUri:
+                    type: string
+                    description: The otpauth:// URI contains the OTP seed, and response bodies go into the request log too.
+        api.keel_admin.v1.BindOTPRequest:
+            type: object
+            properties: {}
+        api.keel_admin.v1.ChangeMyPasswordRequest:
+            type: object
+            properties:
+                oldPassword:
+                    type: string
+                newPassword:
+                    type: string
+        api.keel_admin.v1.ConfirmOTPReply:
+            type: object
+            properties:
+                loggedIn:
+                    type: boolean
+                    description: |-
+                        When the bootstrap completes, the response sets the session cookie and the caller enters the system directly,
+                         without logging in again (logging in again would also hit one use per code: the code this Confirm consumed cannot
+                         be used to log in). Not set when rebinding self-service while logged in: the caller already has a session.
+        api.keel_admin.v1.ConfirmOTPRequest:
+            type: object
+            properties:
+                code:
+                    type: string
+                remember:
+                    type: boolean
+                    description: 'Same as LoginRequest.remember: decides whether the cookie set when the bootstrap completes is persistent.'
+        api.keel_admin.v1.CreateDeptRequest:
+            type: object
+            properties:
+                parentId:
+                    type: string
+                    description: 0 means under the root node.
+                name:
+                    type: string
+                sort:
+                    type: integer
+                    format: int32
+        api.keel_admin.v1.CreateNoticeCategoryRequest:
+            type: object
+            properties:
+                name:
+                    type: string
+        api.keel_admin.v1.CreateNoticeRequest:
+            type: object
+            properties:
+                title:
+                    type: string
+                content:
+                    type: string
+                categoryId:
+                    type: string
+                    description: 'Category: required, and must be within the operator''s category grants (no posting to an invisible category).'
+        api.keel_admin.v1.CreateRoleRequest:
+            type: object
+            properties:
+                code:
+                    type: string
+                name:
+                    type: string
+                forceOtp:
+                    type: integer
+                    format: int32
+                sensitive:
+                    type: integer
+                    description: 'Create as a sensitive role (recommended for technical roles): non-root can never assign it.'
+                    format: int32
+                perms:
+                    type: array
+                    items:
+                        type: string
+                    description: |-
+                        Create and edit share one form and one set of editable fields: permissions + the three boundaries + status are
+                         saved together, with one step-up code. The only difference: Code can be set only on create and cannot be edited.
+                assignableRoleIds:
+                    type: array
+                    items:
+                        type: string
+                manageDeptIds:
+                    type: array
+                    items:
+                        type: string
+                scopes:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.DataScopeItem'
+                status:
+                    type: integer
+                    description: 'Status: 0=disabled 1=enabled, saved as passed; as with edit, omitted means 0 (disabled).'
+                    format: int32
+        api.keel_admin.v1.CreateUserRequest:
+            type: object
+            properties:
+                username:
+                    type: string
+                password:
+                    type: string
+                nickname:
+                    type: string
+                deptId:
+                    type: string
+                roleIds:
+                    type: array
+                    items:
+                        type: string
+                avatar:
+                    type: string
+                    description: |-
+                        The same editable fields as edit: avatar + IP allowlist can be set on create too. The password is a create-only
+                         credential (edit does not change it; changing it goes through the separate reset operation); username can be set
+                         on create and cannot be edited.
+                ipWhitelist:
+                    type: string
+                    description: Comma-separated IPs / CIDRs; empty string = unrestricted.
+                email:
+                    type: string
+                    description: |-
+                        Email: optional (empty string = not set), validated as an email when set. Contact only: not unique, not used
+                         to log in.
+                phone:
+                    type: string
+                    description: |-
+                        Phone: optional. A loose format (digits, a leading +, spaces and hyphens in between, 5–20 characters), with no
+                         restriction on country or landline/mobile (the template serves derived repos everywhere). Contact only, not unique.
+        api.keel_admin.v1.DataScopeItem:
+            type: object
+            properties:
+                resourceType:
+                    type: string
+                scopeType:
+                    type: string
+                resourceIds:
+                    type: array
+                    items:
+                        type: string
+                    description: |-
+                        RESOURCE_GRANT only: the ids of resource instances explicitly granted to the role (such as primary keys of brand
+                         groups or categories). The framework does not interpret what an instance is; the option list comes from the
+                         ListGrantable callback declared when the resource is registered (grant_options of meta ListResources). Must be
+                         empty for every other scope_type.
+        api.keel_admin.v1.DeptInfo:
+            type: object
+            properties:
+                id:
+                    type: string
+                parentId:
+                    type: string
+                name:
+                    type: string
+                sort:
+                    type: integer
+                    format: int32
+                status:
+                    type: integer
+                    format: int32
+            description: |-
+                DeptInfo is the department detail: the reply of GetDept / CreateDept / UpdateDept and the source of the edit form's
+                 initial values. Department tree nodes use DeptListItem rather than sharing this type.
+        api.keel_admin.v1.DeptListItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                parentId:
+                    type: string
+                name:
+                    type: string
+                sort:
+                    type: integer
+                    format: int32
+                status:
+                    type: integer
+                    format: int32
+                userCount:
+                    type: integer
+                    description: |-
+                        Number of users directly in the department. Deleting requires an empty department (no children, no users, no
+                         business data occupancy), and all three return the same DEPT_NOT_EMPTY; carrying the user count lets the UI say
+                         "cannot delete because 3 people are still here" before the click, instead of a vague error after it.
+                         The UI counts children from the tree itself; business data occupancy is extensible and still goes through the
+                         error message. Only the list computes it, in bulk (one GROUP BY); the detail does not carry it.
+                    format: int32
+            description: |-
+                DeptListItem is one node of the department management tree (assembled by the client from parent_id): only the
+                 fields the tree table's columns and row actions need, not a reuse of the detail DeptInfo.
+        api.keel_admin.v1.DeptOption:
+            type: object
+            properties:
+                id:
+                    type: string
+                parentId:
+                    type: string
+                name:
+                    type: string
+                disabled:
+                    type: boolean
+                    description: 'disabled: the department cannot be chosen as a user''s department (it still appears for filtering).'
+            description: 'DeptOption is a slim department for selectors: only the three fields needed to build the tree and submit.'
+        api.keel_admin.v1.DisableUserRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+        api.keel_admin.v1.EnableUserRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+        api.keel_admin.v1.GetRolePermissionsReply:
+            type: object
+            properties:
+                perms:
+                    type: array
+                    items:
+                        type: string
+        api.keel_admin.v1.GrantOption:
+            type: object
+            properties:
+                id:
+                    type: string
+                label:
+                    type: string
+        api.keel_admin.v1.IssueCaptchaReply:
+            type: object
+            properties:
+                captchaId:
+                    type: string
+                    description: Empty string = the current provider needs no challenge held by the frontend (such as a client-rendered widget).
+                imageBase64:
+                    type: string
+        api.keel_admin.v1.IssueCaptchaRequest:
+            type: object
+            properties: {}
+        api.keel_admin.v1.KickUserRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+        api.keel_admin.v1.ListAssignableRoleOptionsReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.RoleOption'
+            description: |-
+                The option set's reply: slim RoleOption elements and no total (reason in the comment on ListAssignableRoleOptions).
+                 Sharing the element type with ListRoleOptions is right: both are role selector options with the same field needs;
+                 they are two rpcs because **threshold and set** differ (all / assignable), not because the shape differs.
+        api.keel_admin.v1.ListAuditActionsReply:
+            type: object
+            properties:
+                groups:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.AuditActionGroup'
+        api.keel_admin.v1.ListAuditReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.AuditLogListItem'
+                total:
+                    type: string
+        api.keel_admin.v1.ListDeptOptionsReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.DeptOption'
+        api.keel_admin.v1.ListDeptReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.DeptListItem'
+        api.keel_admin.v1.ListLoginReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.LoginLogListItem'
+                total:
+                    type: string
+        api.keel_admin.v1.ListNoticeCategoryOptionsReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.NoticeCategoryOption'
+            description: 'The option set''s reply: no total.'
+        api.keel_admin.v1.ListNoticeCategoryReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.NoticeCategoryListItem'
+                total:
+                    type: string
+        api.keel_admin.v1.ListNoticeReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.NoticeListItem'
+                total:
+                    type: string
+        api.keel_admin.v1.ListPermissionsReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.PermissionDef'
+                groups:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.PermGroup'
+                    description: |-
+                        Group display names, returned together with items: the UI needs them to organize codes into three levels
+                         (business domain / feature module / feature operation); two endpoints would only add a round trip and an
+                         in-between state of "codes received, names not yet".
+        api.keel_admin.v1.ListResourcesReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.ResourceDef'
+        api.keel_admin.v1.ListRoleOptionsReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.RoleOption'
+        api.keel_admin.v1.ListRoleReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.RoleListItem'
+                total:
+                    type: string
+        api.keel_admin.v1.ListUserOptionsReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.UserOption'
+                total:
+                    type: string
+        api.keel_admin.v1.ListUserReply:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.UserListItem'
+                total:
+                    type: string
+        api.keel_admin.v1.LoginLogListItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                userId:
+                    type: string
+                username:
+                    type: string
+                success:
+                    type: boolean
+                ip:
+                    type: string
+                msg:
+                    type: string
+                createdAt:
+                    type: string
+                    description: UTC RFC3339, converted by the frontend to the display time zone the user chose.
+            description: |-
+                LoginLogListItem is one row of the login log list. "Recent logins" in the personal center uses RecentLogin from
+                 auth.proto rather than sharing this type.
+        api.keel_admin.v1.LoginMetaReply:
+            type: object
+            properties:
+                captchaEnabled:
+                    type: boolean
+                captchaProvider:
+                    type: string
+                captchaSiteKey:
+                    type: string
+                    description: |-
+                        Public site key of a widget provider (turnstile), which the login page needs to render the widget.
+                         Empty for the image code and when captcha is off: it is provider-specific, not a general field.
+        api.keel_admin.v1.LoginReply:
+            type: object
+            properties:
+                userId:
+                    type: string
+                username:
+                    type: string
+                isRoot:
+                    type: boolean
+                bindToken:
+                    type: string
+                    description: |-
+                        When OTP is forced but not bound: no token; a short-lived restricted token is issued instead (scope=otp_bind,
+                         callable only for BindOTP/ConfirmOTP), and the user logs in again after binding.
+        api.keel_admin.v1.LoginRequest:
+            type: object
+            properties:
+                username:
+                    type: string
+                password:
+                    type: string
+                otpCode:
+                    type: string
+                    description: 'Optional: verified by the server only when the account has bound or is forced to use OTP; empty is valid.'
+                captchaId:
+                    type: string
+                    description: |-
+                        Optional: verified by the server only when sys.captcha.enabled is on; empty is valid (on but empty counts as a
+                         failed verification, see step 0 of the login state machine).
+                captchaAnswer:
+                    type: string
+                remember:
+                    type: boolean
+                    description: |-
+                        "Remember me": decides only whether the session cookie is persistent (Max-Age) or session-only (lost when the
+                         browser closes). The token's own lifetime is independent of it and always sys.session_ttl.
+        api.keel_admin.v1.LogoutRequest:
+            type: object
+            properties: {}
+        api.keel_admin.v1.MyAccountReply:
+            type: object
+            properties:
+                username:
+                    type: string
+                nickname:
+                    type: string
+                avatar:
+                    type: string
+                email:
+                    type: string
+                phone:
+                    type: string
+                deptName:
+                    type: string
+                    description: Department name (resolved by the backend); empty without a department.
+                roles:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.NamedRef'
+                createdAt:
+                    type: string
+                    description: UTC RFC3339, converted by the frontend to the display time zone.
+                otpBound:
+                    type: boolean
+                otpBoundAt:
+                    type: string
+                    description: When the authenticator was bound, UTC RFC3339; empty if not bound.
+                ipWhitelist:
+                    type: string
+                    description: |-
+                        Login IP allowlist, comma-separated; empty string = unrestricted. Read-only for the account owner, set by an
+                         administrator.
+                recentLogins:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.RecentLogin'
+                    description: |-
+                        The most recent login attempts (successes and failures), newest first. One's own, so no login log view permission
+                         is needed.
+        api.keel_admin.v1.MyPermissionsReply:
+            type: object
+            properties:
+                isRoot:
+                    type: boolean
+                codes:
+                    type: array
+                    items:
+                        type: string
+        api.keel_admin.v1.NamedRef:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+            description: |-
+                NamedRef is "id + display name resolved by the backend", used to render names of dynamic entities (roles,
+                 departments and so on) in lists and details directly, instead of the anti-pattern of the frontend looking the name
+                 up in a snapshot with .find().
+        api.keel_admin.v1.NoticeCategoryListItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                createdAt:
+                    type: string
+                    description: UTC RFC3339, converted by the frontend to the display time zone the user chose.
+            description: |-
+                NoticeCategoryListItem is one row of the category management list. Its fields currently equal
+                 NoticeCategoryReply's, but it is defined separately so either can gain fields without affecting the other.
+        api.keel_admin.v1.NoticeCategoryOption:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+            description: |-
+                A slim category for selectors: only the two identifying fields. created_at matters only to the management surface;
+                 a dropdown does not need it.
+        api.keel_admin.v1.NoticeCategoryReply:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                createdAt:
+                    type: string
+                    description: UTC RFC3339, converted by the frontend to the display time zone the user chose.
+            description: |-
+                NoticeCategoryReply is the reply of CreateNoticeCategory. Rows of the category management list use
+                 NoticeCategoryListItem and options use NoticeCategoryOption, each its own type.
+        api.keel_admin.v1.NoticeListItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                title:
+                    type: string
+                content:
+                    type: string
+                    description: 'Body: the list shows an excerpt, export needs the full text.'
+                categoryId:
+                    type: string
+                ownerUserId:
+                    type: string
+                ownerDeptId:
+                    type: string
+                ownerDeptName:
+                    type: string
+                    description: |-
+                        Display names of the department and the creator, resolved by the backend; empty when deleted, and the frontend
+                         then shows #id.
+                ownerUserName:
+                    type: string
+                createdAt:
+                    type: string
+                    description: UTC RFC3339, converted by the frontend to the display time zone the user chose.
+            description: 'NoticeListItem is one row of the notice list: only the fields the list columns, export and row actions need.'
+        api.keel_admin.v1.NoticeReply:
+            type: object
+            properties:
+                id:
+                    type: string
+                title:
+                    type: string
+                content:
+                    type: string
+                ownerUserId:
+                    type: string
+                ownerDeptId:
+                    type: string
+                createdAt:
+                    type: string
+                    description: UTC RFC3339, converted by the frontend to the display time zone the user chose.
+                categoryId:
+                    type: string
+            description: |-
+                NoticeReply is the reply of CreateNotice. List rows use NoticeListItem rather than sharing this type: only the list
+                 resolves department and creator names in bulk, so sharing would add two fields here that are always empty.
+        api.keel_admin.v1.PermGroup:
+            type: object
+            properties:
+                domain:
+                    type: string
+                module:
+                    type: string
+                    description: Empty = this is the business domain's name; non-empty = the name of this feature module in that business domain.
+                name:
+                    type: string
+                    description: |-
+                        Group display name, localized by Accept-Language (the key derives from the slug, see perm.Group.NameKey; a missing
+                         entry falls back to the slug).
+                sort:
+                    type: integer
+                    format: int32
+            description: |-
+                PermGroup is the group metadata of a business domain or feature module: only a display name and order, with no
+                 permission meaning. The UI uses it as an expandable container and a select-all entry; it matches no code and
+                 cannot be granted.
+        api.keel_admin.v1.PermissionDef:
+            type: object
+            properties:
+                code:
+                    type: string
+                name:
+                    type: string
+                    description: |-
+                        Display name of the feature operation, localized by Accept-Language (the key derives from the code, see
+                         perm.Code.NameKey; a missing entry falls back to the operation slug).
+                module:
+                    type: string
+                    description: 'Feature module slug (the code''s 2nd segment). Display name: ListPermissionsReply.groups.'
+                deps:
+                    type: array
+                    items:
+                        type: string
+                    description: |-
+                        Prerequisite codes, possibly across business domains and modules. Granting this code implicitly grants the deps
+                         closure (expanded by the server's Effective()), so the configuration UI ticks and locks the deps too; otherwise
+                         what it shows differs from what takes effect.
+                requireOtp:
+                    type: boolean
+                    description: |-
+                        Whether the code covers an operation that needs step-up, so the UI can mark it high-risk. Derived by the server
+                         from the bindings (see perm.Seal), not declared by hand, so it cannot drift from the real authz decision.
+                domain:
+                    type: string
+                    description: 'Business domain slug (the code''s 1st segment). Display name: ListPermissionsReply.groups.'
+                action:
+                    type: string
+                    description: Feature operation slug (the code's 3rd segment).
+            description: |-
+                PermissionDef is one **feature operation** (a grantable leaf).
+
+                 A code always has three segments `<business domain>:<feature module>:<feature operation>`; the server derives
+                 domain/module from the segments (not a second hand-written declaration, so it cannot disagree with the code).
+                 Business domains and feature modules are **not permissions** and cannot be granted; they are only groups, whose
+                 display names are in groups.
+        api.keel_admin.v1.ProfileReply:
+            type: object
+            properties:
+                userId:
+                    type: string
+                username:
+                    type: string
+                nickname:
+                    type: string
+                deptId:
+                    type: string
+                isRoot:
+                    type: boolean
+                perms:
+                    type: array
+                    items:
+                        type: string
+                avatar:
+                    type: string
+                otpBound:
+                    type: boolean
+                    description: |-
+                        Whether an authenticator is bound: the personal center shows "bound / bind now" from it; otherwise users could not
+                         tell after a refresh whether they had bound one.
+                settings:
+                    allOf:
+                        - $ref: '#/components/schemas/api.keel_admin.v1.UserSettings'
+                    description: |-
+                        Personal settings that follow the account. Sent with the profile, so the frontend needs no extra request for the
+                         sidebar's favorites group.
+        api.keel_admin.v1.RecentLogin:
+            type: object
+            properties:
+                id:
+                    type: string
+                success:
+                    type: boolean
+                ip:
+                    type: string
+                createdAt:
+                    type: string
+                    description: UTC RFC3339, converted by the frontend to the display time zone.
+            description: |-
+                RecentLogin is one entry of "recent logins" in the personal center: one's own, so it carries no account; only the
+                 result, time and client IP the UI shows. It does not reuse the login log list's row type LoginLogListItem.
+        api.keel_admin.v1.RemoveFavoriteRequest:
+            type: object
+            properties:
+                path:
+                    type: string
+        api.keel_admin.v1.ReorderFavoritesRequest:
+            type: object
+            properties:
+                paths:
+                    type: array
+                    items:
+                        type: string
+                    description: The complete desired order. The limit matches favorites themselves (biz.MaxFavorites).
+        api.keel_admin.v1.ResetOTPRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+        api.keel_admin.v1.ResetPasswordRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                password:
+                    type: string
+        api.keel_admin.v1.ResourceDef:
+            type: object
+            properties:
+                res:
+                    type: string
+                name:
+                    type: string
+                    description: |-
+                        Resource display name, localized by Accept-Language (empty = the resource declares no NameKey, and the frontend
+                         shows res). See perm.ResourceDef.NameKey.
+                anchorSelf:
+                    type: boolean
+                    description: |-
+                        Anchors decide which scope_types are valid (see biz.scopeCompatible):
+                         anchor_self ↔ SELF allowed; anchor_dept ↔ DEPT/ALL_SUB allowed;
+                         RESOURCE_GRANT needs grantable (a declared ListGrantable callback); ALL is always valid.
+                anchorDept:
+                    type: boolean
+                viaParent:
+                    type: string
+                    description: |-
+                        Derived resource: ownership derives from the parent resource, with no owner columns of its own. Empty = an
+                         anchored resource.
+                viaFk:
+                    type: string
+                grantable:
+                    type: boolean
+                    description: |-
+                        Whether the resource supports explicit assignment (RESOURCE_GRANT): true when its registration declares a
+                         ListGrantable callback. When false, the frontend disables RESOURCE_GRANT.
+                grantOptions:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.GrantOption'
+                    description: |-
+                        Grantable instance options (fetched by the server calling ListGrantable on the spot): the explicit-assignment UI
+                         builds its multi-select from them. The framework does not interpret what an instance is (brand group, category,
+                         store); the business provides label.
+            description: |-
+                ResourceDef describes one data scope resource type, so the role data scope UI can turn "resource type" from free
+                 text into a dropdown and disable scope_types its anchors cannot support.
+        api.keel_admin.v1.RoleInfo:
+            type: object
+            properties:
+                id:
+                    type: string
+                code:
+                    type: string
+                name:
+                    type: string
+                sensitive:
+                    type: integer
+                    description: |-
+                        Sensitive role: non-root cannot assign it to other users (filtered by ListAssignable, backstopped by
+                         ARBAC.CanAssignRoles). That is its only meaning: it does not stop root from editing or deleting the role.
+                    format: int32
+                forceOtp:
+                    type: integer
+                    format: int32
+                status:
+                    type: integer
+                    format: int32
+                perms:
+                    type: array
+                    items:
+                        type: string
+                assignableRoles:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.NamedRef'
+                    description: |-
+                        Current configuration of the three boundaries.
+                         Assignable roles (with names, resolved by the backend): the detail renders them directly. The write request
+                         UpdateRole still uses assignable_role_ids.
+                manageDepts:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.NamedRef'
+                    description: |-
+                        Manageable departments (with names, resolved by the backend): each implies its whole subtree. The write request
+                         still uses manage_dept_ids.
+                scopes:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.DataScopeItem'
+            description: |-
+                The role's complete configuration surface: basic info + perms + the three boundaries.
+
+                 **Only GetRole / CreateRole / UpdateRole use it**: it is the edit form's initial values and the write receipt. The
+                 list uses RoleListItem and both option sets use RoleOption, each its own type: one type serving both detail and
+                 list leaves half its fields empty in half the cases, and an empty field is sooner or later taken as "looked up, and
+                 it is empty".
+        api.keel_admin.v1.RoleListItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                code:
+                    type: string
+                name:
+                    type: string
+                sensitive:
+                    type: integer
+                    format: int32
+                forceOtp:
+                    type: integer
+                    format: int32
+                status:
+                    type: integer
+                    format: int32
+                permCount:
+                    type: integer
+                    description: The **number** of feature permission codes granted. The list shows only this number and does not need the codes.
+                    format: int32
+                createdAt:
+                    type: string
+                    description: 'UTC RFC3339, converted by the frontend to the display time zone the user chose (time contract: AGENTS.md).'
+            description: |-
+                One row of the role management list: only the fields the list columns really use.
+
+                 A separate type rather than reusing RoleInfo: the list wants "how many codes", the detail wants "which codes".
+                 Reuse would send perms and the three boundaries (whole-replace configuration only the edit form needs) with every
+                 row: besides bloating the response, it invites the next person to "use what is at hand to prefill the form", which
+                 AGENTS.md explicitly forbids: a list row is a snapshot, and submitting its old values silently overwrites others'
+                 concurrent changes.
+        api.keel_admin.v1.RoleOption:
+            type: object
+            properties:
+                id:
+                    type: string
+                code:
+                    type: string
+                name:
+                    type: string
+            description: |-
+                RoleOption is a slim role for selectors: only the three identifying fields, without perms / the three boundaries;
+                 keeping only identifying fields in the payload is also what lets the threshold drop to account:view.
+
+                 Both option sets share it: ListRoleOptions (all roles, for filters and the assignable-roles multi-select of the
+                 role configuration page) and ListAssignableRoleOptions (the assignable subset, for the role dropdown when editing a
+                 user).
+        api.keel_admin.v1.SetUserRootRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                isRoot:
+                    type: boolean
+        api.keel_admin.v1.SystemInfoReply:
+            type: object
+            properties:
+                businessTimeZone:
+                    type: string
+                    description: |-
+                        Business time zone (IANA name, such as Asia/Shanghai), from sys.business_time_zone. The frontend only uses it to
+                         label fixed filters and to get "today" in the business time zone; converting business days to instants happens on
+                         the server (see ADR admin-0003).
+        api.keel_admin.v1.UnbindOTPRequest:
+            type: object
+            properties:
+                password:
+                    type: string
+        api.keel_admin.v1.UpdateDeptRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                sort:
+                    type: integer
+                    format: int32
+                status:
+                    type: integer
+                    format: int32
+        api.keel_admin.v1.UpdateMyProfileRequest:
+            type: object
+            properties:
+                nickname:
+                    type: string
+                avatar:
+                    type: string
+                    description: |-
+                        Avatar data URI (data:image/<png|jpeg|webp>;base64,...); empty string = remove the avatar.
+                         The length limit is decided in biz by the decoded byte count (see MaxAvatarBytes); this only stops messages that
+                         are obviously too large.
+                         bulky: changing the avatar is audited, and this field can be 1.4MB; without erasing it, one entry would crowd out
+                         every field after it.
+                email:
+                    type: string
+                    description: |-
+                        Email: optional (empty string = not set), validated as an email when set. Contact only: not unique, not used
+                         to log in.
+                phone:
+                    type: string
+                    description: |-
+                        Phone: optional. A loose format (digits, a leading +, spaces and hyphens in between, 5–20 characters), with no
+                         restriction on country or landline/mobile (the template serves derived repos everywhere). Contact only, not unique.
+        api.keel_admin.v1.UpdateRoleRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                forceOtp:
+                    type: integer
+                    format: int32
+                status:
+                    type: integer
+                    format: int32
+                sensitive:
+                    type: integer
+                    format: int32
+                perms:
+                    type: array
+                    items:
+                        type: string
+                assignableRoleIds:
+                    type: array
+                    items:
+                        type: string
+                manageDeptIds:
+                    type: array
+                    items:
+                        type: string
+                scopes:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.DataScopeItem'
+            description: |-
+                UpdateRoleRequest overwrites everything editable about a role, in one submission.
+
+                 perms / assignable_role_ids / manage_depts / scopes all **replace as a whole** (the server deletes all and
+                 inserts), so omitting one clears it. The submitter must therefore fetch the current values with GetRole first and
+                 send them back in full, never only the part it wants to change.
+        api.keel_admin.v1.UpdateUserRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                nickname:
+                    type: string
+                avatar:
+                    type: string
+                    description: Avatar data URI, empty string = remove the avatar; size/format are validated in biz (see avatar.go).
+                deptId:
+                    type: string
+                roleIds:
+                    type: array
+                    items:
+                        type: string
+                ipWhitelist:
+                    type: string
+                    description: Comma-separated IPs / CIDRs; empty string = unrestricted. Validity is checked in biz.
+                email:
+                    type: string
+                    description: |-
+                        Email: optional (empty string = not set), validated as an email when set. Contact only: not unique, not used
+                         to log in.
+                phone:
+                    type: string
+                    description: |-
+                        Phone: optional. A loose format (digits, a leading +, spaces and hyphens in between, 5–20 characters), with no
+                         restriction on country or landline/mobile (the template serves derived repos everywhere). Contact only, not unique.
+            description: |-
+                UpdateUserRequest submits the whole "edit user" form at once. role_ids/dept_id/ip_whitelist are whole values: the
+                 caller fetches the current values with GetUser first and sends unchanged fields back as they are; the handler
+                 compares them with the current values, and only fields that really changed are range-checked and saved. So even
+                 when the frontend does not show the role selector, it sends the current role_ids back unchanged, or it would be
+                 taken as "clear the roles".
+        api.keel_admin.v1.UserInfo:
+            type: object
+            properties:
+                id:
+                    type: string
+                username:
+                    type: string
+                nickname:
+                    type: string
+                deptId:
+                    type: string
+                status:
+                    type: integer
+                    format: int32
+                isRoot:
+                    type: boolean
+                roles:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.UserRoleRef'
+                    description: |-
+                        Roles (with names): the detail renders them directly, with no frontend lookup. Write requests
+                         (UpdateUser/CreateUser) still use role_ids. Names are dynamic values that can change, so the backend resolves them.
+                ipWhitelist:
+                    type: string
+                    description: |-
+                        Login IP allowlist, comma-separated IPs / CIDRs; empty string = unrestricted. The edit form fills in the current
+                         value from it.
+                otpBound:
+                    type: boolean
+                    description: Whether an authenticator is bound.
+                deptName:
+                    type: string
+                    description: Department name (resolved by the backend; dynamic values are not mapped in the frontend); empty when dept_id=0.
+                otpForced:
+                    type: boolean
+                    description: 'Whether any role forces OTP: computed by the backend so the frontend need not check force_otp in a role snapshot.'
+                avatar:
+                    type: string
+                    description: |-
+                        Avatar data URI (empty = not set): the edit form fills in the current avatar from it.
+                         bulky: one image can be hundreds of KB; without erasing it, this response could not go into the log.
+                createdAt:
+                    type: string
+                    description: 'UTC RFC3339, converted by the frontend to the display time zone the user chose (time contract: AGENTS.md).'
+                email:
+                    type: string
+                    description: Contact details (empty = not set).
+                phone:
+                    type: string
+            description: |-
+                UserInfo is the user detail: the reply of GetUser / CreateUser / UpdateUser and the source of the edit form's
+                 initial values. The list uses UserListItem rather than sharing this type: the detail keeps gaining fields, and
+                 sharing would put a batch of always-empty fields in list rows that are sooner or later taken as "looked up, and
+                 really empty".
+        api.keel_admin.v1.UserListItem:
+            type: object
+            properties:
+                id:
+                    type: string
+                username:
+                    type: string
+                nickname:
+                    type: string
+                email:
+                    type: string
+                    description: Contact details (empty = not set). The list has these two columns, and the keyword searches them too.
+                phone:
+                    type: string
+                deptName:
+                    type: string
+                    description: |-
+                        Department name (resolved by the backend; dynamic values are not mapped in the frontend); empty without a
+                         department.
+                roles:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/api.keel_admin.v1.UserRoleRef'
+                    description: 'Roles (with names, resolved by the backend): the list renders them as tags directly, with no frontend lookup.'
+                status:
+                    type: integer
+                    format: int32
+                isRoot:
+                    type: boolean
+                    description: 'Whether root: the row action "make / revoke super admin" switches its label and direction by it.'
+                otpBound:
+                    type: boolean
+                    description: |-
+                        Whether an authenticator is bound: administrators judge by it whether to reset the user's OTP, instead of clicking
+                         blind.
+                otpForced:
+                    type: boolean
+                    description: |-
+                        Whether any role forces OTP: the UI shows "forced but not bound" from it; computed by the backend so the frontend
+                         need not check force_otp in a role snapshot.
+                hasIpWhitelist:
+                    type: boolean
+                    description: |-
+                        Whether login is limited to an IP allowlist. The list shows only this; the allowlist itself is a security setting
+                         and comes from GetUser (ADR admin-0006).
+                createdAt:
+                    type: string
+                    description: 'UTC RFC3339, converted by the frontend to the display time zone the user chose (time contract: AGENTS.md).'
+            description: |-
+                UserListItem is one row of the user management list: only the fields the list columns and row actions need, not a
+                 reuse of the detail UserInfo. No avatar (the list does not show it, and dozens of images per page would bloat the
+                 response) and no dept_id (the list shows the department name). A row is a snapshot; the edit form still fetches
+                 its initial values fresh with GetUser (see AGENTS.md: form initial values always come from the detail endpoint).
+        api.keel_admin.v1.UserOption:
+            type: object
+            properties:
+                id:
+                    type: string
+                username:
+                    type: string
+            description: 'A slim user for selectors: only the two identifying fields.'
+        api.keel_admin.v1.UserRoleRef:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                disabled:
+                    type: boolean
+            description: |-
+                UserRoleRef is a role a user holds. disabled marks a role that is disabled: the membership is kept and grants
+                 nothing until the role is enabled again, so pages show it marked rather than hide it.
+        api.keel_admin.v1.UserSettings:
+            type: object
+            properties:
+                favoriteMenus:
+                    type: array
+                    items:
+                        type: string
+                    description: 'Favorite menus, identified by route path, in favorite order. Limit: biz.MaxFavorites.'
+            description: |-
+                UserSettings are personal settings that follow the account, stored as JSON in the sys_user.settings column
+                 (MEDIUMTEXT, not MySQL's JSON column type, see docs/practices/database.md, types).
+
+                 **Field numbers 1–99 belong to the kernel; derived repos append from 100.** Each side adds fields in its own range,
+                 so a template upgrade overwriting this message's whole file cannot collide; the server ignores unknown fields when
+                 parsing, so after a rollback to an older version new fields are simply not read, with no error.
+
+                 What belongs here: choices that follow the account and serve only one's own UI. What does not: data the server
+                 queries across users, security-related data that must be audited, and business system data; each has its own
+                 table.
+tags:
+    - name: AuditService
+    - name: AuthService
+    - name: DeptService
+    - name: MetaService
+    - name: NoticeService
+      description: |-
+        NoticeService is the notice/announcement business reference module:
+         implemented in internal/biz|data|service (the business area, not
+         core/sys), demonstrating the default owner_user_id/owner_dept_id data
+         scope columns end to end.
+
+         Categories demonstrate the second kind of data scope, explicit assignment (RESOURCE_GRANT): a category is
+         registered as a grantable resource (notice_category, Anchors=0 + ListGrantable callback), and a role ticks specific
+         categories in its data scope configuration; notice visibility = row-level scope (whose notices) ∩ category grants
+         (which categories).
+    - name: RoleService
+    - name: UserService
