@@ -5,8 +5,9 @@
 #   make rename MODULE=example.com/demo [API_DOMAIN=demo]
 #   make rename MODULE=example.com/demo CMD=demo-admin   # also renames cmd/admin and bin/admin
 #
-# It also renames the proto package segment under api/: the directory `api/keel_admin/`, `package
-# api.keel_admin.v1`, and the imports and doc paths that reference them. The segment goes into full gRPC method
+# It also renames the business proto package segment under api/: the directory `api/admin_app/`, `package
+# api.admin_app.v1`, and the imports and doc paths that reference them. The kernel's contracts in `api/keel_admin/`
+# keep their package in every repository and are never renamed. The segment goes into full gRPC method
 # names and OpenAPI type names (including the frontend types generated from openapi.yaml) and is the service's public
 # name: keep the template name and, once clients call it, it can no longer change. It defaults to the last segment of
 # the module path (lowercased, `-` `.` `~` `+` turned into `_`; when the last segment is a Go `/vN` version suffix,
@@ -28,14 +29,19 @@ set -eu
 
 cd "$(dirname "$0")/.."
 
-# The template repository's own module path. **Derived repos must not change this line.** It is the second source
-# string besides go.mod: files copied over wholesale from upstream carry this name, while go.mod has long had the
-# derived repo's own name, so relying on go.mod alone would miss them.
+# The template repository's own module path. The rename runs once, when a repository is created from the template
+# (go.mod still names the template); following upstream later goes through `make sync-upstream`, which writes upstream's
+# files already carrying this repository's names. Change this line (and the TEMPLATE_ lines below) only in a
+# repository that is itself forked, to its own values once its rename is done, so its forks can rename.
 TEMPLATE_MODULE=github.com/go-keel/keel-admin
 
-# The template repository's entry directory name (`cmd/<it>`, binary `bin/<it>`). **Derived repos must not change
-# this line**, for the same reason: docs copied over wholesale from upstream carry this name.
+# The template repository's entry directory name (`cmd/<it>`, binary `bin/<it>`): what the one rename replaces.
 TEMPLATE_CMD=admin
+
+# The template's business package segment (`api/<it>/`), what the rename turns into this repository's own, and the
+# kernel's, which no rename touches.
+TEMPLATE_DOMAIN=admin_app
+KERNEL_DOMAIN=keel_admin
 
 new=${MODULE:-}
 newcmd=${CMD:-}
@@ -97,6 +103,10 @@ if [ -z "$current" ]; then
 	echo "rename: go.mod has no module line" >&2
 	exit 1
 fi
+if [ "$current" != "$TEMPLATE_MODULE" ] && [ "$current" != "$new" ]; then
+	echo "rename: this repository is already ${current}; the rename runs once, when a repository is created from the template. To follow upstream, run make sync-upstream (docs/upgrading-protocol.md)" >&2
+	exit 1
+fi
 
 # Module path → package segment under api/. Rules in the header comment.
 domain_of() {
@@ -121,21 +131,18 @@ case "$new_domain" in
 	exit 1
 	;;
 esac
+if [ "$new_domain" = "$KERNEL_DOMAIN" ]; then
+	echo "rename: the proto package segment '${new_domain}' is the kernel's (api/${KERNEL_DOMAIN}/); set another one with API_DOMAIN=xxx" >&2
+	exit 1
+fi
 
-# Old package segments to rename: the one derived from the current module plus the template's own (files copied
-# over from upstream carry it, same reason as TEMPLATE_MODULE). Only one of these two directories may exist under
-# api/, and the target must not exist yet: merging two proto packages is not a decision for a rename script, so fail
-# before touching files.
-old_domains=$(printf '%s\n%s\n' "$(domain_of "$current")" "$(domain_of "$TEMPLATE_MODULE")" | sort -u)
+# Old package segment to rename: the template's business one. The target must not exist yet: merging two proto packages
+# is not a decision for a rename script, so fail before touching files.
+old_domain=$TEMPLATE_DOMAIN
 move_from=
-for d in $old_domains; do
-	[ "$d" != "$new_domain" ] && [ -d "api/$d" ] || continue
-	if [ -n "$move_from" ]; then
-		echo "rename: both api/${move_from} and api/${d} exist; cannot tell which one to rename to api/${new_domain}" >&2
-		exit 1
-	fi
-	move_from=$d
-done
+if [ "$old_domain" != "$new_domain" ] && [ -d "api/$old_domain" ]; then
+	move_from=$old_domain
+fi
 if [ -n "$move_from" ] && [ -e "api/$new_domain" ]; then
 	echo "rename: api/${new_domain} already exists; cannot rename api/${move_from} to it" >&2
 	exit 1
@@ -159,29 +166,12 @@ escape() { printf '%s' "$1" | sed 's/[.[\*^$]/\\&/g'; }
 # verbatim across repositories, and the module name in it is a constant it decides by (a renamed derived repo falls
 # into the "no ADR prefix check" tier); replacing it would break both the verbatim check and that deliberate
 # behaviour.
-# Per-file exemption: a file whose first line contains `rename:skip` is left untouched (in `.md`, write
-# `<!-- rename:skip -->`). It is for the derived repo's docs that **must name upstream**: in a sync manual recording
-# "how to follow upstream", `github.com/go-keel/keel-admin`, `api/keel_admin/v1/` and `cmd/admin` mean upstream.
-# Replacing them raises no error; the commands silently stop working, found only the next time someone follows them.
-# Only the first line counts, so a doc that mentions the marker in its body (such as the README) is not exempted by
-# mistake.
-# One awk reads all first lines: starting head + grep per file costs about 20ms per process on Windows, half a minute
-# extra for a few hundred candidates over three passes, and every kernel sync reruns this. No xargs: `-d` is GNU only.
-unskipped() {
-	awk '{
-		line = ""
-		got = (getline line < $0) > 0
-		close($0)
-		if (!(got && line ~ /rename:skip/)) print
-	}'
-}
-
 list_files() {
 	find . \
 		\( -name .git -o -name node_modules -o -name dist -o -name bin \
 		   -o -path ./docs/adr -o -path ./web/src/generated \) -prune -o \
 		-type f \( \( -name '*.go' ! -name '*.pb.go' \) -o -name '*.proto' -o -name '*.md' \
-		-o -name '*.ts' -o -name '*.tsx' -o -name '*.mjs' -o -name '*.sql' \) -print | unskipped
+		-o -name '*.ts' -o -name '*.tsx' -o -name '*.mjs' -o -name '*.sql' \) -print
 }
 
 # Right boundary: a module path followed by [A-Za-z0-9_-] is another, longer module name and is left alone; only
@@ -246,7 +236,7 @@ list_cmd_files() {
 		   -o -path ./docs/adr \) -prune -o \
 		-type f \( \( -name '*.go' ! -name '*.pb.go' \) -o -name '*.md' -o -name '*.toml' \
 		-o -name '*.yaml' -o -name '*.yml' -o -name 'Makefile' -o -name 'Dockerfile*' \
-		-o \( -name '*.sh' ! -name 'check-*.sh' ! -name 'rename.sh' \) \) -print | unskipped
+		-o \( -name '*.sh' ! -name 'check-*.sh' ! -name 'rename.sh' \) \) -print
 }
 
 # Right boundary as in replace_all: the `cmd/admin` in `cmd/administrator` is not the same name.
@@ -282,21 +272,11 @@ replace_cmd() {
 	done
 }
 
-# The current entry name: when `cmd/` has exactly one subdirectory, that is it (the shape of a derived repo renamed
-# once). Repos with several entries are not guessed: a wrong guess would mangle another entry's paths too.
-current_cmd=$TEMPLATE_CMD
-if [ "$(ls -d cmd/*/ 2>/dev/null | wc -l)" -eq 1 ]; then
-	current_cmd=$(basename "$(ls -d cmd/*/)")
-fi
-
 # The entry rename must come before the module replacement: it moves `cmd/<old name>`, and the final gofmt uses the
 # paths printed below; in the reverse order those paths would no longer exist when gofmt runs.
 changed=$(
 	if [ -n "$newcmd" ]; then
-		replace_cmd "$current_cmd"
-		if [ "$TEMPLATE_CMD" != "$current_cmd" ]; then
-			replace_cmd "$TEMPLATE_CMD"
-		fi
+		replace_cmd "$TEMPLATE_CMD"
 	fi
 	# Move the directory first, so the changed files listed below carry the renamed path
 	if [ -n "$move_from" ]; then
@@ -304,20 +284,10 @@ changed=$(
 		echo "  api/${move_from}/ → api/${new_domain}/"
 	fi
 	replace_all "$current"
-	if [ "$TEMPLATE_MODULE" != "$current" ]; then
-		replace_all "$TEMPLATE_MODULE"
-	fi
-	for d in $old_domains; do
-		replace_domain "$d"
-	done
+	replace_domain "$old_domain"
 )
 # A file may be changed by the entry name, module path and package segment passes; list it once
 changed=$(printf '%s\n' "$changed" | awk 'NF && !seen[$0]++')
-
-if [ ! -d "api/$new_domain" ]; then
-	# Reached when an earlier rename set a different API_DOMAIN and this one does not: the old directory cannot be derived, so it is left alone.
-	echo "rename: note: api/${new_domain} does not exist; if an earlier rename set the package segment with API_DOMAIN, pass it again" >&2
-fi
 
 if [ -z "$changed" ]; then
 	echo "rename: module name ${new} and proto package segment ${new_domain} already in place, nothing changed"

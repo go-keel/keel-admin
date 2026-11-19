@@ -179,42 +179,6 @@ func ErrorAuditLogNotFound(format string, args ...interface{}) *errors.Error {
 	return errors.New(404, ErrorReason_AUDIT_LOG_NOT_FOUND.String(), fmt.Sprintf(format, args...))
 }
 
-// Example: delete after forking
-// NOTICE_NOT_FOUND: the notice example business module (internal/biz|data|service, business area, not core/sys):
-// the id does not exist or is outside the actor's data scope, indistinguishably.
-func IsNoticeNotFound(err error) bool {
-	if err == nil {
-		return false
-	}
-	e := errors.FromError(err)
-	return e.Reason == ErrorReason_NOTICE_NOT_FOUND.String() && e.Code == 404
-}
-
-// Example: delete after forking
-// NOTICE_NOT_FOUND: the notice example business module (internal/biz|data|service, business area, not core/sys):
-// the id does not exist or is outside the actor's data scope, indistinguishably.
-func ErrorNoticeNotFound(format string, args ...interface{}) *errors.Error {
-	return errors.New(404, ErrorReason_NOTICE_NOT_FOUND.String(), fmt.Sprintf(format, args...))
-}
-
-// Example: delete after forking
-// NOTICE_CATEGORY_NOT_FOUND: the category id does not exist or is outside the actor's category grants,
-// indistinguishably (existence does not leak).
-func IsNoticeCategoryNotFound(err error) bool {
-	if err == nil {
-		return false
-	}
-	e := errors.FromError(err)
-	return e.Reason == ErrorReason_NOTICE_CATEGORY_NOT_FOUND.String() && e.Code == 404
-}
-
-// Example: delete after forking
-// NOTICE_CATEGORY_NOT_FOUND: the category id does not exist or is outside the actor's category grants,
-// indistinguishably (existence does not leak).
-func ErrorNoticeCategoryNotFound(format string, args ...interface{}) *errors.Error {
-	return errors.New(404, ErrorReason_NOTICE_CATEGORY_NOT_FOUND.String(), fmt.Sprintf(format, args...))
-}
-
 // Conflict
 // DEPT_NOT_EMPTY: only an empty department can be deleted; all three kinds of occupancy (child departments, users,
 // resources) report this reason without telling them apart (see docs/admin/permission-model/management-boundary.md).
@@ -271,40 +235,6 @@ func IsDeptDisabled(err error) bool {
 // affected.
 func ErrorDeptDisabled(format string, args ...interface{}) *errors.Error {
 	return errors.New(409, ErrorReason_DEPT_DISABLED.String(), fmt.Sprintf(format, args...))
-}
-
-// Example: delete after forking
-// NOTICE_CATEGORY_IN_USE: the category still has notices and cannot be deleted.
-func IsNoticeCategoryInUse(err error) bool {
-	if err == nil {
-		return false
-	}
-	e := errors.FromError(err)
-	return e.Reason == ErrorReason_NOTICE_CATEGORY_IN_USE.String() && e.Code == 412
-}
-
-// Example: delete after forking
-// NOTICE_CATEGORY_IN_USE: the category still has notices and cannot be deleted.
-func ErrorNoticeCategoryInUse(format string, args ...interface{}) *errors.Error {
-	return errors.New(412, ErrorReason_NOTICE_CATEGORY_IN_USE.String(), fmt.Sprintf(format, args...))
-}
-
-// Example: delete after forking
-// NOTICE_CATEGORY_EXISTS: duplicate category name (categories are explicit-assignment options; equal names could not
-// be told apart).
-func IsNoticeCategoryExists(err error) bool {
-	if err == nil {
-		return false
-	}
-	e := errors.FromError(err)
-	return e.Reason == ErrorReason_NOTICE_CATEGORY_EXISTS.String() && e.Code == 409
-}
-
-// Example: delete after forking
-// NOTICE_CATEGORY_EXISTS: duplicate category name (categories are explicit-assignment options; equal names could not
-// be told apart).
-func ErrorNoticeCategoryExists(format string, args ...interface{}) *errors.Error {
-	return errors.New(409, ErrorReason_NOTICE_CATEGORY_EXISTS.String(), fmt.Sprintf(format, args...))
 }
 
 // Permission boundary

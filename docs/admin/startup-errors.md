@@ -91,11 +91,20 @@ Fix: register the permission or correct the code in the binding.
 
 ## perm.operation-unowned
 
-An operation of the proto contract has neither a binding in `perm.Bindings` nor `(keel.v1.auth).allow_anonymous`: it
-would answer 403 to everyone. The message lists every such operation.
+An operation of a service mounted on the HTTP server (named in the HTTP registration list; see
+`perm.ServedOperations`) has neither a binding in `perm.Bindings` nor `(keel.v1.auth).allow_anonymous`: it would answer
+403 to everyone. The message lists every such operation. A proto linked in only to call another service is not in the
+list and is never checked.
 
 Fix: bind each one in its module's `perm.Bindings` (empty `Codes` means any signed-in user), or annotate it
 allow_anonymous in the proto (docs/admin/permission-model/function-permissions.md).
+
+## perm.service-unknown
+
+An `HTTPService` in the HTTP registration list names a service that is not a proto service linked into the binary, so
+the permission check cannot list its operations.
+
+Fix: set `Name` from the generated `<Service>_ServiceDesc.ServiceName` (docs/admin/assembly.md, "HTTP registration").
 
 ## perm.operation-anonymous-bound
 

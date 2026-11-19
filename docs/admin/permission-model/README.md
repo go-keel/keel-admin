@@ -33,18 +33,17 @@ team forks it into a **derived repo** and builds its own admin there. The core a
 > upgrade; business code goes into the three business layer directories biz/data/service, plus a few assembly seams
 > (the list is the "Assembly seam" entry in `GLOSSARY.md`).**
 
-"Overwrite the whole directory" is not free: a derived repo changed the module name when it was set up, and
-`internal/core/` imports this module path throughout, so after overwriting you must **rerun `make rename MODULE=<this
-repo's module name>`** before it compiles (the command is idempotent and only touches files that still carry the
-upstream module name). Whether and when to follow upstream is the derived repo's decision: the template ships no upgrade
-tool and no incremental migration scripts (schema changes likewise; see the matching entry in `UPGRADING.md`). Details
-in `docs/adr/layout-0001-template-upgrade-strategy.md`.
+A derived repo changed the module name when it was set up, and `internal/core/` imports the module path throughout, so
+upstream's kernel is never copied in as it is: **`make sync-upstream`** writes it already carrying this repository's
+module path. Whether and when to follow upstream is the derived repo's decision: the template ships no upgrade tool and
+no incremental migration scripts (schema changes likewise; see the matching entry in `UPGRADING.md`). Details in
+`docs/adr/layout-0001-template-upgrade-strategy.md`.
 
 | Area | Contents | Business development |
 |---|---|---|
-| Kernel `internal/core/` | The four-dimension permission engine + the system domain (accounts, roles, departments, audit, OTP) | Read-only; upgrade = overwrite the whole directory + rerun `make rename` |
+| Kernel `internal/core/` | The four-dimension permission engine + the system domain (accounts, roles, departments, audit, OTP) | Read-only; upgrade = `make sync-upstream` |
 | Business area `internal/biz|data|service/` | Business domain code (layout layers first) + each domain's permission declarations | The only place you write code |
-| Assembly seams | For permissions: registration and wiring in `cmd/<app>/di.go`, config fields in `internal/conf/app.proto`, business proto in `api/<pkg>/v1`; **the full list is the "Assembly seam" entry in `GLOSSARY.md`**, not repeated here | Append to the list; do not change what is there |
+| Assembly seams | For permissions: registration and wiring in `cmd/<app>/di.go`, config fields in `internal/conf/app.proto`, business protos in the business package `api/<pkg>/v1`; **the full list is the "Assembly seam" entry in `GLOSSARY.md`**, not repeated here | Append to the list; do not change what is there |
 | Generated artifacts / third-party components | `*.pb.go`, `openapi.yaml`, `web/src/generated/` and so on; `web/src/components/ui/` | See the entries of the same name in `GLOSSARY.md` |
 
 **Positioning boundary (a principle that overrides the layering)**: the admin does only the admin dashboard's own work

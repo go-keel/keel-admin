@@ -45,9 +45,9 @@ type UserServiceHTTPServer interface {
 	ListUser(context.Context, *ListUserRequest) (*ListUserReply, error)
 	// ListUserOptions User options (the user filter of the login log): the number of users keeps growing with the business, so they
 	// are fetched in batches by keyword (see "option set" in GLOSSARY.md). The threshold follows use and shares the
-	// login log's code; it sees all users with no data scope, consistent with the login log itself (ADR admin-0008,
-	// admin-0017). Must come before GetUser (/users/options and /users/{id} have the same shape, and registration
-	// order decides which matches first).
+	// login log's code; it sees all users with no data scope, consistent with the login log itself (admin-0008,
+	// docs/admin/permission-model/sessions-and-audit.md). Must come before GetUser (/users/options and /users/{id} have
+	// the same shape, and registration order decides which matches first).
 	ListUserOptions(context.Context, *ListUserOptionsRequest) (*ListUserOptionsReply, error)
 	ResetOTP(context.Context, *ResetOTPRequest) (*emptypb.Empty, error)
 	ResetPassword(context.Context, *ResetPasswordRequest) (*emptypb.Empty, error)
@@ -324,9 +324,9 @@ type UserServiceHTTPClient interface {
 	ListUser(ctx context.Context, req *ListUserRequest, opts ...http.CallOption) (rsp *ListUserReply, err error)
 	// ListUserOptions User options (the user filter of the login log): the number of users keeps growing with the business, so they
 	// are fetched in batches by keyword (see "option set" in GLOSSARY.md). The threshold follows use and shares the
-	// login log's code; it sees all users with no data scope, consistent with the login log itself (ADR admin-0008,
-	// admin-0017). Must come before GetUser (/users/options and /users/{id} have the same shape, and registration
-	// order decides which matches first).
+	// login log's code; it sees all users with no data scope, consistent with the login log itself (admin-0008,
+	// docs/admin/permission-model/sessions-and-audit.md). Must come before GetUser (/users/options and /users/{id} have
+	// the same shape, and registration order decides which matches first).
 	ListUserOptions(ctx context.Context, req *ListUserOptionsRequest, opts ...http.CallOption) (rsp *ListUserOptionsReply, err error)
 	ResetOTP(ctx context.Context, req *ResetOTPRequest, opts ...http.CallOption) (rsp *emptypb.Empty, err error)
 	ResetPassword(ctx context.Context, req *ResetPasswordRequest, opts ...http.CallOption) (rsp *emptypb.Empty, err error)
@@ -456,9 +456,9 @@ func (c *UserServiceHTTPClientImpl) ListUser(ctx context.Context, in *ListUserRe
 
 // ListUserOptions User options (the user filter of the login log): the number of users keeps growing with the business, so they
 // are fetched in batches by keyword (see "option set" in GLOSSARY.md). The threshold follows use and shares the
-// login log's code; it sees all users with no data scope, consistent with the login log itself (ADR admin-0008,
-// admin-0017). Must come before GetUser (/users/options and /users/{id} have the same shape, and registration
-// order decides which matches first).
+// login log's code; it sees all users with no data scope, consistent with the login log itself (admin-0008,
+// docs/admin/permission-model/sessions-and-audit.md). Must come before GetUser (/users/options and /users/{id} have
+// the same shape, and registration order decides which matches first).
 func (c *UserServiceHTTPClientImpl) ListUserOptions(ctx context.Context, in *ListUserOptionsRequest, opts ...http.CallOption) (*ListUserOptionsReply, error) {
 	var out ListUserOptionsReply
 	pattern := "/v1/sys/users/options"

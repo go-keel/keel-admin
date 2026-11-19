@@ -28,6 +28,7 @@ import { type FilterFieldsOf, useList } from '@/hooks/use-list';
 import { usePerm, useProfile } from '@/hooks/use-profile';
 import { roleOptionsQueryOptions } from '@/lib/query';
 import { widthFor } from '@/lib/table';
+import { flattenTree, indentLabel } from '@/lib/tree';
 import {
   deptOptionsQueryOptions,
   type UserListItem,
@@ -161,24 +162,10 @@ function UsersPage() {
 function deptTreeOptions(
   depts: { id?: string; parentId?: string; name?: string }[],
 ): FilterOption[] {
-  const byParent = new Map<string, typeof depts>();
-  for (const d of depts) {
-    const key = d.parentId ?? '0';
-    byParent.set(key, [...(byParent.get(key) ?? []), d]);
-  }
-  const out: FilterOption[] = [];
-  const walk = (parent: string, depth: number) => {
-    for (const d of byParent.get(parent) ?? []) {
-      out.push({
-        value: d.id ?? '',
-        // Two no-break spaces per level: same indent in every UI language, and not collapsed like normal spaces.
-        label: `${'\u00a0\u00a0'.repeat(depth)}${d.name ?? ''}`,
-      });
-      walk(d.id ?? '', depth + 1);
-    }
-  };
-  walk('0', 0);
-  return out;
+  return flattenTree(depts).map(({ node, depth }) => ({
+    value: node.id ?? '',
+    label: indentLabel(node.name ?? '', depth),
+  }));
 }
 
 /** Every column gets an explicit width: without one, the declared pinning silently stops working (see table rules). */

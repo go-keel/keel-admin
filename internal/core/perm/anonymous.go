@@ -12,6 +12,8 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 
 	keelpb "github.com/go-keel/keel/proto/keel/v1"
+
+	"github.com/go-keel/keel-admin/internal/core/errs"
 )
 
 // AnonymousOperations scans protoregistry.GlobalFiles for the keel.v1.auth
@@ -40,24 +42,25 @@ var AnonymousOperations = sync.OnceValue(func() map[string]struct{} {
 	return ops
 })
 
-// ContractOperations lists every operation of this repository's proto services (packages starting with "api.", the
-// layout of api/), sorted. di.go passes it to Seal so each one must be bound or anonymous.
-func ContractOperations() []string {
+// ServedOperations lists every operation (e.g. "/api.keel_admin.v1.UserService/ListUser") of the named proto services,
+// sorted. The names come from the HTTP registration list (server.HTTPService), the same list that mounts the routes,
+// so only services this process serves are checked: a proto linked in only to call another service is not named.
+// Every method counts, whatever its HTTP binding or streaming shape. newApp passes the result to Seal so each one must
+// be bound or anonymous.
+func ServedOperations(services ...string) ([]string, error) {
 	var ops []string
-	protoregistry.GlobalFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
-		if !strings.HasPrefix(string(fd.Package()), "api.") {
-			return true
+	for _, name := range services {
+		d, err := protoregistry.GlobalFiles.FindDescriptorByName(protoreflect.FullName(name))
+		sd, ok := d.(protoreflect.ServiceDescriptor)
+		if err != nil || !ok {
+			return nil, errs.Rules.New("perm.service-unknown", fmt.Sprintf("HTTP service %q is not a proto service linked into this binary", name), "set HTTPService.Name from the generated <Service>_ServiceDesc.ServiceName")
 		}
-		for i := 0; i < fd.Services().Len(); i++ {
-			methods := fd.Services().Get(i).Methods()
-			for j := 0; j < methods.Len(); j++ {
-				ops = append(ops, parseFullMethodToOperation(methods.Get(j).FullName()))
-			}
+		for j := 0; j < sd.Methods().Len(); j++ {
+			ops = append(ops, parseFullMethodToOperation(sd.Methods().Get(j).FullName()))
 		}
-		return true
-	})
+	}
 	slices.Sort(ops)
-	return ops
+	return slices.Compact(ops), nil
 }
 
 // IsAnonymous reports whether op (e.g. "/api.keel_admin.v1.AuthService/Login") is

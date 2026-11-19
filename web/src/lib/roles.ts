@@ -74,7 +74,7 @@ export const resourcesQueryOptions = queryOptions({
  *
  * This and the filter's set (`roleOptionsQueryOptions`, the full set) are two uses of the same data, hence two
  * queries: the filter must keep false, otherwise users with sensitive roles could not be filtered (see role.proto).
- * A sensitive role has a single meaning: non-root cannot assign it to others (admin-0015). Since putting it on the
+ * A sensitive role has a single meaning: non-root cannot assign it to others. Since putting it on the
  * assignable allow-list would not let it be sent either, it must not appear among the options.
  */
 export const assignableCandidatesQueryOptions = queryOptions({

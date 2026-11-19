@@ -11,6 +11,7 @@ import (
 	"github.com/go-keel/keel-admin/internal/core/sys/biz"
 	"github.com/go-keel/keel-admin/internal/core/timefmt"
 	"github.com/go-keel/keel-admin/internal/i18n"
+	"github.com/go-keel/keel/middleware/locale"
 	"github.com/go-keel/keel/middleware/metadata"
 	"github.com/go-keel/keel/middleware/sentinel"
 )
@@ -43,11 +44,22 @@ func ipNotAllowed(ctx context.Context, l *goi18n.Localizer, _ error) error {
 	return v1.ErrorIpNotAllowed("%s", msg)
 }
 
+// internalError is the fallback for errors nothing maps: Keel's InternalWithLog (its log line and its 500 INTERNAL),
+// with the message localized, because the frontend shows it to the user as is.
+func internalError(ctx context.Context, err error) error {
+	e := kerrors.FromError(sentinel.InternalWithLog(ctx, err))
+	if l, ok := locale.FromContext(ctx); ok {
+		e.Message = i18n.MustLocalizeMessage(l, &goi18n.Message{ID: "ErrUnexpectedError", Other: e.Message})
+	}
+	return e
+}
+
 // NewErrorSentinel maps biz sentinel errors to API errors carrying a reason enum and an i18n message. A new domain
 // error needs four places updated together: the sentinel in biz/errors.go, the error_reason.proto enum, the mapping
 // here, and the messages in the i18n toml files (en + zh-CN).
 func NewErrorSentinel() *sentinel.Group {
 	return sentinel.NewGroup().
+		Default(internalError).
 		OnLocaled(biz.ErrInvalidArgument, localed("ErrInvalidArgument", "Invalid request. Please check your input.", v1.ErrorInvalidArgument)).
 		// A time range with a bad format or a start not before its end: business area services return it directly too,
 		// with no mapping of their own.

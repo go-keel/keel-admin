@@ -39,7 +39,7 @@ func (m *sysRole) toBiz() *biz.Role {
 	}
 }
 
-// toListRow converts to the slim list row (the caller fills PermCount in a batch).
+// toListRow converts to the slim list row (the caller fills Perms in a batch).
 func (m *sysRole) toListRow() *biz.RoleListRow {
 	return &biz.RoleListRow{
 		ID:        m.ID,

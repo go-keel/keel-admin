@@ -116,7 +116,7 @@
  * legend. Pure styling, no wrapper component: pages write fields the official shadcn way, and screen readers learn the
  * field is required from aria-required. */
 [data-slot="field"]:has([aria-required="true"])
-> [data-slot="field-label"]::after,
+  > [data-slot="field-label"]::after,
 [data-slot="field-set"][data-required] > [data-slot="field-legend"]::after {
   content: " *";
   color: var(--destructive);

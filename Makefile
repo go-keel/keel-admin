@@ -156,7 +156,7 @@ lint-strict:
 	[ $$miss -eq 0 ] || { echo "Markers and registrations of shared files and segments must match both ways: every file with the shared-file marker or a shared segment must be registered in scripts/cross-repo-sync.list (the latter as seg; for a new registration, the UPGRADING.md entry tells derived repositories to add the line), and every registered file must carry the matching marker"; exit 1; }
 
 # Rename after forking: replaces this repository's module references in go.mod, non-generated .go, .proto
-# go_package and .md, together with the proto package segment under api/ (directory and package), in one go;
+# go_package and .md, together with the business proto package segment under api/ (directory and package), in one go;
 # never touches *.pb.go (sed would corrupt rawDesc). The package segment defaults to the last element of the
 # module path; API_DOMAIN overrides it; optional CMD=<entry name> also renames the cmd/admin directory and the
 # bin/admin binary. Idempotent; the reasons are in the script header.
@@ -171,6 +171,12 @@ rename:
 .PHONY: check-sync
 check-sync:
 	@scripts/check-cross-repo-sync.sh
+
+# Following upstream: write upstream's shared files and kernel trees here, already carrying this repository's module
+# path (docs/upgrading-protocol.md). Shared segments of AGENTS.md / GLOSSARY.md are only reported.
+.PHONY: sync-upstream
+sync-upstream:
+	@WRITE=1 scripts/check-cross-repo-sync.sh
 
 .PHONY: all
 all: proto config perms routes generate
@@ -196,8 +202,8 @@ check-mod:
 	GOWORK=off go build ./...
 
 # Real-database tests (build tag integration): the same data-layer cases as make check, on a fresh MySQL database
-# built from migrations/*/0_schema.sql. Needs TEST_MYSQL_DSN, e.g. 'root:keel@tcp(127.0.0.1:53306)/?parseTime=true'; a missing
-# variable fails. Not part of make check.
+# built from the complete schemas under migrations/ (which ones: docs/admin/testing.md). Needs TEST_MYSQL_DSN, e.g.
+# 'root:keel@tcp(127.0.0.1:53306)/?parseTime=true'; a missing variable fails. Not part of make check.
 .PHONY: integration
 integration:
 	GOWORK=off go test -race -tags integration -count=1 -p 1 ./...

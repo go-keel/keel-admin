@@ -12,9 +12,8 @@ import (
 )
 
 // settingsJSON is the storage shape of the sys_user.settings column. Field names match the proto's JSON names
-// (protojson's lowerCamelCase), and fields a derived repo appends from field number 100 go here too. encoding/json
-// ignores unknown fields by default: after a rollback to an older version the new fields cannot be read, but the
-// whole profile request does not fail.
+// (protojson's lowerCamelCase). encoding/json ignores unknown fields by default: after a rollback to an older
+// version the new fields cannot be read, but the whole profile request does not fail.
 type settingsJSON struct {
 	FavoriteMenus []string `json:"favoriteMenus,omitempty"`
 }

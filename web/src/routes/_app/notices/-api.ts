@@ -14,11 +14,11 @@ import { toCsv } from './-logic';
  * the derived repo's.
  */
 export type NoticeListItem =
-  components['schemas']['api.keel_admin.v1.NoticeListItem'];
+  components['schemas']['api.admin_app.v1.NoticeListItem'];
 export type NoticeCategoryListItem =
-  components['schemas']['api.keel_admin.v1.NoticeCategoryListItem'];
+  components['schemas']['api.admin_app.v1.NoticeCategoryListItem'];
 export type NoticeCategoryOption =
-  components['schemas']['api.keel_admin.v1.NoticeCategoryOption'];
+  components['schemas']['api.admin_app.v1.NoticeCategoryOption'];
 
 /**
  * The notice list definition: keyword and categoryId are both text (categoryId is an ID). `created` is the example of a

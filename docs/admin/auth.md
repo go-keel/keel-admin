@@ -85,9 +85,9 @@ The `sys_user.settings` column holds **user settings** (the JSON of the `UserSet
 - **What does not**: anything the server must query across users (that needs an index, so its own column or table),
   anything security-related that must be audited (that needs `Audit` and its own endpoint), and business-system data
   (it belongs in the business database).
-- **Field number ranges**: numbers 1–99 of `UserSettings` belong to the kernel, 100 and up to derived repos; the
-  server ignores unknown fields when parsing. The whole serialized value must not exceed the kernel's limit
-  (`biz.MaxSettingsBytes`).
+- **`UserSettings` is the kernel's alone**: the message is in a kernel file and the kernel code reads and writes only
+  its own fields. A derived repo keeps account-following settings of its own in a business table keyed by user ID,
+  with its own per-item endpoints (the rule below); a setting every admin needs is reported upstream.
 - **Writes are per item, never a whole overwrite**: each kind of setting has its own add/remove endpoints (favorites
   use `POST /v1/sys/auth/favorites/add|remove`), idempotent and returning the complete settings after the change;
   the server locks the user's row in a transaction and does read-modify-write. There is no "send back the whole

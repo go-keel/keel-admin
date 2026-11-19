@@ -44,8 +44,13 @@ func TestUserCreateDuplicateUsername(t *testing.T) {
 	repo := NewUserAdminRepo(&coredata.Data{DB: db})
 	ctx := context.Background()
 
-	if err := repo.Create(ctx, &biz.User{Username: "alice", Password: "h", Status: 1}, []int64{5}); err != nil {
+	alice := &biz.User{Username: "alice", Password: "h", Status: 1}
+	if err := repo.Create(ctx, alice, []int64{5}); err != nil {
 		t.Fatalf("Create: %v", err)
+	}
+	// The create response carries the creation time gorm filled in, without a second read.
+	if alice.CreatedAt == "" {
+		t.Fatal("Create left CreatedAt empty")
 	}
 	if err := repo.Create(ctx, &biz.User{Username: "alice", Password: "h", Status: 1}, []int64{5}); !errors.Is(err, biz.ErrUserExists) {
 		t.Fatalf("create with same name = %v, want ErrUserExists", err)

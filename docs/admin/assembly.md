@@ -18,10 +18,10 @@ path in this repository's `go.mod`.
   "Adding a cmd" below, so the admin binary stays one deployable unit.
 - **The kernel is read-only for derived repos**: on the backend `internal/core/` (the permission registry `perm`,
   data scope `permdata`, the `principal` / `authz` / `audit` middleware, the system domain `sys`, TOTP) and
-  `internal/server/` (kernel HTTP registration, SPA and brand mounting, the providers), plus the admin database's
-  complete schema `migrations/admin/`; on the frontend the kernel
-  zone listed in `docs/admin/shell.md` "Frontend zones". An upgrade overwrites these directories whole and then
-  reruns `make rename MODULE=<module>`, so anything a derived repo puts inside them is wiped. The package-by-package
+  `internal/server/` (kernel HTTP registration, SPA and brand mounting, the providers), the kernel's contracts
+  `api/keel_admin/v1/`, plus the admin database's complete schema `migrations/admin/`; on the frontend the kernel
+  zone listed in `docs/admin/shell.md` "Frontend zones". An upgrade rewrites these directories whole from upstream
+  (`make sync-upstream`), so anything a derived repo puts inside them is wiped. The package-by-package
   map is in `docs/admin/permission-model/structure.md`.
 - **Business modules (permission codes, data-scope resources, new domains) live in the business area**
   `internal/biz|data|service/`, never in the kernel, for the same reason.
@@ -42,14 +42,14 @@ kconfig.NewConfig → kotel.Setup → keel.SetupLogger → keel.NewAppFactory
   → kernel config: server.ProvideSysConf / ProvideBrand / ProvideOTPCipher … (sys.* in app.yaml, read once at startup)
   → kernel biz → kernel service
   → business area data → biz → service (internal/data|biz|service)
-  → permission registration: perm.MustRegisterGroups → MustRegisterKernel / MustRegister → perm.Seal(perm.ContractOperations())
-  → HTTP registration: server.KernelHTTPServers(...) + business appends → server.NewHTTPServerRegister
-  → newApp(...) → factory.New(servers...)
+  → permission registration: perm.MustRegisterGroups → MustRegisterKernel / MustRegister
+  → HTTP services: httpServices(...) (KernelHTTPServers + business appends)
+  → newApp(..., services, ...): perm.Seal(every operation of those services) → api.NewHTTPServer → factory.New
 ```
 
-- **`perm.Seal()` runs once, after every `MustRegister*`**: it freezes the registry and checks that every code's
-  business domain and feature module have a declared group, and that every endpoint of the proto is bound or
-  allow_anonymous; a missing one fails startup on the spot.
+- **`perm.Seal()` runs once in `newApp`, after every `MustRegister*`**: it freezes the registry and checks that every
+  code's business domain and feature module have a declared group, and that every operation of the mounted HTTP
+  services is bound or allow_anonymous; a missing one fails startup on the spot.
 - **The business area uses `perm.MustRegister`, not `MustRegisterKernel`**: the `sys:` business domain is reserved
   for the kernel batch. How to declare permission codes, groups and resources is in `docs/admin/permission.md`.
 - **Both databases are required**: `kdb.NewNamedDB(config, "admin")` is the admin database (all `sys_*` tables),
@@ -62,23 +62,44 @@ kconfig.NewConfig → kotel.Setup → keel.SetupLogger → keel.NewAppFactory
 
 ## HTTP registration: the kernel's list first, the business area appends
 
+The list of HTTP services is built in one function in di.go, `httpServices`, so di.go and
+`cmd/<app>/registration_test.go` read the same list. Each entry is a `server.HTTPService`: the service's full name
+and its registration. `newApp` mounts the list on the HTTP server and seals the permission registry against every
+operation of the named services, so a proto linked in only to call another service is never checked.
+
 ```go
 // cmd/<app>/di.go (excerpt)
-httpRegisters := server.KernelHTTPServers(authService, deptService, roleService,
-    userService, metaService, auditService)
-httpRegisters = append(httpRegisters, nsvc.ArticleHTTP(articleService)) // one line per business module
-httpServerRegister := server.NewHTTPServerRegister(httpRegisters...)
+services := httpServices(
+    authService, deptService, roleService, userService, metaService, auditService,
+    articleService, // ← a new business module passes its service
+)
 sentinelGroup := nsvc.RegisterErrors(service.NewErrorSentinel()) // kernel mappings underneath, business on top
+app, err := newApp(appFactory, services, /* … */)
+
+// further down in di.go
+func httpServices(/* kernel services */, article *nsvc.ArticleService) []server.HTTPService {
+    services := server.KernelHTTPServers(/* kernel services */)
+    services = append(services, nsvc.ArticleHTTP(article)) // ← one line per business module
+    return services
+}
 ```
 
-The business registration functions live in the business area's `internal/service/http.go`, one per service:
+The business entries live in the business area's `internal/service/http.go`, one per service. `Name` comes from the
+generated `<Service>_ServiceDesc.ServiceName`, so a typo does not compile; it must name the service `Register`
+mounts:
 
 ```go
 // internal/service/http.go (a fictional ArticleService)
-func ArticleHTTP(svc *ArticleService) api.HTTPServerRegister {
-    return func(s *api.HTTPServer) { v1.RegisterArticleServiceHTTPServer(s, svc) }
+func ArticleHTTP(svc *ArticleService) server.HTTPService {
+    return server.HTTPService{
+        Name:     v1.ArticleService_ServiceDesc.ServiceName,
+        Register: func(s *api.HTTPServer) { v1.RegisterArticleServiceHTTPServer(s, svc) },
+    }
 }
 ```
+
+A new module also passes `nil` for each parameter it adds to `httpServices` or `registerPermissions` in
+`cmd/<app>/registration_test.go` (the calls in `servedOperations` and `registerAll`).
 
 `internal/server/http.go` is kernel code; adding a business module never touches it. Registering raw routes
 (webhooks, downloads) is covered in `docs/admin/raw-http.md`.

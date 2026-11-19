@@ -46,7 +46,7 @@ func NewStreamRegister(webhook *WebhookHandler) api.StreamRegister {
 }
 
 // cmd/<app>/di.go: appended as newApp's variadic arguments (the kernel adds the SPA itself; do not write it)
-app, err := newApp(appFactory, httpServerRegister, authUseCase, otpUseCase,
+app, err := newApp(appFactory, services, authUseCase, otpUseCase,
     auditRecorder, sentinelGroup, brand,
     nsvc.NewStreamRegister(webhookHandler))
 ```

@@ -44,37 +44,32 @@ func (r *roleRepo) List(ctx context.Context, f biz.RoleFilter, offset, limit int
 	for i := range ms {
 		ids = append(ids, ms[i].ID)
 	}
-	counts, err := r.permCounts(ctx, ids)
+	codes, err := r.permCodesOf(ctx, ids)
 	if err != nil {
 		return nil, 0, err
 	}
 	out := make([]*biz.RoleListRow, 0, len(ms))
 	for i := range ms {
 		row := ms[i].toListRow()
-		row.PermCount = counts[row.ID]
+		row.Perms = codes[row.ID]
 		out = append(out, row)
 	}
 	return out, total, nil
 }
 
-// permCounts gets the code count of every role on the page in one GROUP BY. The list shows only this number; querying
-// the code set row by row is a wasted N+1 and also sends out what only the detail view should get.
-func (r *roleRepo) permCounts(ctx context.Context, roleIDs []int64) (map[int64]int32, error) {
-	out := map[int64]int32{}
+// permCodesOf gets the stored codes of every role on the page in one query, instead of one query per row.
+func (r *roleRepo) permCodesOf(ctx context.Context, roleIDs []int64) (map[int64][]string, error) {
+	out := map[int64][]string{}
 	if len(roleIDs) == 0 {
 		return out, nil
 	}
-	var rows []struct {
-		RoleID int64
-		N      int32
-	}
-	if err := r.data.DB.WithContext(ctx).Model(&sysRolePermission{}).
-		Select("role_id, COUNT(*) AS n").
-		Where("role_id IN ?", roleIDs).Group("role_id").Scan(&rows).Error; err != nil {
+	var rows []sysRolePermission
+	if err := r.data.DB.WithContext(ctx).Select("role_id", "perm_code").
+		Where("role_id IN ?", roleIDs).Find(&rows).Error; err != nil {
 		return nil, err
 	}
 	for _, row := range rows {
-		out[row.RoleID] = row.N
+		out[row.RoleID] = append(out[row.RoleID], row.PermCode)
 	}
 	return out, nil
 }

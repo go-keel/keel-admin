@@ -3,7 +3,7 @@
 package service
 
 import (
-	v1 "github.com/go-keel/keel-admin/api/keel_admin/v1"
+	v1 "github.com/go-keel/keel-admin/api/admin_app/v1"
 	"github.com/go-keel/keel-admin/internal/biz"
 	"github.com/go-keel/keel-admin/internal/core/perm"
 )

@@ -22,12 +22,10 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Separate number ranges: **the kernel uses numbers below 1000, business reasons start at 1000** (AppReasonMin in
-// `internal/core/seal`, checked by the seal test). Within a range, numbers are tiered by meaning: 10 authentication,
-// 20 OTP, 100 not found, 110 conflict, 120 permission boundary; business reasons may reuse the same tiers offset by
-// +1000 for convenience, but that is not a rule.
-// Without separate ranges, upstream and derived repos would both take the next number at the end of the same tier,
-// and a collision would only be a matter of time.
+// The kernel's reasons. Business reasons live in the business package's own error_reason.proto, never here: this
+// file is kernel and is taken from upstream whole. A reason's name is what callers see, so business reason names must
+// not reuse a kernel name. Numbers are tiered by meaning: 10 authentication, 20 OTP, 100 not found, 110 conflict,
+// 120 permission boundary.
 type ErrorReason int32
 
 const (
@@ -55,14 +53,6 @@ const (
 	ErrorReason_DEPT_NOT_FOUND      ErrorReason = 100
 	ErrorReason_ROLE_NOT_FOUND      ErrorReason = 101
 	ErrorReason_AUDIT_LOG_NOT_FOUND ErrorReason = 102
-	// Example: delete after forking
-	// NOTICE_NOT_FOUND: the notice example business module (internal/biz|data|service, business area, not core/sys):
-	// the id does not exist or is outside the actor's data scope, indistinguishably.
-	ErrorReason_NOTICE_NOT_FOUND ErrorReason = 1100
-	// Example: delete after forking
-	// NOTICE_CATEGORY_NOT_FOUND: the category id does not exist or is outside the actor's category grants,
-	// indistinguishably (existence does not leak).
-	ErrorReason_NOTICE_CATEGORY_NOT_FOUND ErrorReason = 1101
 	// Conflict
 	// DEPT_NOT_EMPTY: only an empty department can be deleted; all three kinds of occupancy (child departments, users,
 	// resources) report this reason without telling them apart (see docs/admin/permission-model/management-boundary.md).
@@ -72,13 +62,6 @@ const (
 	// DEPT_DISABLED: a disabled department cannot be chosen as a user's department; its existing members are not
 	// affected.
 	ErrorReason_DEPT_DISABLED ErrorReason = 113
-	// Example: delete after forking
-	// NOTICE_CATEGORY_IN_USE: the category still has notices and cannot be deleted.
-	ErrorReason_NOTICE_CATEGORY_IN_USE ErrorReason = 1110
-	// Example: delete after forking
-	// NOTICE_CATEGORY_EXISTS: duplicate category name (categories are explicit-assignment options; equal names could not
-	// be told apart).
-	ErrorReason_NOTICE_CATEGORY_EXISTS ErrorReason = 1111
 	// Permission boundary
 	ErrorReason_NOT_ROOT              ErrorReason = 120
 	ErrorReason_SELF_MANAGE_FORBIDDEN ErrorReason = 121
@@ -109,72 +92,64 @@ const (
 // Enum value maps for ErrorReason.
 var (
 	ErrorReason_name = map[int32]string{
-		0:    "UNEXPECTED_ERROR",
-		1:    "INVALID_ARGUMENT",
-		10:   "INVALID_CREDENTIAL",
-		11:   "USER_DISABLED",
-		12:   "SESSION_EXPIRED",
-		13:   "CAPTCHA_INVALID",
-		20:   "OTP_INVALID",
-		21:   "OTP_NOT_BOUND",
-		22:   "OTP_REQUIRED",
-		100:  "DEPT_NOT_FOUND",
-		101:  "ROLE_NOT_FOUND",
-		102:  "AUDIT_LOG_NOT_FOUND",
-		1100: "NOTICE_NOT_FOUND",
-		1101: "NOTICE_CATEGORY_NOT_FOUND",
-		110:  "DEPT_NOT_EMPTY",
-		111:  "DUPLICATE_ROLE",
-		112:  "USER_EXISTS",
-		113:  "DEPT_DISABLED",
-		1110: "NOTICE_CATEGORY_IN_USE",
-		1111: "NOTICE_CATEGORY_EXISTS",
-		120:  "NOT_ROOT",
-		121:  "SELF_MANAGE_FORBIDDEN",
-		122:  "TARGET_PROTECTED",
-		123:  "DEPT_OUT_OF_RANGE",
-		124:  "ROLE_OUT_OF_RANGE",
-		125:  "OTP_BIND_REQUIRED",
-		126:  "AVATAR_TOO_LARGE",
-		127:  "IP_NOT_ALLOWED",
-		128:  "OTP_ALREADY_USED",
-		129:  "OTP_ALREADY_BOUND",
-		130:  "ROLE_REQUIRED",
-		131:  "FAVORITE_LIMIT",
+		0:   "UNEXPECTED_ERROR",
+		1:   "INVALID_ARGUMENT",
+		10:  "INVALID_CREDENTIAL",
+		11:  "USER_DISABLED",
+		12:  "SESSION_EXPIRED",
+		13:  "CAPTCHA_INVALID",
+		20:  "OTP_INVALID",
+		21:  "OTP_NOT_BOUND",
+		22:  "OTP_REQUIRED",
+		100: "DEPT_NOT_FOUND",
+		101: "ROLE_NOT_FOUND",
+		102: "AUDIT_LOG_NOT_FOUND",
+		110: "DEPT_NOT_EMPTY",
+		111: "DUPLICATE_ROLE",
+		112: "USER_EXISTS",
+		113: "DEPT_DISABLED",
+		120: "NOT_ROOT",
+		121: "SELF_MANAGE_FORBIDDEN",
+		122: "TARGET_PROTECTED",
+		123: "DEPT_OUT_OF_RANGE",
+		124: "ROLE_OUT_OF_RANGE",
+		125: "OTP_BIND_REQUIRED",
+		126: "AVATAR_TOO_LARGE",
+		127: "IP_NOT_ALLOWED",
+		128: "OTP_ALREADY_USED",
+		129: "OTP_ALREADY_BOUND",
+		130: "ROLE_REQUIRED",
+		131: "FAVORITE_LIMIT",
 	}
 	ErrorReason_value = map[string]int32{
-		"UNEXPECTED_ERROR":          0,
-		"INVALID_ARGUMENT":          1,
-		"INVALID_CREDENTIAL":        10,
-		"USER_DISABLED":             11,
-		"SESSION_EXPIRED":           12,
-		"CAPTCHA_INVALID":           13,
-		"OTP_INVALID":               20,
-		"OTP_NOT_BOUND":             21,
-		"OTP_REQUIRED":              22,
-		"DEPT_NOT_FOUND":            100,
-		"ROLE_NOT_FOUND":            101,
-		"AUDIT_LOG_NOT_FOUND":       102,
-		"NOTICE_NOT_FOUND":          1100,
-		"NOTICE_CATEGORY_NOT_FOUND": 1101,
-		"DEPT_NOT_EMPTY":            110,
-		"DUPLICATE_ROLE":            111,
-		"USER_EXISTS":               112,
-		"DEPT_DISABLED":             113,
-		"NOTICE_CATEGORY_IN_USE":    1110,
-		"NOTICE_CATEGORY_EXISTS":    1111,
-		"NOT_ROOT":                  120,
-		"SELF_MANAGE_FORBIDDEN":     121,
-		"TARGET_PROTECTED":          122,
-		"DEPT_OUT_OF_RANGE":         123,
-		"ROLE_OUT_OF_RANGE":         124,
-		"OTP_BIND_REQUIRED":         125,
-		"AVATAR_TOO_LARGE":          126,
-		"IP_NOT_ALLOWED":            127,
-		"OTP_ALREADY_USED":          128,
-		"OTP_ALREADY_BOUND":         129,
-		"ROLE_REQUIRED":             130,
-		"FAVORITE_LIMIT":            131,
+		"UNEXPECTED_ERROR":      0,
+		"INVALID_ARGUMENT":      1,
+		"INVALID_CREDENTIAL":    10,
+		"USER_DISABLED":         11,
+		"SESSION_EXPIRED":       12,
+		"CAPTCHA_INVALID":       13,
+		"OTP_INVALID":           20,
+		"OTP_NOT_BOUND":         21,
+		"OTP_REQUIRED":          22,
+		"DEPT_NOT_FOUND":        100,
+		"ROLE_NOT_FOUND":        101,
+		"AUDIT_LOG_NOT_FOUND":   102,
+		"DEPT_NOT_EMPTY":        110,
+		"DUPLICATE_ROLE":        111,
+		"USER_EXISTS":           112,
+		"DEPT_DISABLED":         113,
+		"NOT_ROOT":              120,
+		"SELF_MANAGE_FORBIDDEN": 121,
+		"TARGET_PROTECTED":      122,
+		"DEPT_OUT_OF_RANGE":     123,
+		"ROLE_OUT_OF_RANGE":     124,
+		"OTP_BIND_REQUIRED":     125,
+		"AVATAR_TOO_LARGE":      126,
+		"IP_NOT_ALLOWED":        127,
+		"OTP_ALREADY_USED":      128,
+		"OTP_ALREADY_BOUND":     129,
+		"ROLE_REQUIRED":         130,
+		"FAVORITE_LIMIT":        131,
 	}
 )
 
@@ -209,7 +184,7 @@ var File_keel_admin_v1_error_reason_proto protoreflect.FileDescriptor
 
 const file_keel_admin_v1_error_reason_proto_rawDesc = "" +
 	"\n" +
-	" keel_admin/v1/error_reason.proto\x12\x11api.keel_admin.v1\x1a\x13errors/errors.proto*\x8e\a\n" +
+	" keel_admin/v1/error_reason.proto\x12\x11api.keel_admin.v1\x1a\x13errors/errors.proto*\x85\x06\n" +
 	"\vErrorReason\x12\x1a\n" +
 	"\x10UNEXPECTED_ERROR\x10\x00\x1a\x04\xa8E\xf4\x03\x12\x1a\n" +
 	"\x10INVALID_ARGUMENT\x10\x01\x1a\x04\xa8E\x90\x03\x12\x1c\n" +
@@ -223,15 +198,11 @@ const file_keel_admin_v1_error_reason_proto_rawDesc = "" +
 	"\fOTP_REQUIRED\x10\x16\x1a\x04\xa8E\x9c\x03\x12\x18\n" +
 	"\x0eDEPT_NOT_FOUND\x10d\x1a\x04\xa8E\x94\x03\x12\x18\n" +
 	"\x0eROLE_NOT_FOUND\x10e\x1a\x04\xa8E\x94\x03\x12\x1d\n" +
-	"\x13AUDIT_LOG_NOT_FOUND\x10f\x1a\x04\xa8E\x94\x03\x12\x1b\n" +
-	"\x10NOTICE_NOT_FOUND\x10\xcc\b\x1a\x04\xa8E\x94\x03\x12$\n" +
-	"\x19NOTICE_CATEGORY_NOT_FOUND\x10\xcd\b\x1a\x04\xa8E\x94\x03\x12\x18\n" +
+	"\x13AUDIT_LOG_NOT_FOUND\x10f\x1a\x04\xa8E\x94\x03\x12\x18\n" +
 	"\x0eDEPT_NOT_EMPTY\x10n\x1a\x04\xa8E\x9c\x03\x12\x18\n" +
 	"\x0eDUPLICATE_ROLE\x10o\x1a\x04\xa8E\x99\x03\x12\x15\n" +
 	"\vUSER_EXISTS\x10p\x1a\x04\xa8E\x99\x03\x12\x17\n" +
-	"\rDEPT_DISABLED\x10q\x1a\x04\xa8E\x99\x03\x12!\n" +
-	"\x16NOTICE_CATEGORY_IN_USE\x10\xd6\b\x1a\x04\xa8E\x9c\x03\x12!\n" +
-	"\x16NOTICE_CATEGORY_EXISTS\x10\xd7\b\x1a\x04\xa8E\x99\x03\x12\x12\n" +
+	"\rDEPT_DISABLED\x10q\x1a\x04\xa8E\x99\x03\x12\x12\n" +
 	"\bNOT_ROOT\x10x\x1a\x04\xa8E\x93\x03\x12\x1f\n" +
 	"\x15SELF_MANAGE_FORBIDDEN\x10y\x1a\x04\xa8E\x93\x03\x12\x1a\n" +
 	"\x10TARGET_PROTECTED\x10z\x1a\x04\xa8E\x93\x03\x12\x1b\n" +

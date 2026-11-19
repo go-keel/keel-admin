@@ -782,9 +782,9 @@ export interface paths {
         /**
          * @description User options (the user filter of the login log): the number of users keeps growing with the business, so they
          *      are fetched in batches by keyword (see "option set" in GLOSSARY.md). The threshold follows use and shares the
-         *      login log's code; it sees all users with no data scope, consistent with the login log itself (ADR admin-0008,
-         *      admin-0017). Must come before GetUser (/users/options and /users/{id} have the same shape, and registration
-         *      order decides which matches first).
+         *      login log's code; it sees all users with no data scope, consistent with the login log itself (admin-0008,
+         *      docs/admin/permission-model/sessions-and-audit.md). Must come before GetUser (/users/options and /users/{id} have
+         *      the same shape, and registration order decides which matches first).
          */
         get: operations["UserService_ListUserOptions"];
         put?: never;
@@ -929,6 +929,94 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        "api.admin_app.v1.BatchDeleteNoticeRequest": {
+            /**
+             * @description max_items equals the lte of limit: table selection does not span pages (changing page clears it), so at most a
+             *      whole page is selected at once, and a page holds at most the largest of PAGE_SIZES.
+             */
+            ids?: string[];
+        };
+        "api.admin_app.v1.CreateNoticeCategoryRequest": {
+            name?: string;
+        };
+        "api.admin_app.v1.CreateNoticeRequest": {
+            title?: string;
+            content?: string;
+            /** @description Category: required, and must be within the operator's category grants (no posting to an invisible category). */
+            categoryId?: string;
+        };
+        /** @description The option set's reply: no total. */
+        "api.admin_app.v1.ListNoticeCategoryOptionsReply": {
+            items?: components["schemas"]["api.admin_app.v1.NoticeCategoryOption"][];
+        };
+        "api.admin_app.v1.ListNoticeCategoryReply": {
+            items?: components["schemas"]["api.admin_app.v1.NoticeCategoryListItem"][];
+            total?: string;
+        };
+        "api.admin_app.v1.ListNoticeReply": {
+            items?: components["schemas"]["api.admin_app.v1.NoticeListItem"][];
+            total?: string;
+        };
+        /**
+         * @description NoticeCategoryListItem is one row of the category management list. Its fields currently equal
+         *      NoticeCategoryReply's, but it is defined separately so either can gain fields without affecting the other.
+         */
+        "api.admin_app.v1.NoticeCategoryListItem": {
+            id?: string;
+            name?: string;
+            /** @description UTC RFC3339, converted by the frontend to the display time zone the user chose. */
+            createdAt?: string;
+        };
+        /**
+         * @description A slim category for selectors: only the two identifying fields. created_at matters only to the management surface;
+         *      a dropdown does not need it.
+         */
+        "api.admin_app.v1.NoticeCategoryOption": {
+            id?: string;
+            name?: string;
+        };
+        /**
+         * @description NoticeCategoryReply is the reply of CreateNoticeCategory. Rows of the category management list use
+         *      NoticeCategoryListItem and options use NoticeCategoryOption, each its own type.
+         */
+        "api.admin_app.v1.NoticeCategoryReply": {
+            id?: string;
+            name?: string;
+            /** @description UTC RFC3339, converted by the frontend to the display time zone the user chose. */
+            createdAt?: string;
+        };
+        /** @description NoticeListItem is one row of the notice list: only the fields the list columns, export and row actions need. */
+        "api.admin_app.v1.NoticeListItem": {
+            id?: string;
+            title?: string;
+            /** @description Body: the list shows an excerpt, export needs the full text. */
+            content?: string;
+            categoryId?: string;
+            ownerUserId?: string;
+            ownerDeptId?: string;
+            /**
+             * @description Display names of the department and the creator, resolved by the backend; empty when deleted, and the frontend
+             *      then shows #id.
+             */
+            ownerDeptName?: string;
+            ownerUserName?: string;
+            /** @description UTC RFC3339, converted by the frontend to the display time zone the user chose. */
+            createdAt?: string;
+        };
+        /**
+         * @description NoticeReply is the reply of CreateNotice. List rows use NoticeListItem rather than sharing this type: only the list
+         *      resolves department and creator names in bulk, so sharing would add two fields here that are always empty.
+         */
+        "api.admin_app.v1.NoticeReply": {
+            id?: string;
+            title?: string;
+            content?: string;
+            ownerUserId?: string;
+            ownerDeptId?: string;
+            /** @description UTC RFC3339, converted by the frontend to the display time zone the user chose. */
+            createdAt?: string;
+            categoryId?: string;
+        };
         "api.keel_admin.v1.AddFavoriteRequest": {
             path?: string;
         };
@@ -1002,13 +1090,6 @@ export interface components {
             actionName?: string;
             targetName?: string;
         };
-        "api.keel_admin.v1.BatchDeleteNoticeRequest": {
-            /**
-             * @description max_items equals the lte of limit: table selection does not span pages (changing page clears it), so at most a
-             *      whole page is selected at once, and a page holds at most the largest of PAGE_SIZES.
-             */
-            ids?: string[];
-        };
         "api.keel_admin.v1.BindOTPReply": {
             /** @description The otpauth:// URI contains the OTP seed, and response bodies go into the request log too. */
             provisioningUri?: string;
@@ -1037,15 +1118,6 @@ export interface components {
             name?: string;
             /** Format: int32 */
             sort?: number;
-        };
-        "api.keel_admin.v1.CreateNoticeCategoryRequest": {
-            name?: string;
-        };
-        "api.keel_admin.v1.CreateNoticeRequest": {
-            title?: string;
-            content?: string;
-            /** @description Category: required, and must be within the operator's category grants (no posting to an invisible category). */
-            categoryId?: string;
         };
         "api.keel_admin.v1.CreateRoleRequest": {
             code?: string;
@@ -1197,18 +1269,6 @@ export interface components {
             items?: components["schemas"]["api.keel_admin.v1.LoginLogListItem"][];
             total?: string;
         };
-        /** @description The option set's reply: no total. */
-        "api.keel_admin.v1.ListNoticeCategoryOptionsReply": {
-            items?: components["schemas"]["api.keel_admin.v1.NoticeCategoryOption"][];
-        };
-        "api.keel_admin.v1.ListNoticeCategoryReply": {
-            items?: components["schemas"]["api.keel_admin.v1.NoticeCategoryListItem"][];
-            total?: string;
-        };
-        "api.keel_admin.v1.ListNoticeReply": {
-            items?: components["schemas"]["api.keel_admin.v1.NoticeListItem"][];
-            total?: string;
-        };
         "api.keel_admin.v1.ListPermissionsReply": {
             items?: components["schemas"]["api.keel_admin.v1.PermissionDef"][];
             /**
@@ -1324,66 +1384,6 @@ export interface components {
         "api.keel_admin.v1.NamedRef": {
             id?: string;
             name?: string;
-        };
-        /**
-         * @description NoticeCategoryListItem is one row of the category management list. Its fields currently equal
-         *      NoticeCategoryReply's, but it is defined separately so either can gain fields without affecting the other.
-         */
-        "api.keel_admin.v1.NoticeCategoryListItem": {
-            id?: string;
-            name?: string;
-            /** @description UTC RFC3339, converted by the frontend to the display time zone the user chose. */
-            createdAt?: string;
-        };
-        /**
-         * @description A slim category for selectors: only the two identifying fields. created_at matters only to the management surface;
-         *      a dropdown does not need it.
-         */
-        "api.keel_admin.v1.NoticeCategoryOption": {
-            id?: string;
-            name?: string;
-        };
-        /**
-         * @description NoticeCategoryReply is the reply of CreateNoticeCategory. Rows of the category management list use
-         *      NoticeCategoryListItem and options use NoticeCategoryOption, each its own type.
-         */
-        "api.keel_admin.v1.NoticeCategoryReply": {
-            id?: string;
-            name?: string;
-            /** @description UTC RFC3339, converted by the frontend to the display time zone the user chose. */
-            createdAt?: string;
-        };
-        /** @description NoticeListItem is one row of the notice list: only the fields the list columns, export and row actions need. */
-        "api.keel_admin.v1.NoticeListItem": {
-            id?: string;
-            title?: string;
-            /** @description Body: the list shows an excerpt, export needs the full text. */
-            content?: string;
-            categoryId?: string;
-            ownerUserId?: string;
-            ownerDeptId?: string;
-            /**
-             * @description Display names of the department and the creator, resolved by the backend; empty when deleted, and the frontend
-             *      then shows #id.
-             */
-            ownerDeptName?: string;
-            ownerUserName?: string;
-            /** @description UTC RFC3339, converted by the frontend to the display time zone the user chose. */
-            createdAt?: string;
-        };
-        /**
-         * @description NoticeReply is the reply of CreateNotice. List rows use NoticeListItem rather than sharing this type: only the list
-         *      resolves department and creator names in bulk, so sharing would add two fields here that are always empty.
-         */
-        "api.keel_admin.v1.NoticeReply": {
-            id?: string;
-            title?: string;
-            content?: string;
-            ownerUserId?: string;
-            ownerDeptId?: string;
-            /** @description UTC RFC3339, converted by the frontend to the display time zone the user chose. */
-            createdAt?: string;
-            categoryId?: string;
         };
         /**
          * @description PermGroup is the group metadata of a business domain or feature module: only a display name and order, with no
@@ -1784,9 +1784,8 @@ export interface components {
          * @description UserSettings are personal settings that follow the account, stored as JSON in the sys_user.settings column
          *      (MEDIUMTEXT, not MySQL's JSON column type, see docs/practices/database.md, types).
          *
-         *      **Field numbers 1–99 belong to the kernel; derived repos append from 100.** Each side adds fields in its own range,
-         *      so a template upgrade overwriting this message's whole file cannot collide; the server ignores unknown fields when
-         *      parsing, so after a rollback to an older version new fields are simply not read, with no error.
+         *      Kernel only: a derived repo keeps settings of its own in a business table keyed by user ID. The server ignores
+         *      unknown fields when parsing, so after a rollback to an older version new fields are simply not read, with no error.
          *
          *      What belongs here: choices that follow the account and serve only one's own UI. What does not: data the server
          *      queries across users, security-related data that must be audited, and business system data; each has its own
@@ -1842,7 +1841,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["api.keel_admin.v1.ListNoticeReply"];
+                    "application/json": components["schemas"]["api.admin_app.v1.ListNoticeReply"];
                 };
             };
         };
@@ -1856,7 +1855,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["api.keel_admin.v1.CreateNoticeRequest"];
+                "application/json": components["schemas"]["api.admin_app.v1.CreateNoticeRequest"];
             };
         };
         responses: {
@@ -1866,7 +1865,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["api.keel_admin.v1.NoticeReply"];
+                    "application/json": components["schemas"]["api.admin_app.v1.NoticeReply"];
                 };
             };
         };
@@ -1880,7 +1879,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["api.keel_admin.v1.BatchDeleteNoticeRequest"];
+                "application/json": components["schemas"]["api.admin_app.v1.BatchDeleteNoticeRequest"];
             };
         };
         responses: {
@@ -1915,7 +1914,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["api.keel_admin.v1.ListNoticeCategoryReply"];
+                    "application/json": components["schemas"]["api.admin_app.v1.ListNoticeCategoryReply"];
                 };
             };
         };
@@ -1929,7 +1928,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["api.keel_admin.v1.CreateNoticeCategoryRequest"];
+                "application/json": components["schemas"]["api.admin_app.v1.CreateNoticeCategoryRequest"];
             };
         };
         responses: {
@@ -1939,7 +1938,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["api.keel_admin.v1.NoticeCategoryReply"];
+                    "application/json": components["schemas"]["api.admin_app.v1.NoticeCategoryReply"];
                 };
             };
         };
@@ -1959,7 +1958,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["api.keel_admin.v1.ListNoticeCategoryOptionsReply"];
+                    "application/json": components["schemas"]["api.admin_app.v1.ListNoticeCategoryOptionsReply"];
                 };
             };
         };

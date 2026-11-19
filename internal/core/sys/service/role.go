@@ -39,7 +39,7 @@ func (s *RoleService) ListRole(ctx context.Context, req *v1.ListRoleRequest) (*v
 			Sensitive: int32(r.Sensitive),
 			ForceOtp:  int32(r.ForceOTP),
 			Status:    int32(r.Status),
-			PermCount: r.PermCount,
+			PermCount: int32(len(r.Perms)),
 			CreatedAt: r.CreatedAt,
 		})
 	}

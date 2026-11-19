@@ -26,14 +26,15 @@ Built in:
 ## Project structure
 
 ```
-├── api/keel_admin/v1/    # proto contracts (including error_reason)
+├── api/keel_admin/v1/    # kernel contracts (including the kernel's error_reason): the same in every repository
+├── api/admin_app/v1/     # business contracts (the notices example and the business error_reason); renamed once
 ├── cmd/admin/            # entry main.go + hand-written assembly di.go
 ├── configs/              # config.yaml (infrastructure) + app.yaml (the kernel's sys: node): the real production
 │                         #   config; the repo commits development placeholders, the deployment layer injects real
 │                         #   values; *.dev.yaml are local overrides only
 ├── migrations/           # .sql table scripts run by hand, one directory per database: admin/, business/
 ├── internal/
-│   ├── core/             # kernel (read-only; upgrade = overwrite the directory + rerun make rename): perm
+│   ├── core/             # kernel (read-only; upgrade = make sync-upstream): perm
 │   │                     #   permission registry, permdata ApplyScope, middleware (principal/authz/audit), captcha,
 │   │                     #   the sys system domain (accounts/roles/departments/audit/OTP), data connections and
 │   │                     #   transactions
@@ -59,8 +60,9 @@ make all           # proto + config + generate
 # Create tables (a new database runs the complete schema in migrations/<database>/0_schema.sql by hand; a local
 # example; the root seed is built into the end of the script and is idempotent). Two databases: the business
 # database keel-biz (database.default) and the admin database keel-admin (database.admin); config.yaml requires both.
-# root's initial password is admin888: on every new deployment, sign in as root and change it in the personal center
-# right away. Do not edit the script: it is kernel, and the next upgrade overwrites it.
+# root's initial password is admin888. root must bind an authenticator app (TOTP) at its first sign-in: the login
+# returns only a binding step, and the session starts once a code from the app confirms it. Then change the password
+# in the personal center right away, on every new deployment. Do not edit the script: it is kernel, and the next upgrade overwrites it.
 mysql -h127.0.0.1 -uroot -p -e 'CREATE DATABASE IF NOT EXISTS `keel-admin`; CREATE DATABASE IF NOT EXISTS `keel-biz`;'
 mysql -h127.0.0.1 -uroot -p keel-admin < migrations/admin/0_schema.sql
 mysql -h127.0.0.1 -uroot -p keel-biz   < migrations/business/0_schema.sql
@@ -87,24 +89,21 @@ carrying `github.com/go-keel/keel-admin`, and the rename script **does not touch
 ```bash
 make init                             # install buf
 (cd web && pnpm install)              # make proto uses openapi-typescript; the rename script formats the frontend with Biome
-make rename MODULE=example.com/demo   # replaces the module path and the proto package under api/ in one go; idempotent
+make rename MODULE=example.com/demo   # replaces the module path and the business proto package; idempotent
 make init-hooks                       # install the commit and merge hooks in .githooks/ (block changes to the propagation surface without an UPGRADING.md entry, check dead links)
 make all                              # only now does generation produce your own module path
 ```
 
-The proto package defaults to the last segment of the module path: `example.com/demo` gives `package api.demo.v1`,
-and the directory under `api/` becomes demo; `-`, `.` and the like in that segment become `_` (`example.com/shop-api`
-gives `api.shop_api.v1`), and when the last segment is a version suffix like `/v2` the one before it is used. It goes
-into the operation names of endpoints (permission bindings and audit logs record by them), OpenAPI type names and
-the generated frontend types, and is the service's public name; to choose another, add `API_DOMAIN=xxx`. To rename
-the entry directory and the binary (`cmd/admin`, `bin/admin`) too, add `CMD=xxx`.
+The business proto package (`api/admin_app/`; the kernel's `api/keel_admin/` is never renamed) defaults to the last
+segment of the module path: `example.com/demo` gives `package api.demo.v1`, and the directory `api/admin_app/` becomes
+demo; `-`, `.` and the like in that segment become `_` (`example.com/shop-api` gives `api.shop_api.v1`), and when the
+last segment is a version suffix like `/v2` the one before it is used; `keel_admin` is refused. It goes into the
+operation names of endpoints (permission bindings and audit logs record by them), OpenAPI type names and the generated
+frontend types, and is the service's public name; to choose another, add `API_DOMAIN=xxx`. To rename the entry directory
+and the binary (`cmd/admin`, `bin/admin`) too, add `CMD=xxx`.
 
-`make rename` must be rerun after every kernel overwrite and scans all docs in the repository each time. Your own
-docs that record "how to follow upstream" (a kernel sync manual and the like) mention
-`github.com/go-keel/keel-admin`, `api/keel_admin/v1/` and `cmd/admin` meaning upstream, and these must not be
-replaced: write `<!-- rename:skip -->` on the **first line** of such a file and the rename script skips it entirely.
-Without it, the replacement raises no error, but the manual's commands then point at your own repo, found only the
-next time someone follows them.
+`make rename` runs once, here; following upstream later goes through `make sync-upstream`
+(`docs/upgrading-protocol.md`), which writes upstream's kernel already carrying your names.
 
 **Leave the convention docs and the shared segments of the entry files unchanged.** `docs/guides/`,
 `docs/practices/`, `docs/admin/`, the ADRs under `docs/adr/` that carry a shared marker,
@@ -123,6 +122,10 @@ forked, keep `lint-strict` instead and change `keel-admin` in its patterns to yo
 responsible for (see `docs/adr/layout-0005-doc-link-check-distribution-boundary.md`). Also delete the
 `scripts/check-english.sh` line in the `check` target: requiring English is this template's own rule, and your
 service writes in its team's language. Do this before deleting the examples, or the final `make check` below fails.
+
+**A repo that will itself be forked** sets `TEMPLATE_MODULE`, `TEMPLATE_CMD` and `TEMPLATE_DOMAIN` at the top of
+`scripts/rename.sh` to its own module path, entry name and business package segment once its rename is done, so its
+own forks can run the one rename.
 
 **A repo nobody will fork** writes no ledger entries of its own: delete the ledger check (the first `if` block) in
 `.githooks/pre-commit`, or nearly every commit is stopped. Its `UPGRADING.md` then holds only "following upstream"
@@ -210,7 +213,7 @@ imports the compiler now reports as unused. Three steps, in this order:
    `STRICT=1 scripts/check-doc-links.sh` once (it also reports your own business area paths; look only at those
    related to the examples). In this README, rewrite the introduction and "Project structure" (both name the notices
    example) and "Quick start" for your service; "Delete the examples" can go, while "Fork into your own repo" stays:
-   `make rename` points at it, and you run it again on every kernel upgrade.
+   `make rename` points at it.
 
    What is left empty stays as the place for your first module: `internal/biz/errors.go`, `internal/data/model.go`
    and `internal/service/http.go` with only their package clause and comments, `migrations/business/0_schema.sql`
@@ -220,7 +223,9 @@ imports the compiler now reports as unused. Three steps, in this order:
 Both greps exclude `*.pb.go`: the marker comments are carried into generated artifacts, and the hits there vanish
 on regeneration; do not edit generated artifacts by hand.
 
-**Start the ledger, then commit.** Delete every entry in `UPGRADING.md`, keeping its introduction: they are upstream's
+### Start the ledger, then commit
+
+Delete every entry in `UPGRADING.md`, keeping its introduction: they are upstream's
 history, already in your fork. Add the first "following upstream" entry, your sync point (`docs/upgrading-protocol.md`):
 
 ```markdown
@@ -228,7 +233,7 @@ history, already in your fork. Add the first "following upstream" entry, your sy
 
 > Follows keel-admin <short hash of the keel-admin commit you forked>
 
-Forked with `make rename MODULE=<your module>` (plus any `API_DOMAIN=` / `CMD=` you passed); every kernel overwrite reruns it the same way.
+Forked with `make rename MODULE=<your module>` (plus any `API_DOMAIN=` / `CMD=` you passed).
 ```
 
 Then commit everything with `git add -A && git commit`: the ledger is in the commit, so the hook lets it through.

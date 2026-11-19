@@ -3,9 +3,9 @@ package api.keel_admin.v1;
 
 option go_package = "github.com/go-keel/keel-admin/api/keel_admin/v1;v1";
 
-// Messages shared by several protos go here, not into one domain's file; otherwise referencing files would have to
-// import an unrelated domain contract. Upstream provides the baseline and derived repos append (like
-// error_reason.proto; see "assembly seam" in GLOSSARY.md).
+// Kernel messages shared by several kernel protos go here, not into one domain's file; otherwise referencing files
+// would have to import an unrelated domain contract. This file is kernel and taken from upstream whole. Business protos
+// do not import it; they define what they need in a types.proto of the business package.
 
 // NamedRef is "id + display name resolved by the backend", used to render names of dynamic entities (roles,
 // departments and so on) in lists and details directly, instead of the anti-pattern of the frontend looking the name

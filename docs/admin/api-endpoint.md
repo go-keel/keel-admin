@@ -27,7 +27,12 @@ On top of the guide's steps:
    `internal/service/<domain>_perm.go`, its permission code is declared in `internal/biz/<domain>.go`, and both are
    registered through `perm.MustRegister`. **An endpoint with neither a binding nor `allow_anonymous` fails
    startup** (`perm.operation-unowned`). Full steps in `docs/admin/permission.md`.
-4. **Business error reasons are numbered from 1000**; see `docs/admin/errors.md`.
+4. **Business error reasons go in the business package's `error_reason.proto`**, never the kernel's; see
+   `docs/admin/errors.md`.
+5. **Business protos never import `keel_admin/v1/`.** A message the business needs, `NamedRef` included, is defined in
+   the business package's `types.proto`. Every admin carries the same kernel files, so a Go program that links its own
+   kernel and another admin's client would register them twice and panic before `main`. For the same reason, calling
+   another admin's kernel endpoints uses this repository's own `api/keel_admin/v1` client, pointed at that admin.
 
 ## List endpoints: the admin additions
 

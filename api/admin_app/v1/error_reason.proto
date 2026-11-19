@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package api.admin_app.v1;
+
+import "errors/errors.proto";
+
+option go_package = "github.com/go-keel/keel-admin/api/admin_app/v1;v1";
+
+// This package's reasons: the business area's, apart from the kernel's in api/keel_admin/v1/error_reason.proto. A
+// reason's name is what callers see, so a name here must not reuse a kernel reason's name (docs/admin/errors.md).
+// Numbers follow the kernel's tiers: 100 not found, 110 conflict, 120 permission boundary.
+enum ErrorReason {
+  option (errors.default_code) = 500;
+
+  // REASON_UNSPECIFIED: the zero value proto3 requires; never returned.
+  REASON_UNSPECIFIED = 0;
+
+  // Example: delete after forking
+  // NOTICE_NOT_FOUND: the notice id does not exist or is outside the actor's data scope, indistinguishably.
+  NOTICE_NOT_FOUND = 100 [(errors.code) = 404];
+  // Example: delete after forking
+  // NOTICE_CATEGORY_NOT_FOUND: the category id does not exist or is outside the actor's category grants,
+  // indistinguishably (existence does not leak).
+  NOTICE_CATEGORY_NOT_FOUND = 101 [(errors.code) = 404];
+  // Example: delete after forking
+  // NOTICE_CATEGORY_IN_USE: the category still has notices and cannot be deleted.
+  NOTICE_CATEGORY_IN_USE = 110 [(errors.code) = 412];
+  // Example: delete after forking
+  // NOTICE_CATEGORY_EXISTS: duplicate category name (categories are explicit-assignment options; equal names could not
+  // be told apart).
+  NOTICE_CATEGORY_EXISTS = 111 [(errors.code) = 409];
+}

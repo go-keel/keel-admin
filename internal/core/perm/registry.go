@@ -102,8 +102,8 @@ func MustRegisterGroups(groups []Group) {
 }
 
 // Seal validates the full registry (code format, deps, cycles, binding
-// references, every contract operation owned) and freezes it. Called once from di.go after all domains have
-// registered, with ContractOperations(); a non-nil error should abort startup.
+// references, every served operation owned) and freezes it. Called once by the entry point's newApp after all domains
+// have registered, with ServedOperations of the HTTP services it mounts; a non-nil error should abort startup.
 //
 // contract lists the operations that must each be either bound or annotated allow_anonymous, never both and never
 // neither: an unowned operation would answer 403 to everyone, and a binding on an anonymous operation never runs. A
@@ -175,7 +175,7 @@ func Seal(contract []string) error {
 	return nil
 }
 
-// checkOwnership reports every contract operation that is neither bound nor anonymous, and every one that is both.
+// checkOwnership reports every served operation that is neither bound nor anonymous, and every one that is both.
 func checkOwnership(contract []string) error {
 	var unowned, both []string
 	for _, op := range contract {

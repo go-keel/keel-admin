@@ -1,13 +1,13 @@
 // Example file: delete the whole file after forking
 
 syntax = "proto3";
-package api.keel_admin.v1;
+package api.admin_app.v1;
 
 import "buf/validate/validate.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 
-option go_package = "github.com/go-keel/keel-admin/api/keel_admin/v1;v1";
+option go_package = "github.com/go-keel/keel-admin/api/admin_app/v1;v1";
 
 // NoticeService is the notice/announcement business reference module:
 // implemented in internal/biz|data|service (the business area, not

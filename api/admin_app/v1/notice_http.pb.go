@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-http v2.9.2
 // - protoc             (unknown)
-// source: keel_admin/v1/notice.proto
+// source: admin_app/v1/notice.proto
 
 package v1
 
@@ -18,14 +18,14 @@ var _ = new(context.Context)
 
 const _ = http.SupportPackageIsVersion3
 
-const OperationNoticeServiceBatchDeleteNotice = "/api.keel_admin.v1.NoticeService/BatchDeleteNotice"
-const OperationNoticeServiceCreateNotice = "/api.keel_admin.v1.NoticeService/CreateNotice"
-const OperationNoticeServiceCreateNoticeCategory = "/api.keel_admin.v1.NoticeService/CreateNoticeCategory"
-const OperationNoticeServiceDeleteNotice = "/api.keel_admin.v1.NoticeService/DeleteNotice"
-const OperationNoticeServiceDeleteNoticeCategory = "/api.keel_admin.v1.NoticeService/DeleteNoticeCategory"
-const OperationNoticeServiceListNotice = "/api.keel_admin.v1.NoticeService/ListNotice"
-const OperationNoticeServiceListNoticeCategory = "/api.keel_admin.v1.NoticeService/ListNoticeCategory"
-const OperationNoticeServiceListNoticeCategoryOptions = "/api.keel_admin.v1.NoticeService/ListNoticeCategoryOptions"
+const OperationNoticeServiceBatchDeleteNotice = "/api.admin_app.v1.NoticeService/BatchDeleteNotice"
+const OperationNoticeServiceCreateNotice = "/api.admin_app.v1.NoticeService/CreateNotice"
+const OperationNoticeServiceCreateNoticeCategory = "/api.admin_app.v1.NoticeService/CreateNoticeCategory"
+const OperationNoticeServiceDeleteNotice = "/api.admin_app.v1.NoticeService/DeleteNotice"
+const OperationNoticeServiceDeleteNoticeCategory = "/api.admin_app.v1.NoticeService/DeleteNoticeCategory"
+const OperationNoticeServiceListNotice = "/api.admin_app.v1.NoticeService/ListNotice"
+const OperationNoticeServiceListNoticeCategory = "/api.admin_app.v1.NoticeService/ListNoticeCategory"
+const OperationNoticeServiceListNoticeCategoryOptions = "/api.admin_app.v1.NoticeService/ListNoticeCategoryOptions"
 
 type NoticeServiceHTTPServer interface {
 	// BatchDeleteNotice Batch delete from the table's multi-select calls this, **not** a frontend loop over DeleteNotice: a loop writes N

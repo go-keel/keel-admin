@@ -13,7 +13,7 @@ adds. `<app>` is the entry directory name.
 |---|---|---|
 | Data scope branches in biz | A fake `perm.ScopeResolver` injecting a fixed `ScopeSpec` | No infrastructure |
 | Data scope filtering in data | The WHERE built by `permdata.ApplyScope`, run on MySQL (`make integration`) | MySQL |
-| Permission registration | Kernel batch + business batches registered together, then `perm.Seal(perm.ContractOperations())` (`cmd/<app>/registration_test.go`) | None |
+| Permission registration | Kernel and business batches registered together, then `perm.Seal` on di.go's HTTP services (`cmd/<app>/registration_test.go`) | None |
 | Middleware order (authentication before principal / authz / audit) | `cmd/<app>/chain_order_test.go`, already written upstream | None |
 
 **Data scope is the branch most worth testing**: the same call must give different results under different specs.
@@ -38,16 +38,21 @@ adds. `<app>` is the entry directory name.
 - **service**: permission checks belong to the authz middleware and the `perm` registry, not to service tests; all a
   service test can check is that the scope it received is passed down unchanged.
 
-**`cmd/<app>/registration_test.go` seals di.go's own `registerPermissions`**, so a new business module needs no change
-there: an unregistered code in the binding table, an unowned endpoint or a cross-module dependency passes each unit
-test on its own and would fail only when the binary starts; this test exists to close that gap. The completeness of the kernel entries for
-permission codes and audit actions is tested here too.
+**`cmd/<app>/registration_test.go` seals di.go's own `registerPermissions` against di.go's own `httpServices`**; a new
+business module passes `nil` there for each parameter it adds to either function (the `httpServices` call in
+`servedOperations`, the `registerPermissions` call in `registerAll`) and changes nothing else: an unregistered code in
+the binding table, an unowned endpoint or a cross-module dependency passes each unit test on its own and would fail only
+when the binary starts; this test exists to close that gap. The completeness of the kernel entries for permission codes
+and audit actions is tested here too.
 
 ## Real-database tests
 
 Business data tests are `*_integration_test.go` files with `//go:build integration`, run by `make integration` with
-`TEST_MYSQL_DSN`. Each package's `openTestDB` creates a fresh database and applies the complete schema of every
-database (`migrations/*/0_schema.sql`, admin and business alike), then drops it; a missing variable fails the test.
+`TEST_MYSQL_DSN`. Each package's `openTestDB` creates a fresh database, applies complete schemas and drops it
+afterwards; a missing variable fails the test. The kernel's copy (`internal/core/sys/data/`) applies only
+`migrations/admin/0_schema.sql`, since kernel tests touch only `sys_*` tables. The business area's copy
+(`internal/data/`) applies every `migrations/*/0_schema.sql`; it is this repository's own, so when a directory holds
+another engine's DDL (Doris, say), narrow its list to the MySQL databases.
 Concurrency tests (locks, unique keys) use the same helper; kernel examples: the concurrent role save and user edit tests in `internal/core/sys/data/`.
 
 ## Frontend tests

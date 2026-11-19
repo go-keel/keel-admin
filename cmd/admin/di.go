@@ -185,33 +185,40 @@ func wireApp(bootstrap *kconfig.Dynamic[conf.Bootstrap]) (*keel.App, func(), err
 	noticeUseCase := nbiz.NewNoticeUseCase(noticeRepo, scopeUseCase, scopeUseCase)
 	noticeService := nsvc.NewNoticeService(noticeUseCase, refRepo, businessZone)
 
-	// Permission kernel assembly: after all services are constructed, register each domain's permission declarations,
-	// then Seal freezes the registry; failing at startup beats finding configuration errors at runtime.
+	// Permission kernel assembly: after all services are constructed, register each domain's permission declarations;
+	// newApp seals the registry, checking every operation of the HTTP services it mounts.
 	registerPermissions(noticeRepo) // Example: delete after forking (the argument only)
-	if err := perm.Seal(perm.ContractOperations()); err != nil {
-		return nil, cleanup, err
-	}
-	// server: the kernel provides a list of registration functions and business modules append theirs; adding a
-	// module adds one line here, without changing internal/server/http.go (kernel, overwritten as a whole).
-	httpRegisters := server.KernelHTTPServers(
-		authService, deptService, roleService, userService,
-		metaService, auditService,
+	services := httpServices(
+		authService, deptService, roleService, userService, metaService, auditService,
+		noticeService, // Example: delete after forking
 	)
-	httpRegisters = append(httpRegisters, nsvc.NoticeHTTP(noticeService)) // Example: delete after forking
-	httpServerRegister := server.NewHTTPServerRegister(httpRegisters...)
 	auditRecorder := server.ProvideAuditRecorder(auditUseCase)
 	sentinelGroup := nsvc.RegisterErrors(service.NewErrorSentinel())
 
-	app, err := newApp(appFactory, httpServerRegister, authUseCase, otpUseCase, auditRecorder, sentinelGroup, brand)
+	app, err := newApp(appFactory, services, authUseCase, otpUseCase, auditRecorder, sentinelGroup, brand)
 	if err != nil {
 		return nil, cleanup, err
 	}
 	return app, cleanup, nil
 }
 
+// httpServices lists the HTTP services: the kernel provides its list and business modules append theirs, so adding a
+// module adds one parameter and one line here, without changing internal/server/http.go (kernel, overwritten as a
+// whole). The same list mounts the routes and names what the permission check covers; cmd/admin/registration_test.go
+// seals it too.
+func httpServices(
+	auth *service.AuthService, dept *service.DeptService, role *service.RoleService, user *service.UserService,
+	meta *service.MetaService, audit *service.AuditService,
+	notice *nsvc.NoticeService, // Example: delete after forking
+) []server.HTTPService {
+	services := server.KernelHTTPServers(auth, dept, role, user, meta, audit)
+	services = append(services, nsvc.NoticeHTTP(notice)) // Example: delete after forking
+	return services
+}
+
 // registerPermissions registers every domain's permission declarations: the kernel batch, then one batch per business
 // module. It is the only place a module registers its permissions; cmd/admin/registration_test.go seals the same
-// registration, so adding a module changes nothing there.
+// registration, and a module passes nil there for each parameter it adds.
 //
 // Groups (display names of business domains and feature modules) are registered separately from permissions: a group
 // is only an organizational relation with no permission meaning, and several business modules may hang under the same

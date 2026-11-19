@@ -381,11 +381,18 @@ articleUseCase := nbiz.NewArticleUseCase(articleRepo, scopeUseCase, scopeUseCase
 articleService := nsvc.NewArticleService(articleUseCase, refRepo)
 
 registerPermissions(articleRepo) // ← pass the repos the new module's ResourceDefs need
-if err := perm.Seal(perm.ContractOperations()); err != nil {
-    return nil, cleanup, err
-}
+services := httpServices(
+    authService, deptService, roleService, userService, metaService, auditService,
+    articleService, // ← route mounting: pass the new module's service
+)
+// newApp (cmd/<app>/main.go, kernel) mounts services and seals the registry against them
 
-httpRegisters = append(httpRegisters, nsvc.ArticleHTTP(articleService)) // route mounting, separate from permission registration
+// httpServices, further down in di.go: the kernel's services plus one line per business module
+func httpServices(/* kernel services */, article *nsvc.ArticleService) []server.HTTPService {
+    services := server.KernelHTTPServers(/* kernel services */)
+    services = append(services, nsvc.ArticleHTTP(article)) // ← a new business module adds this line
+    return services
+}
 
 // registerPermissions, further down in di.go: the only place a module registers its permissions
 func registerPermissions(articleRepo nbiz.ArticleRepo) {
@@ -399,20 +406,22 @@ func registerPermissions(articleRepo nbiz.ArticleRepo) {
   hang their own modules under the same business domain. A missing group registration → `Seal()` fails, and startup
   fails.
 - **Business modules use `perm.MustRegister`, not `perm.MustRegisterKernel`**: the latter is reserved for the kernel
-  batch, and a business code with the `sys:` prefix fails startup. `Seal()`
-  runs once, after all registration, with `perm.ContractOperations()`: an endpoint of the proto with neither a
+  batch, and a business code with the `sys:` prefix fails startup. `Seal()` runs once in `newApp`, after all
+  registration, with every operation of the HTTP services it mounts (`perm.ServedOperations`). One with neither a
   binding nor `allow_anonymous` fails startup (`perm.operation-unowned`), so a module left unregistered is found
-  before it answers 403 to everyone.
-- `cmd/<app>/registration_test.go` seals the same `registerPermissions` (with nil repos), so a new module needs no
-  change there.
+  before it answers 403 to everyone. A proto linked in only to call another service is not mounted, so it is not
+  checked.
+- `cmd/<app>/registration_test.go` seals the same `registerPermissions` (with nil repos) against the same
+  `httpServices` (with nil services): a new module passes `nil` there for each parameter it adds to either function
+  (`registerAll` calls `registerPermissions`, `servedOperations` calls `httpServices`).
 - The other assembly rules (two databases, HTTP registration appended after the kernel's) are in
   `docs/admin/assembly.md`.
 
 ## 8. Domain errors (if needed)
 
-Four changes in one commit: the sentinel in `internal/biz/errors.go`, the reason in `error_reason.proto` (business
-numbers start at 1000), the mapping in `RegisterErrors` in `internal/service/errors.go`, and the text in
-`internal/i18n/app.*.toml`. Details in `docs/admin/errors.md`.
+Four changes in one commit: the sentinel in `internal/biz/errors.go`, the reason in the business package's
+`error_reason.proto` (its name must not reuse a kernel reason's), the mapping in `RegisterErrors` in
+`internal/service/errors.go`, and the text in `internal/i18n/app.*.toml`. Details in `docs/admin/errors.md`.
 
 ## 9. Frontend: menu, permission filtering, pages
 

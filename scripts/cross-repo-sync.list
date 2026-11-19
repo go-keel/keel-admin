@@ -25,7 +25,6 @@ keel-layout GLOSSARY.md seg
 keel-layout scripts/check-doc-links.sh
 keel-layout scripts/check-cross-repo-sync.sh
 keel-layout scripts/sync-proto.sh
-keel-layout buf.yaml
 keel-layout docs/adr/layout-0001-template-upgrade-strategy.md
 keel-layout docs/adr/layout-0002-verbatim-shared-docs-and-segmented-entry-files.md
 keel-layout docs/adr/layout-0003-generated-artifacts-committed.md
@@ -67,14 +66,24 @@ keel-layout deploy/nginx/site.conf.example
 # docs/admin is a directory entry: the two file sets must match as well; a derived repository puts its own docs
 # in another directory under docs/.
 #keel-admin docs/admin
-# The kernel trees (internal/core, internal/server, the admin database's schema migrations/admin, the kernel copy
-# internal/i18n/sys.{en,zh-CN}.toml, and the frontend kernel, scoped as in the frontend directory rules of AGENTS.md) differ from upstream only by the module path and proto package segment make rename
-# replaces, so they are compared after norm normalization.
+# The kernel (its contracts in api/keel_admin/v1, internal/core, internal/server, the admin database's schema
+# migrations/admin, the kernel copy internal/i18n/sys.{en,zh-CN}.toml, and the frontend kernel, scoped as in the
+# frontend directory rules of AGENTS.md) differs from upstream only by the module path make rename replaces, so it is
+# compared after norm normalization. The kernel contracts are listed file by file: their generated *.pb.go are
+# regenerated with make all, never copied (a renamed module path would corrupt their descriptors).
 # components/ui/ is CLI-generated and derived repositories may add components there, so it is not compared.
 # Kernel code carries no shared-file header marker (that is the form for docs and scripts under docs/ and
 # scripts/), so lint-strict cannot flag a missing registration; a new whole directory in a kernel tree relies on
 # a line added here by hand.
 # scripts/rename.sh is deliberately not registered: each repository extends it as needed (this one added CMD).
+#keel-admin api/keel_admin/v1/audit.proto norm
+#keel-admin api/keel_admin/v1/auth.proto norm
+#keel-admin api/keel_admin/v1/dept.proto norm
+#keel-admin api/keel_admin/v1/error_reason.proto norm
+#keel-admin api/keel_admin/v1/meta.proto norm
+#keel-admin api/keel_admin/v1/role.proto norm
+#keel-admin api/keel_admin/v1/types.proto norm
+#keel-admin api/keel_admin/v1/user.proto norm
 #keel-admin internal/core norm
 #keel-admin internal/server norm
 #keel-admin migrations/admin norm

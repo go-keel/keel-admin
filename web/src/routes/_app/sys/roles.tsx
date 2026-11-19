@@ -17,7 +17,7 @@ import { RoleDeleteDialog, RoleDetail, RoleForm } from './-roles';
 
 export const Route = createFileRoute('/_app/sys/roles')({
   // root-only: roles are the permission surface; seeing or editing them is touching the door to privilege escalation
-  // (admin-0013).
+  // (docs/admin/assembly.md, "Kernel boundaries").
   staticData: { titleKey: 'nav.roles', root: true },
   ...roleList.route,
   component: RolesPage,

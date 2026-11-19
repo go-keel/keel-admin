@@ -61,3 +61,26 @@ function isDescendant<T extends FlatNode>(
   }
   return false;
 }
+
+/**
+ * A flat list in display order for one-column selectors: parents before their children, depth first, each node with
+ * its depth. Assembled with buildTree, so orphans are listed too.
+ */
+export function flattenTree<T extends FlatNode>(
+  nodes: readonly T[],
+  rootId = '0',
+): { node: T; depth: number }[] {
+  const out: { node: T; depth: number }[] = [];
+  const walk = (level: TreeNode<T>[], depth: number) => {
+    for (const n of level) {
+      out.push({ node: n, depth });
+      walk(n.children, depth + 1);
+    }
+  };
+  walk(buildTree(nodes, rootId), 0);
+  return out;
+}
+
+/** Indents a label by depth: two no-break spaces per level, the same in every UI language and never collapsed. */
+export const indentLabel = (label: string, depth: number): string =>
+  `${'\u00a0\u00a0'.repeat(depth)}${label}`;

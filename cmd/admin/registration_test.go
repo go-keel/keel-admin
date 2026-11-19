@@ -11,6 +11,7 @@ import (
 	"github.com/go-keel/keel-admin/internal/core/sys"
 	"github.com/go-keel/keel-admin/internal/core/sys/service"
 	"github.com/go-keel/keel-admin/internal/i18n"
+	"github.com/go-keel/keel-admin/internal/server"
 	"github.com/go-keel/keel/pkg/redact"
 )
 
@@ -18,6 +19,20 @@ import (
 func registerAll() {
 	// Example: delete after forking (the argument only). A nil repo is safe: Seal never calls DeptOccupancy.
 	registerPermissions(nil)
+}
+
+// servedOperations lists what newApp would seal for di.go's own HTTP services. Nil services are safe: only the
+// names are read.
+func servedOperations(t *testing.T) []string {
+	t.Helper()
+	ops, err := perm.ServedOperations(server.ServiceNames(httpServices(
+		nil, nil, nil, nil, nil, nil,
+		nil, // Example: delete after forking
+	))...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ops
 }
 
 // registerKernel registers only the kernel batch: message completeness is checked only for the kernel; whether
@@ -35,7 +50,7 @@ func TestKernelAndBusinessRegistrationSeals(t *testing.T) {
 		defer perm.ResetForTest()
 
 		registerAll()
-		if err := perm.Seal(perm.ContractOperations()); err != nil {
+		if err := perm.Seal(servedOperations(t)); err != nil {
 			t.Fatalf("Seal on the real di.go registration order = %v, want nil", err)
 		}
 	})
@@ -51,7 +66,7 @@ func TestKernelAndBusinessRegistrationSeals(t *testing.T) {
 		// Same shape as nsvc.NoticeBindings, but one binding uses a code NoticePerms does not register: a mistyped
 		// code or a missed rename must fail here in Seal, not compile and then panic at startup.
 		brokenNoticeBindings := perm.Bindings{
-			"/api.keel_admin.v1.NoticeService/ListNotice": {Codes: []perm.Code{"notice:ghost"}},
+			"/api.admin_app.v1.NoticeService/ListNotice": {Codes: []perm.Code{"notice:ghost"}},
 		}
 		perm.MustRegister(nbiz.NoticePerms, brokenNoticeBindings, nbiz.NoticeResourceDefs(nil))
 

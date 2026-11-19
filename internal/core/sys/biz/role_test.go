@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/go-keel/keel-admin/internal/core/perm"
@@ -30,6 +31,7 @@ func TestMain(m *testing.M) {
 		[]perm.Permission{
 			{Code: "sys:dept:view"},
 			{Code: "sys:account:view"},
+			{Code: "sys:account:update", Deps: []perm.Code{"sys:account:view"}},
 		},
 		nil,
 		[]perm.ResourceDef{
@@ -105,7 +107,7 @@ func (f *fakeRoleRepo) List(_ context.Context, filter RoleFilter, offset, limit 
 		out = append(out, &RoleListRow{
 			ID: r.ID, Code: r.Code, Name: r.Name,
 			Sensitive: r.Sensitive, ForceOTP: r.ForceOTP, Status: r.Status,
-			PermCount: int32(len(r.Perms)),
+			Perms: r.Perms,
 		})
 	}
 	return out, total, nil
@@ -228,8 +230,9 @@ func TestRoleUseCase_Create_LookupErrorStops(t *testing.T) {
 }
 
 // Sensitive only means "non-root users cannot assign it"; it does not block root from updating or deleting
-// (rejecting Update/Delete for everyone including root was a second meaning that was rejected, see ADR
-// admin-0015). This test locks that in; do not add it back.
+// (rejecting Update/Delete for everyone including root was a second meaning that was rejected: only root can change
+// roles at all, with a one-time code and an audit record, so a lock would add an unlock endpoint and protect nothing).
+// This test locks that in; do not add it back.
 func TestRoleUseCase_Sensitive_DoesNotBlockUpdateOrDelete(t *testing.T) {
 	repo := newFakeRoleRepo()
 	uc := NewRoleUseCase(repo, fakeARBAC{}, &fakeCacheInvalidator{})
@@ -321,8 +324,8 @@ func TestRoleUseCase_Update_ReplacesEverything(t *testing.T) {
 }
 
 // Retired permission codes (old roles in the database may still hold them) must not make an edit fail: the edit
-// silently drops dead codes, keeps the codes that still exist and saves as usual.
-func TestRoleUseCase_Update_DropsUnknownPerms(t *testing.T) {
+// silently drops dead codes, keeps the codes that still exist with their deps and saves as usual.
+func TestRoleUseCase_Update_StoresKnownPermsWithDeps(t *testing.T) {
 	repo := newFakeRoleRepo()
 	uc := NewRoleUseCase(repo, fakeARBAC{}, &fakeCacheInvalidator{})
 	ctx := context.Background()
@@ -330,16 +333,39 @@ func TestRoleUseCase_Update_DropsUnknownPerms(t *testing.T) {
 	r, _ := uc.Create(ctx, "ops", RoleUpdate{Name: "Ops", ForceOTP: 0, Sensitive: 0, Status: 1})
 	got, err := uc.Update(ctx, r.ID, RoleUpdate{
 		Name: "Renamed", Status: 1,
-		Perms: []string{"sys:account:view", "sys:nope:nope"},
+		Perms: []string{"sys:account:update", "sys:nope:nope"},
 	})
 	if err != nil {
 		t.Fatalf("expected unknown perm to be dropped, not error: %v", err)
 	}
-	if len(got.Perms) != 1 || got.Perms[0] != "sys:account:view" {
-		t.Fatalf("expected only known perm kept, got %v", got.Perms)
+	// The dead code is dropped and the deps of the kept one are stored with it.
+	if want := []string{"sys:account:update", "sys:account:view"}; !slices.Equal(got.Perms, want) {
+		t.Fatalf("got perms %v, want %v", got.Perms, want)
 	}
 	if repo.roles[r.ID].Name != "Renamed" {
 		t.Fatalf("write should proceed after dropping dead code: %s", repo.roles[r.ID].Name)
+	}
+}
+
+// A role saved before deps were stored still shows what it grants: the preview and the list count expand deps on read.
+func TestRoleUseCase_ReadsExpandDepsOfOldRoles(t *testing.T) {
+	repo := newFakeRoleRepo()
+	uc := NewRoleUseCase(repo, fakeARBAC{}, &fakeCacheInvalidator{})
+	ctx := context.Background()
+	r, _ := uc.Create(ctx, "ops", RoleUpdate{Name: "Ops", Status: 1})
+	repo.roles[r.ID].Perms = []string{"sys:account:update"} // as stored before
+
+	want := []string{"sys:account:update", "sys:account:view"}
+	got, err := uc.PermissionsOf(ctx, &Actor{UserID: 1, IsRoot: true}, r.ID)
+	if err != nil || !slices.Equal(got, want) {
+		t.Fatalf("PermissionsOf = %v (err %v), want %v", got, err, want)
+	}
+	if r, err := uc.Get(ctx, r.ID); err != nil || !slices.Equal(r.Perms, want) {
+		t.Fatalf("Get perms = %v (err %v), want %v", r.Perms, err, want)
+	}
+	rows, _, err := uc.List(ctx, RoleFilter{}, 0, 10)
+	if err != nil || len(rows) != 1 || !slices.Equal(rows[0].Perms, want) {
+		t.Fatalf("List perms = %+v (err %v), want %v", rows, err, want)
 	}
 }
 

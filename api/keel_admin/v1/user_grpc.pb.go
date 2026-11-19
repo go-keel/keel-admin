@@ -40,9 +40,9 @@ type UserServiceClient interface {
 	ListUser(ctx context.Context, in *ListUserRequest, opts ...grpc.CallOption) (*ListUserReply, error)
 	// User options (the user filter of the login log): the number of users keeps growing with the business, so they
 	// are fetched in batches by keyword (see "option set" in GLOSSARY.md). The threshold follows use and shares the
-	// login log's code; it sees all users with no data scope, consistent with the login log itself (ADR admin-0008,
-	// admin-0017). Must come before GetUser (/users/options and /users/{id} have the same shape, and registration
-	// order decides which matches first).
+	// login log's code; it sees all users with no data scope, consistent with the login log itself (admin-0008,
+	// docs/admin/permission-model/sessions-and-audit.md). Must come before GetUser (/users/options and /users/{id} have
+	// the same shape, and registration order decides which matches first).
 	ListUserOptions(ctx context.Context, in *ListUserOptionsRequest, opts ...grpc.CallOption) (*ListUserOptionsReply, error)
 	// User detail: the source of the edit form's initial values. A list row is a snapshot; editing values that are
 	// written back on submit, such as the IP allowlist, from a snapshot overwrites concurrent changes. See AGENTS.md
@@ -192,9 +192,9 @@ type UserServiceServer interface {
 	ListUser(context.Context, *ListUserRequest) (*ListUserReply, error)
 	// User options (the user filter of the login log): the number of users keeps growing with the business, so they
 	// are fetched in batches by keyword (see "option set" in GLOSSARY.md). The threshold follows use and shares the
-	// login log's code; it sees all users with no data scope, consistent with the login log itself (ADR admin-0008,
-	// admin-0017). Must come before GetUser (/users/options and /users/{id} have the same shape, and registration
-	// order decides which matches first).
+	// login log's code; it sees all users with no data scope, consistent with the login log itself (admin-0008,
+	// docs/admin/permission-model/sessions-and-audit.md). Must come before GetUser (/users/options and /users/{id} have
+	// the same shape, and registration order decides which matches first).
 	ListUserOptions(context.Context, *ListUserOptionsRequest) (*ListUserOptionsReply, error)
 	// User detail: the source of the edit form's initial values. A list row is a snapshot; editing values that are
 	// written back on submit, such as the IP allowlist, from a snapshot overwrites concurrent changes. See AGENTS.md

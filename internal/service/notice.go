@@ -6,13 +6,13 @@ import (
 	"context"
 	"time"
 
-	v1 "github.com/go-keel/keel-admin/api/keel_admin/v1"
+	v1 "github.com/go-keel/keel-admin/api/admin_app/v1"
 	"github.com/go-keel/keel-admin/internal/biz"
 	"github.com/go-keel/keel-admin/internal/core/timefmt"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-// NoticeService implements api.keel_admin.v1.NoticeService — the notice/announcement
+// NoticeService implements api.admin_app.v1.NoticeService — the notice/announcement
 // business reference module (business area: internal/biz|data|service).
 type NoticeService struct {
 	v1.UnsafeNoticeServiceServer

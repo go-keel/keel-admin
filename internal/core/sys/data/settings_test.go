@@ -5,13 +5,13 @@ import (
 	"testing"
 )
 
-// TestDecodeSettingsIgnoresUnknownFields guards the promise of the field-number ranges: when a derived repo adds a
-// field in the range from 100, a version that does not know it must still read the settings after a rollback.
+// TestDecodeSettingsIgnoresUnknownFields guards rollbacks: settings written by a newer kernel with a field this
+// version does not know must still be read.
 //
 // This is tested in the data layer, not in biz: JSON decoding happens only here, and biz's fake repo works on the
 // in-memory UserSettings struct throughout, never reaching serialisation.
 func TestDecodeSettingsIgnoresUnknownFields(t *testing.T) {
-	got := decodeSettings(`{"favoriteMenus":["/sys/users"],"derivedRepoField":{"a":1}}`)
+	got := decodeSettings(`{"favoriteMenus":["/sys/users"],"newerKernelField":{"a":1}}`)
 	if want := []string{"/sys/users"}; !slices.Equal(got.FavoriteMenus, want) {
 		t.Fatalf("got %v, want %v", got.FavoriteMenus, want)
 	}

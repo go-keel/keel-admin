@@ -12,9 +12,8 @@ import (
 const (
 	MaxFavorites       = 30
 	MaxFavoritePathLen = 128
-	// MaxSettingsBytes is the limit on the whole serialized settings, checked by the data layer before writing. The
-	// kernel's fields cannot reach it (30 × 128 is under 4 KB); it stops what a derived repo appends in field numbers
-	// from 100 up.
+	// MaxSettingsBytes is the limit on the whole serialized settings, checked by the data layer before writing; a
+	// guard against a future field without its own limit (favorites stay under 4 KB).
 	MaxSettingsBytes = 64 << 10
 )
 

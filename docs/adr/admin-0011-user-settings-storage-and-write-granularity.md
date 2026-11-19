@@ -26,8 +26,9 @@ Three shape constraints on user settings:
 
 1. **One `TEXT` column holding the JSON of a structured object**, encoded and decoded on the server-language side;
    not the database's JSON column type (reasons in `docs/practices/database.md`, "Structured data");
-2. **field numbers are split into ranges**: the low range belongs to the kernel, the high range to derived repos'
-   additions; parsing ignores unknown fields;
+2. **the message belongs to the kernel alone**: a derived repository keeps settings of its own in a business table
+   keyed by user ID, written item by item the same way; parsing ignores unknown fields, so a rollback reads the
+   settings a newer version wrote;
 3. **writes are item by item, never a whole-object overwrite**.
 
 ## Why writes are item by item

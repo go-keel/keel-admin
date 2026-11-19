@@ -282,9 +282,8 @@ message ProfileReply {
 // UserSettings are personal settings that follow the account, stored as JSON in the sys_user.settings column
 // (MEDIUMTEXT, not MySQL's JSON column type, see docs/practices/database.md, types).
 //
-// **Field numbers 1–99 belong to the kernel; derived repos append from 100.** Each side adds fields in its own range,
-// so a template upgrade overwriting this message's whole file cannot collide; the server ignores unknown fields when
-// parsing, so after a rollback to an older version new fields are simply not read, with no error.
+// Kernel only: a derived repo keeps settings of its own in a business table keyed by user ID. The server ignores
+// unknown fields when parsing, so after a rollback to an older version new fields are simply not read, with no error.
 //
 // What belongs here: choices that follow the account and serve only one's own UI. What does not: data the server
 // queries across users, security-related data that must be audited, and business system data; each has its own

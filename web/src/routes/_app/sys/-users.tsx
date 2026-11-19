@@ -47,6 +47,7 @@ import {
   optionalPhone,
   useDetailForm,
 } from '@/lib/form';
+import { flattenTree, indentLabel } from '@/lib/tree';
 import {
   assignableRolesQueryOptions,
   deptOptionsQueryOptions,
@@ -300,13 +301,13 @@ export function UserForm({
                 <SelectContent>
                   <SelectGroup>
                     <SelectItem value="0">{t('users.noDept')}</SelectItem>
-                    {depts.map((d) => (
+                    {flattenTree(depts).map(({ node: d, depth }) => (
                       <SelectItem
                         key={d.id}
                         value={d.id ?? ''}
                         disabled={d.disabled}
                       >
-                        {d.name}
+                        {indentLabel(d.name ?? '', depth)}
                       </SelectItem>
                     ))}
                   </SelectGroup>

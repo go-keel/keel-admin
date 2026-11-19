@@ -6,12 +6,10 @@ import "errors/errors.proto";
 
 option go_package = "github.com/go-keel/keel-admin/api/keel_admin/v1;v1";
 
-// Separate number ranges: **the kernel uses numbers below 1000, business reasons start at 1000** (AppReasonMin in
-// `internal/core/seal`, checked by the seal test). Within a range, numbers are tiered by meaning: 10 authentication,
-// 20 OTP, 100 not found, 110 conflict, 120 permission boundary; business reasons may reuse the same tiers offset by
-// +1000 for convenience, but that is not a rule.
-// Without separate ranges, upstream and derived repos would both take the next number at the end of the same tier,
-// and a collision would only be a matter of time.
+// The kernel's reasons. Business reasons live in the business package's own error_reason.proto, never here: this
+// file is kernel and is taken from upstream whole. A reason's name is what callers see, so business reason names must
+// not reuse a kernel name. Numbers are tiered by meaning: 10 authentication, 20 OTP, 100 not found, 110 conflict,
+// 120 permission boundary.
 enum ErrorReason {
   option (errors.default_code) = 500;
 
@@ -42,14 +40,6 @@ enum ErrorReason {
   DEPT_NOT_FOUND = 100 [(errors.code) = 404];
   ROLE_NOT_FOUND = 101 [(errors.code) = 404];
   AUDIT_LOG_NOT_FOUND = 102 [(errors.code) = 404];
-  // Example: delete after forking
-  // NOTICE_NOT_FOUND: the notice example business module (internal/biz|data|service, business area, not core/sys):
-  // the id does not exist or is outside the actor's data scope, indistinguishably.
-  NOTICE_NOT_FOUND = 1100 [(errors.code) = 404];
-  // Example: delete after forking
-  // NOTICE_CATEGORY_NOT_FOUND: the category id does not exist or is outside the actor's category grants,
-  // indistinguishably (existence does not leak).
-  NOTICE_CATEGORY_NOT_FOUND = 1101 [(errors.code) = 404];
 
   // Conflict
   // DEPT_NOT_EMPTY: only an empty department can be deleted; all three kinds of occupancy (child departments, users,
@@ -60,13 +50,6 @@ enum ErrorReason {
   // DEPT_DISABLED: a disabled department cannot be chosen as a user's department; its existing members are not
   // affected.
   DEPT_DISABLED = 113 [(errors.code) = 409];
-  // Example: delete after forking
-  // NOTICE_CATEGORY_IN_USE: the category still has notices and cannot be deleted.
-  NOTICE_CATEGORY_IN_USE = 1110 [(errors.code) = 412];
-  // Example: delete after forking
-  // NOTICE_CATEGORY_EXISTS: duplicate category name (categories are explicit-assignment options; equal names could not
-  // be told apart).
-  NOTICE_CATEGORY_EXISTS = 1111 [(errors.code) = 409];
 
   // Permission boundary
   NOT_ROOT = 120 [(errors.code) = 403];

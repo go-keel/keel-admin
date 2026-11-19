@@ -11,6 +11,7 @@ import (
 	"github.com/go-keel/keel-admin/internal/conf"
 	"github.com/go-keel/keel-admin/internal/core/audit"
 	amw "github.com/go-keel/keel-admin/internal/core/middleware"
+	"github.com/go-keel/keel-admin/internal/core/perm"
 	"github.com/go-keel/keel-admin/internal/core/sys/biz"
 	"github.com/go-keel/keel-admin/internal/i18n"
 	"github.com/go-keel/keel-admin/internal/server"
@@ -51,7 +52,7 @@ func main() {
 
 func newApp(
 	factory *keel.AppFactory,
-	register api.HTTPServerRegister,
+	services []server.HTTPService,
 	authUC *biz.AuthUseCase,
 	otpUC *biz.OTPUseCase,
 	auditRec audit.Recorder,
@@ -77,7 +78,16 @@ func newApp(
 	// The SPA always goes last: it catches everything with HandlePrefix("/"), and gorilla mux matches in registration
 	// order; placed before the business raw routes it would shadow them entirely, and a webhook would get the SPA's 404.
 	streams := append(append([]api.StreamRegister{}, streamRegisters...), server.RegisterSPA(brand))
-	httpSrv, err := api.NewHTTPServer(httpCfg, register, chain, streams...)
+	// Seal freezes the permission registry di.go filled and checks that every operation of the mounted services is
+	// bound or anonymous; failing at startup beats an endpoint that answers 403 to everyone.
+	served, err := perm.ServedOperations(server.ServiceNames(services)...)
+	if err != nil {
+		return nil, err
+	}
+	if err := perm.Seal(served); err != nil {
+		return nil, err
+	}
+	httpSrv, err := api.NewHTTPServer(httpCfg, server.NewHTTPServerRegister(services...), chain, streams...)
 	if err != nil {
 		return nil, err
 	}

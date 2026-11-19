@@ -20,7 +20,7 @@ func (f *fakeOTPResetter) Reset(_ context.Context, userID int64) error {
 // TestSelfManagementMatrix runs every action through three scenarios: "non-root on itself", "root on itself"
 // and "target not manageable". All management actions fetch their target from the same "fetch target"
 // entry; add a new action to this table together with its tier, so neither the self rules nor the ARBAC
-// boundary is missed (see ADR admin-0014). The tier is written in
+// boundary is missed (docs/admin/assembly.md, "Kernel boundaries"). The tier is written in
 // the table: a glance at name+tier shows which tier an action belongs to, and the expected result follows
 // from the tier instead of a separate assertion per row.
 func TestSelfManagementMatrix(t *testing.T) {

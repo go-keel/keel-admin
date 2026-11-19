@@ -105,6 +105,12 @@ is **orthogonal** to the classification in §4.1.1; do not mix them:
 So `:enable` depending on `[:add, :edit]` actually means "granting enable also grants add and edit", which is usually
 not the intent; to say "enable goes one step beyond edit", write a chain (`:enable` → `:edit` → `:view`).
 
+**Saving a role stores the closure too**: the codes still registered plus all their deps, so a role reads back as what
+it grants. Roles saved before are expanded wherever they are read: `Effective()` at grant time, and the same way the
+role detail (editor and read-only view), the list's count and the permission preview before assigning. The cost: once
+stored, a dep is an explicit grant; when a later version removes a dep from a code, roles saved before keep it until
+someone unticks it.
+
 The UI therefore cannot draw deps as a tree: a tree node has only one parent, and picking one hides the other
 prerequisites as if they did not exist. The UI expresses deps with automatic ticking + a "N prerequisites" note +
 locking of upstream codes (§4.5).
@@ -133,8 +139,9 @@ Each module carries its own permission declaration file and registers it explici
 same. The code is in `docs/admin/permission.md`: step 2 (code constants, groups, Perms metadata), step 5 (bindings) and
 step 7 (registration in di.go). Groups are registered before permissions, because `Seal()` requires full coverage; the
 kernel batch goes through `perm.MustRegisterKernel`, the only call that may use the `sys` business domain; business
-modules use `perm.MustRegister`, one line per domain; `perm.Seal(perm.ContractOperations())` runs once after all
-registration and returns an error, after which the registry is read-only.
+modules use `perm.MustRegister`, one line per domain; `perm.Seal` runs once in
+`newApp` after all registration, on every operation of the mounted HTTP services, and returns an error, after which
+the registry is read-only.
 
 Division of labour: **biz = code constants + Permission metadata + group names** (the list of domain capabilities,
 transport-agnostic); **service = operation → code binding** (the transport mapping). Compile-time protection on both
@@ -156,7 +163,7 @@ runtime:
 | deps cycles | A dependency cycle |
 | binding references | A binding that references an unregistered code |
 | Resource derivation | A `Via` parent resource that does not exist, or a parent that is itself derived (only one level allowed) |
-| Operation ownership | A proto contract operation with neither a binding nor `allow_anonymous`, or with both |
+| Operation ownership | An operation of a mounted HTTP service with neither a binding nor `allow_anonymous`, or with both |
 
 **Dependencies are not limited by business domain or function module.** The business domain and module of a
 three-segment code organize groups; they are not dependency boundaries: any registered permission code may be a

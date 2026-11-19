@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"testing"
 	"time"
 
@@ -15,9 +14,10 @@ import (
 	"gorm.io/gorm"
 )
 
-// openTestDB creates a fresh database on the MySQL server in TEST_MYSQL_DSN, applies the complete schema of every
-// database (migrations/*/0_schema.sql, as an operator builds a new database), and drops the database afterwards.
-// A missing variable fails the test.
+// openTestDB creates a fresh database on the MySQL server in TEST_MYSQL_DSN, applies the admin database's complete
+// schema (migrations/admin/0_schema.sql, as an operator builds a new database), and drops the database afterwards.
+// A missing variable fails the test. Kernel tests touch only sys_* tables, so the business directories, which may
+// hold another engine's DDL, are not loaded here.
 func openTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	dsn := os.Getenv("TEST_MYSQL_DSN")
@@ -58,19 +58,12 @@ func openTestDB(t *testing.T) *gorm.DB {
 			t.Fatal("go.mod not found above the test package")
 		}
 	}
-	scripts, err := filepath.Glob(filepath.Join(root, "migrations", "*", "0_schema.sql"))
-	if err != nil || len(scripts) == 0 {
-		t.Fatalf("no migrations/*/0_schema.sql found (%v)", err)
+	b, err := os.ReadFile(filepath.Join(root, "migrations", "admin", "0_schema.sql"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	sort.Strings(scripts)
-	for _, s := range scripts {
-		b, err := os.ReadFile(s)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := db.Exec(string(b)).Error; err != nil {
-			t.Fatalf("apply %s: %v", filepath.Base(s), err)
-		}
+	if err := db.Exec(string(b)).Error; err != nil {
+		t.Fatalf("apply migrations/admin/0_schema.sql: %v", err)
 	}
 	return db
 }

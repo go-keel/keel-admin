@@ -18,7 +18,9 @@ in new files routed from outside the segments.
 
 A change is done when `make check` passes; run it before every commit. After changing data-layer code or a migration,
 also run `make integration`. Generated files (`*.pb.go`, `*_grpc.pb.go`, `*_http.pb.go`,
-`*_errors.pb.go`, `openapi.yaml`, `third_party/`) come only from `make all`; never edit them, never `sed` a `.pb.go`.
+`*_errors.pb.go`, `openapi.yaml`, and `third_party/keel|protovalidate|googleapis|kratos`) come only from `make all`;
+never edit them, never `sed` a `.pb.go`. Another imported `.proto` goes, vendored at a fixed version, into a directory
+of your own under `third_party/`, declared as a module in `buf.yaml`.
 
 ## Read before you act
 
@@ -101,14 +103,15 @@ followed, not rewritten.
 
 **The admin's convention docs are in `docs/admin/`**, shared like `docs/guides/` and `docs/practices/`. A page named
 like a guide is that guide's admin supplement: read both. `<app>` is the entry directory under `cmd/`, `<pkg>` the
-proto package directory under `api/`.
+business proto package directory under `api/` (beside the kernel's `keel_admin`).
 
 ### Shape
 
 - **One binary**: `cmd/<app>` serves the proto HTTP endpoints and the embedded React SPA (`web/`) on one HTTP server;
   no gRPC, event consumer or task entry until one is added (`docs/admin/assembly.md`).
-- **The kernel is read-only for derived repositories**: backend `internal/core/` and `internal/server/`, the admin
-  database's complete schema `migrations/admin/`, and the frontend kernel (`docs/admin/shell.md`, "Frontend zones").
+- **The kernel is read-only for derived repositories**: backend `internal/core/` and `internal/server/`, the kernel's
+  contracts `api/keel_admin/v1/`, the admin database's complete schema `migrations/admin/`, and the frontend kernel
+  (`docs/admin/shell.md`, "Frontend zones").
 - **Business modules live in the business area** (`internal/biz|data|service/`, `web/src/routes/_app/` outside `sys/`,
   `web/src/locales/app/`), never in the kernel; their registration is appended in `internal/service/http.go`.
 
@@ -140,12 +143,13 @@ proto package directory under `api/`.
 
 ### Ask before acting (admin additions)
 
-Point 5 of the segment above covers the business areas listed in "Shape". Two more:
+Point 5 of the segment above covers the business areas listed in "Shape"; under `api/` only the business package
+`api/<pkg>/` is business area. Two more:
 
-6. **Changing the kernel** (`internal/core/`, `internal/server/`, `migrations/admin/`, the frontend kernel, including new
-   kernel files): upgrading overwrites the kernel whole, so a local change is lost on the next upgrade; report the
-   need upstream instead. Adding components to `web/src/components/ui/` with the shadcn CLI
-   needs no question (a new third-party dependency still does).
+6. **Changing the kernel** (`internal/core/`, `internal/server/`, `api/keel_admin/v1/`, `migrations/admin/`, the
+   frontend kernel, including new kernel files): upgrading overwrites the kernel whole, so a local change is lost on
+   the next upgrade; report the need upstream instead. Adding components to `web/src/components/ui/` with the shadcn
+   CLI needs no question (a new third-party dependency still does).
 7. **A custom UI implementation** where shadcn/ui components and their combinations fall short: explain why, and wait
    for approval (`docs/admin/pages.md`, "Controls and sizes").
 
@@ -169,7 +173,7 @@ them (`README.md`, "Delete the examples"; files are marked `Example file: delete
 
 - **Notices (notices and categories)**: a complete business module through endpoints, permission codes, data scope
   (categories are an explicitly assigned resource; notices are gated by `category_id`), audit and frontend pages.
-  Backend `api/keel_admin/v1/notice.proto` → `internal/service/notice.go`, `internal/service/notice_perm.go` →
+  Backend `api/admin_app/v1/notice.proto` → `internal/service/notice.go`, `internal/service/notice_perm.go` →
   `internal/biz/notice.go` → `internal/data/notice.go`, `internal/data/model.go`; tests `internal/biz/notice_test.go`,
   `internal/data/notice_integration_test.go` (MySQL, under `make integration`); table script
   `migrations/business/0_schema.sql`; frontend `web/src/routes/_app/notices/` and the two notice

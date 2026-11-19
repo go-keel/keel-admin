@@ -4,7 +4,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             (unknown)
-// source: keel_admin/v1/notice.proto
+// source: admin_app/v1/notice.proto
 
 package v1
 
@@ -22,14 +22,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	NoticeService_ListNotice_FullMethodName                = "/api.keel_admin.v1.NoticeService/ListNotice"
-	NoticeService_CreateNotice_FullMethodName              = "/api.keel_admin.v1.NoticeService/CreateNotice"
-	NoticeService_DeleteNotice_FullMethodName              = "/api.keel_admin.v1.NoticeService/DeleteNotice"
-	NoticeService_BatchDeleteNotice_FullMethodName         = "/api.keel_admin.v1.NoticeService/BatchDeleteNotice"
-	NoticeService_ListNoticeCategoryOptions_FullMethodName = "/api.keel_admin.v1.NoticeService/ListNoticeCategoryOptions"
-	NoticeService_ListNoticeCategory_FullMethodName        = "/api.keel_admin.v1.NoticeService/ListNoticeCategory"
-	NoticeService_CreateNoticeCategory_FullMethodName      = "/api.keel_admin.v1.NoticeService/CreateNoticeCategory"
-	NoticeService_DeleteNoticeCategory_FullMethodName      = "/api.keel_admin.v1.NoticeService/DeleteNoticeCategory"
+	NoticeService_ListNotice_FullMethodName                = "/api.admin_app.v1.NoticeService/ListNotice"
+	NoticeService_CreateNotice_FullMethodName              = "/api.admin_app.v1.NoticeService/CreateNotice"
+	NoticeService_DeleteNotice_FullMethodName              = "/api.admin_app.v1.NoticeService/DeleteNotice"
+	NoticeService_BatchDeleteNotice_FullMethodName         = "/api.admin_app.v1.NoticeService/BatchDeleteNotice"
+	NoticeService_ListNoticeCategoryOptions_FullMethodName = "/api.admin_app.v1.NoticeService/ListNoticeCategoryOptions"
+	NoticeService_ListNoticeCategory_FullMethodName        = "/api.admin_app.v1.NoticeService/ListNoticeCategory"
+	NoticeService_CreateNoticeCategory_FullMethodName      = "/api.admin_app.v1.NoticeService/CreateNoticeCategory"
+	NoticeService_DeleteNoticeCategory_FullMethodName      = "/api.admin_app.v1.NoticeService/DeleteNoticeCategory"
 )
 
 // NoticeServiceClient is the client API for NoticeService service.
@@ -417,7 +417,7 @@ func _NoticeService_DeleteNoticeCategory_Handler(srv interface{}, ctx context.Co
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var NoticeService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "api.keel_admin.v1.NoticeService",
+	ServiceName: "api.admin_app.v1.NoticeService",
 	HandlerType: (*NoticeServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -454,5 +454,5 @@ var NoticeService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "keel_admin/v1/notice.proto",
+	Metadata: "admin_app/v1/notice.proto",
 }

@@ -11,9 +11,9 @@ only what an admin built on keel-admin adds. `<pkg>` is the proto package direct
 
 ## Adding a domain error: four places
 
-1. Add the reason in `api/<pkg>/v1/error_reason.proto`; **business reasons are numbered from 1000**: the kernel
-   takes everything below 1000, and keeping the ranges apart lets both sides append without collisions.
-   → `make proto`.
+1. Add the reason in the business package's `api/<pkg>/v1/error_reason.proto`, never in the kernel's
+   `api/keel_admin/v1/error_reason.proto` (kernel, taken from upstream whole). **A business reason's name must not
+   reuse a kernel reason's**: callers and the frontend's generated reason type see only the name. → `make proto`.
 2. Add the sentinel in `internal/biz/errors.go`.
 3. Add the mapping in `RegisterErrors` in `internal/service/errors.go`. The business area **appends its mappings to
    the kernel's sentinel group** instead of building its own: in di.go,
@@ -108,7 +108,7 @@ and how to fix it, and editing the kernel to silence the error breaks that rule 
 
 ## Anti-patterns
 
-- ❌ Numbering a business reason below 1000.
+- ❌ Adding a business reason to the kernel's `error_reason.proto`, or naming one like a kernel reason.
 - ❌ The business area importing the kernel's `core/sys/service` to reuse its translation helper.
 - ❌ The frontend dispatching on the HTTP status, or keeping a second copy of a reason's message in the frontend.
 - ❌ A page using `useSuspenseQuery`, or `ensureQueryData` in a `loader`: one failed request replaces the whole page

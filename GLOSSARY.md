@@ -153,7 +153,7 @@ _Avoid_: wrapping the server's whole `Handler`
 
 These terms are shared by every admin built on keel-admin, on the same footing as the segment above. The core asset
 of an admin is the four-dimensional permission model; its full semantics are in `docs/admin/permission-model/`.
-`<pkg>` is the proto package directory under `api/`.
+`<pkg>` is the business proto package directory under `api/` (the kernel's is `keel_admin`).
 
 ## The two meanings of "business" (the easiest to confuse)
 
@@ -204,12 +204,12 @@ not in this repo, so it cannot be regenerated.
 _Avoid_: calling it "kernel" or "generated artifact"
 
 **Assembly seams** (the admin's additional ones):
-`cmd/<app>/di.go`, `internal/conf/app.proto`, the business protos under `api/<pkg>/v1`; on the frontend
-`web/src/main.tsx`, `web/src/shell.ts`, `web/src/nav.ts`, `web/src/languages.ts` (language registry),
-`web/src/timezones.ts` (time zone registry), `web/src/header.tsx`, `web/src/login-layout.tsx` and `web/src/styles/`.
-Files appended to as well: `api/<pkg>/v1/error_reason.proto` (kernel and business reasons share one enum),
-`api/<pkg>/v1/types.proto` (messages shared by kernel and business), `internal/biz|service/errors.go`,
-`internal/i18n/app.*.toml`.
+`cmd/<app>/di.go`, `internal/conf/app.proto`; on the frontend `web/src/main.tsx`, `web/src/shell.ts`,
+`web/src/nav.ts`, `web/src/languages.ts` (language registry), `web/src/timezones.ts` (time zone registry),
+`web/src/header.tsx`, `web/src/login-layout.tsx` and `web/src/styles/`. Files appended to as well:
+`internal/biz|service/errors.go`, `internal/i18n/app.*.toml`. Of the protos, only the business package's
+`api/<pkg>/v1/error_reason.proto` is the seam the shared entry names; the kernel's contracts in `api/keel_admin/v1/`
+(its own `error_reason.proto` and shared messages included) are kernel.
 
 **Admin conventions**:
 The convention docs under `docs/admin/`: the permission specification, the admin's extra steps (a page named like a

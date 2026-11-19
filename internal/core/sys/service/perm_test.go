@@ -46,7 +46,7 @@ func TestSysRegistrationSeals(t *testing.T) {
 		}
 	}
 	// Assigning roles and departments and setting the IP allowlist are part of "edit user" (sys:account:update) with
-	// no codes of their own; the audit log and the login log have one view code each (see admin-0017). The role
+	// no codes of their own; the audit log and the login log have one view code each. The role
 	// domain is entirely RootOnly and uses no codes.
 	if got, want := len(sys.Perms), 14; got != want {
 		t.Fatalf("sys.Perms count = %d, want %d (migration should not drop/add codes silently)", got, want)

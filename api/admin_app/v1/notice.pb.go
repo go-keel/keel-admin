@@ -4,7 +4,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        (unknown)
-// source: keel_admin/v1/notice.proto
+// source: admin_app/v1/notice.proto
 
 package v1
 
@@ -44,7 +44,7 @@ type NoticeReply struct {
 
 func (x *NoticeReply) Reset() {
 	*x = NoticeReply{}
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[0]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -56,7 +56,7 @@ func (x *NoticeReply) String() string {
 func (*NoticeReply) ProtoMessage() {}
 
 func (x *NoticeReply) ProtoReflect() protoreflect.Message {
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[0]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -69,7 +69,7 @@ func (x *NoticeReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NoticeReply.ProtoReflect.Descriptor instead.
 func (*NoticeReply) Descriptor() ([]byte, []int) {
-	return file_keel_admin_v1_notice_proto_rawDescGZIP(), []int{0}
+	return file_admin_app_v1_notice_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *NoticeReply) GetId() int64 {
@@ -143,7 +143,7 @@ type NoticeListItem struct {
 
 func (x *NoticeListItem) Reset() {
 	*x = NoticeListItem{}
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[1]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -155,7 +155,7 @@ func (x *NoticeListItem) String() string {
 func (*NoticeListItem) ProtoMessage() {}
 
 func (x *NoticeListItem) ProtoReflect() protoreflect.Message {
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[1]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -168,7 +168,7 @@ func (x *NoticeListItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NoticeListItem.ProtoReflect.Descriptor instead.
 func (*NoticeListItem) Descriptor() ([]byte, []int) {
-	return file_keel_admin_v1_notice_proto_rawDescGZIP(), []int{1}
+	return file_admin_app_v1_notice_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *NoticeListItem) GetId() int64 {
@@ -257,7 +257,7 @@ type ListNoticeRequest struct {
 
 func (x *ListNoticeRequest) Reset() {
 	*x = ListNoticeRequest{}
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[2]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -269,7 +269,7 @@ func (x *ListNoticeRequest) String() string {
 func (*ListNoticeRequest) ProtoMessage() {}
 
 func (x *ListNoticeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[2]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -282,7 +282,7 @@ func (x *ListNoticeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListNoticeRequest.ProtoReflect.Descriptor instead.
 func (*ListNoticeRequest) Descriptor() ([]byte, []int) {
-	return file_keel_admin_v1_notice_proto_rawDescGZIP(), []int{2}
+	return file_admin_app_v1_notice_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ListNoticeRequest) GetKeyword() string {
@@ -337,7 +337,7 @@ type ListNoticeReply struct {
 
 func (x *ListNoticeReply) Reset() {
 	*x = ListNoticeReply{}
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[3]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -349,7 +349,7 @@ func (x *ListNoticeReply) String() string {
 func (*ListNoticeReply) ProtoMessage() {}
 
 func (x *ListNoticeReply) ProtoReflect() protoreflect.Message {
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[3]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -362,7 +362,7 @@ func (x *ListNoticeReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListNoticeReply.ProtoReflect.Descriptor instead.
 func (*ListNoticeReply) Descriptor() ([]byte, []int) {
-	return file_keel_admin_v1_notice_proto_rawDescGZIP(), []int{3}
+	return file_admin_app_v1_notice_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ListNoticeReply) GetItems() []*NoticeListItem {
@@ -391,7 +391,7 @@ type CreateNoticeRequest struct {
 
 func (x *CreateNoticeRequest) Reset() {
 	*x = CreateNoticeRequest{}
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[4]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -403,7 +403,7 @@ func (x *CreateNoticeRequest) String() string {
 func (*CreateNoticeRequest) ProtoMessage() {}
 
 func (x *CreateNoticeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[4]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -416,7 +416,7 @@ func (x *CreateNoticeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateNoticeRequest.ProtoReflect.Descriptor instead.
 func (*CreateNoticeRequest) Descriptor() ([]byte, []int) {
-	return file_keel_admin_v1_notice_proto_rawDescGZIP(), []int{4}
+	return file_admin_app_v1_notice_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *CreateNoticeRequest) GetTitle() string {
@@ -449,7 +449,7 @@ type DeleteNoticeRequest struct {
 
 func (x *DeleteNoticeRequest) Reset() {
 	*x = DeleteNoticeRequest{}
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[5]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -461,7 +461,7 @@ func (x *DeleteNoticeRequest) String() string {
 func (*DeleteNoticeRequest) ProtoMessage() {}
 
 func (x *DeleteNoticeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[5]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -474,7 +474,7 @@ func (x *DeleteNoticeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteNoticeRequest.ProtoReflect.Descriptor instead.
 func (*DeleteNoticeRequest) Descriptor() ([]byte, []int) {
-	return file_keel_admin_v1_notice_proto_rawDescGZIP(), []int{5}
+	return file_admin_app_v1_notice_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *DeleteNoticeRequest) GetId() int64 {
@@ -495,7 +495,7 @@ type BatchDeleteNoticeRequest struct {
 
 func (x *BatchDeleteNoticeRequest) Reset() {
 	*x = BatchDeleteNoticeRequest{}
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[6]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -507,7 +507,7 @@ func (x *BatchDeleteNoticeRequest) String() string {
 func (*BatchDeleteNoticeRequest) ProtoMessage() {}
 
 func (x *BatchDeleteNoticeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[6]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -520,7 +520,7 @@ func (x *BatchDeleteNoticeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchDeleteNoticeRequest.ProtoReflect.Descriptor instead.
 func (*BatchDeleteNoticeRequest) Descriptor() ([]byte, []int) {
-	return file_keel_admin_v1_notice_proto_rawDescGZIP(), []int{6}
+	return file_admin_app_v1_notice_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *BatchDeleteNoticeRequest) GetIds() []int64 {
@@ -544,7 +544,7 @@ type NoticeCategoryReply struct {
 
 func (x *NoticeCategoryReply) Reset() {
 	*x = NoticeCategoryReply{}
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[7]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -556,7 +556,7 @@ func (x *NoticeCategoryReply) String() string {
 func (*NoticeCategoryReply) ProtoMessage() {}
 
 func (x *NoticeCategoryReply) ProtoReflect() protoreflect.Message {
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[7]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -569,7 +569,7 @@ func (x *NoticeCategoryReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NoticeCategoryReply.ProtoReflect.Descriptor instead.
 func (*NoticeCategoryReply) Descriptor() ([]byte, []int) {
-	return file_keel_admin_v1_notice_proto_rawDescGZIP(), []int{7}
+	return file_admin_app_v1_notice_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *NoticeCategoryReply) GetId() int64 {
@@ -607,7 +607,7 @@ type NoticeCategoryListItem struct {
 
 func (x *NoticeCategoryListItem) Reset() {
 	*x = NoticeCategoryListItem{}
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[8]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -619,7 +619,7 @@ func (x *NoticeCategoryListItem) String() string {
 func (*NoticeCategoryListItem) ProtoMessage() {}
 
 func (x *NoticeCategoryListItem) ProtoReflect() protoreflect.Message {
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[8]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -632,7 +632,7 @@ func (x *NoticeCategoryListItem) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NoticeCategoryListItem.ProtoReflect.Descriptor instead.
 func (*NoticeCategoryListItem) Descriptor() ([]byte, []int) {
-	return file_keel_admin_v1_notice_proto_rawDescGZIP(), []int{8}
+	return file_admin_app_v1_notice_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *NoticeCategoryListItem) GetId() int64 {
@@ -668,7 +668,7 @@ type NoticeCategoryOption struct {
 
 func (x *NoticeCategoryOption) Reset() {
 	*x = NoticeCategoryOption{}
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[9]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -680,7 +680,7 @@ func (x *NoticeCategoryOption) String() string {
 func (*NoticeCategoryOption) ProtoMessage() {}
 
 func (x *NoticeCategoryOption) ProtoReflect() protoreflect.Message {
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[9]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -693,7 +693,7 @@ func (x *NoticeCategoryOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NoticeCategoryOption.ProtoReflect.Descriptor instead.
 func (*NoticeCategoryOption) Descriptor() ([]byte, []int) {
-	return file_keel_admin_v1_notice_proto_rawDescGZIP(), []int{9}
+	return file_admin_app_v1_notice_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *NoticeCategoryOption) GetId() int64 {
@@ -718,7 +718,7 @@ type ListNoticeCategoryOptionsRequest struct {
 
 func (x *ListNoticeCategoryOptionsRequest) Reset() {
 	*x = ListNoticeCategoryOptionsRequest{}
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[10]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -730,7 +730,7 @@ func (x *ListNoticeCategoryOptionsRequest) String() string {
 func (*ListNoticeCategoryOptionsRequest) ProtoMessage() {}
 
 func (x *ListNoticeCategoryOptionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[10]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -743,7 +743,7 @@ func (x *ListNoticeCategoryOptionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListNoticeCategoryOptionsRequest.ProtoReflect.Descriptor instead.
 func (*ListNoticeCategoryOptionsRequest) Descriptor() ([]byte, []int) {
-	return file_keel_admin_v1_notice_proto_rawDescGZIP(), []int{10}
+	return file_admin_app_v1_notice_proto_rawDescGZIP(), []int{10}
 }
 
 // The option set's reply: no total.
@@ -756,7 +756,7 @@ type ListNoticeCategoryOptionsReply struct {
 
 func (x *ListNoticeCategoryOptionsReply) Reset() {
 	*x = ListNoticeCategoryOptionsReply{}
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[11]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -768,7 +768,7 @@ func (x *ListNoticeCategoryOptionsReply) String() string {
 func (*ListNoticeCategoryOptionsReply) ProtoMessage() {}
 
 func (x *ListNoticeCategoryOptionsReply) ProtoReflect() protoreflect.Message {
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[11]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -781,7 +781,7 @@ func (x *ListNoticeCategoryOptionsReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListNoticeCategoryOptionsReply.ProtoReflect.Descriptor instead.
 func (*ListNoticeCategoryOptionsReply) Descriptor() ([]byte, []int) {
-	return file_keel_admin_v1_notice_proto_rawDescGZIP(), []int{11}
+	return file_admin_app_v1_notice_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ListNoticeCategoryOptionsReply) GetItems() []*NoticeCategoryOption {
@@ -803,7 +803,7 @@ type ListNoticeCategoryRequest struct {
 
 func (x *ListNoticeCategoryRequest) Reset() {
 	*x = ListNoticeCategoryRequest{}
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[12]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -815,7 +815,7 @@ func (x *ListNoticeCategoryRequest) String() string {
 func (*ListNoticeCategoryRequest) ProtoMessage() {}
 
 func (x *ListNoticeCategoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[12]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -828,7 +828,7 @@ func (x *ListNoticeCategoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListNoticeCategoryRequest.ProtoReflect.Descriptor instead.
 func (*ListNoticeCategoryRequest) Descriptor() ([]byte, []int) {
-	return file_keel_admin_v1_notice_proto_rawDescGZIP(), []int{12}
+	return file_admin_app_v1_notice_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *ListNoticeCategoryRequest) GetOffset() int32 {
@@ -855,7 +855,7 @@ type ListNoticeCategoryReply struct {
 
 func (x *ListNoticeCategoryReply) Reset() {
 	*x = ListNoticeCategoryReply{}
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[13]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -867,7 +867,7 @@ func (x *ListNoticeCategoryReply) String() string {
 func (*ListNoticeCategoryReply) ProtoMessage() {}
 
 func (x *ListNoticeCategoryReply) ProtoReflect() protoreflect.Message {
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[13]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -880,7 +880,7 @@ func (x *ListNoticeCategoryReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListNoticeCategoryReply.ProtoReflect.Descriptor instead.
 func (*ListNoticeCategoryReply) Descriptor() ([]byte, []int) {
-	return file_keel_admin_v1_notice_proto_rawDescGZIP(), []int{13}
+	return file_admin_app_v1_notice_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ListNoticeCategoryReply) GetItems() []*NoticeCategoryListItem {
@@ -906,7 +906,7 @@ type CreateNoticeCategoryRequest struct {
 
 func (x *CreateNoticeCategoryRequest) Reset() {
 	*x = CreateNoticeCategoryRequest{}
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[14]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -918,7 +918,7 @@ func (x *CreateNoticeCategoryRequest) String() string {
 func (*CreateNoticeCategoryRequest) ProtoMessage() {}
 
 func (x *CreateNoticeCategoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[14]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -931,7 +931,7 @@ func (x *CreateNoticeCategoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateNoticeCategoryRequest.ProtoReflect.Descriptor instead.
 func (*CreateNoticeCategoryRequest) Descriptor() ([]byte, []int) {
-	return file_keel_admin_v1_notice_proto_rawDescGZIP(), []int{14}
+	return file_admin_app_v1_notice_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *CreateNoticeCategoryRequest) GetName() string {
@@ -950,7 +950,7 @@ type DeleteNoticeCategoryRequest struct {
 
 func (x *DeleteNoticeCategoryRequest) Reset() {
 	*x = DeleteNoticeCategoryRequest{}
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[15]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -962,7 +962,7 @@ func (x *DeleteNoticeCategoryRequest) String() string {
 func (*DeleteNoticeCategoryRequest) ProtoMessage() {}
 
 func (x *DeleteNoticeCategoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_keel_admin_v1_notice_proto_msgTypes[15]
+	mi := &file_admin_app_v1_notice_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -975,7 +975,7 @@ func (x *DeleteNoticeCategoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteNoticeCategoryRequest.ProtoReflect.Descriptor instead.
 func (*DeleteNoticeCategoryRequest) Descriptor() ([]byte, []int) {
-	return file_keel_admin_v1_notice_proto_rawDescGZIP(), []int{15}
+	return file_admin_app_v1_notice_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *DeleteNoticeCategoryRequest) GetId() int64 {
@@ -985,11 +985,11 @@ func (x *DeleteNoticeCategoryRequest) GetId() int64 {
 	return 0
 }
 
-var File_keel_admin_v1_notice_proto protoreflect.FileDescriptor
+var File_admin_app_v1_notice_proto protoreflect.FileDescriptor
 
-const file_keel_admin_v1_notice_proto_rawDesc = "" +
+const file_admin_app_v1_notice_proto_rawDesc = "" +
 	"\n" +
-	"\x1akeel_admin/v1/notice.proto\x12\x11api.keel_admin.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xd5\x01\n" +
+	"\x19admin_app/v1/notice.proto\x12\x10api.admin_app.v1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xd5\x01\n" +
 	"\vNoticeReply\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x18\n" +
@@ -1020,9 +1020,9 @@ const file_keel_admin_v1_notice_proto_rawDesc = "" +
 	"\vcategory_id\x18\x04 \x01(\x03B\a\xbaH\x04\"\x02(\x00R\n" +
 	"categoryId\x12*\n" +
 	"\x11created_from_date\x18\x05 \x01(\tR\x0fcreatedFromDate\x12&\n" +
-	"\x0fcreated_to_date\x18\x06 \x01(\tR\rcreatedToDate\"`\n" +
-	"\x0fListNoticeReply\x127\n" +
-	"\x05items\x18\x01 \x03(\v2!.api.keel_admin.v1.NoticeListItemR\x05items\x12\x14\n" +
+	"\x0fcreated_to_date\x18\x06 \x01(\tR\rcreatedToDate\"_\n" +
+	"\x0fListNoticeReply\x126\n" +
+	"\x05items\x18\x01 \x03(\v2 .api.admin_app.v1.NoticeListItemR\x05items\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x03R\x05total\"\x84\x01\n" +
 	"\x13CreateNoticeRequest\x12 \n" +
 	"\x05title\x18\x01 \x01(\tB\n" +
@@ -1047,83 +1047,83 @@ const file_keel_admin_v1_notice_proto_rawDesc = "" +
 	"\x14NoticeCategoryOption\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\"\"\n" +
-	" ListNoticeCategoryOptionsRequest\"_\n" +
-	"\x1eListNoticeCategoryOptionsReply\x12=\n" +
-	"\x05items\x18\x01 \x03(\v2'.api.keel_admin.v1.NoticeCategoryOptionR\x05items\"^\n" +
+	" ListNoticeCategoryOptionsRequest\"^\n" +
+	"\x1eListNoticeCategoryOptionsReply\x12<\n" +
+	"\x05items\x18\x01 \x03(\v2&.api.admin_app.v1.NoticeCategoryOptionR\x05items\"^\n" +
 	"\x19ListNoticeCategoryRequest\x12\x1f\n" +
 	"\x06offset\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x06offset\x12 \n" +
 	"\x05limit\x18\x02 \x01(\x05B\n" +
-	"\xbaH\a\x1a\x05\x18\xc8\x01(\x00R\x05limit\"p\n" +
-	"\x17ListNoticeCategoryReply\x12?\n" +
-	"\x05items\x18\x01 \x03(\v2).api.keel_admin.v1.NoticeCategoryListItemR\x05items\x12\x14\n" +
+	"\xbaH\a\x1a\x05\x18\xc8\x01(\x00R\x05limit\"o\n" +
+	"\x17ListNoticeCategoryReply\x12>\n" +
+	"\x05items\x18\x01 \x03(\v2(.api.admin_app.v1.NoticeCategoryListItemR\x05items\x12\x14\n" +
 	"\x05total\x18\x02 \x01(\x03R\x05total\"<\n" +
 	"\x1bCreateNoticeCategoryRequest\x12\x1d\n" +
 	"\x04name\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18@R\x04name\"6\n" +
 	"\x1bDeleteNoticeCategoryRequest\x12\x17\n" +
-	"\x02id\x18\x01 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x02id2\xae\b\n" +
-	"\rNoticeService\x12k\n" +
+	"\x02id\x18\x01 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x02id2\xa1\b\n" +
+	"\rNoticeService\x12i\n" +
 	"\n" +
-	"ListNotice\x12$.api.keel_admin.v1.ListNoticeRequest\x1a\".api.keel_admin.v1.ListNoticeReply\"\x13\x82\xd3\xe4\x93\x02\r\x12\v/v1/notices\x12n\n" +
-	"\fCreateNotice\x12&.api.keel_admin.v1.CreateNoticeRequest\x1a\x1e.api.keel_admin.v1.NoticeReply\"\x16\x82\xd3\xe4\x93\x02\x10:\x01*\"\v/v1/notices\x12h\n" +
-	"\fDeleteNotice\x12&.api.keel_admin.v1.DeleteNoticeRequest\x1a\x16.google.protobuf.Empty\"\x18\x82\xd3\xe4\x93\x02\x12*\x10/v1/notices/{id}\x12}\n" +
-	"\x11BatchDeleteNotice\x12+.api.keel_admin.v1.BatchDeleteNoticeRequest\x1a\x16.google.protobuf.Empty\"#\x82\xd3\xe4\x93\x02\x1d:\x01*\"\x18/v1/notices/batch-delete\x12\xab\x01\n" +
-	"\x19ListNoticeCategoryOptions\x123.api.keel_admin.v1.ListNoticeCategoryOptionsRequest\x1a1.api.keel_admin.v1.ListNoticeCategoryOptionsReply\"&\x82\xd3\xe4\x93\x02 \x12\x1e/v1/notices/categories/options\x12\x8e\x01\n" +
-	"\x12ListNoticeCategory\x12,.api.keel_admin.v1.ListNoticeCategoryRequest\x1a*.api.keel_admin.v1.ListNoticeCategoryReply\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/v1/notices/categories\x12\x91\x01\n" +
-	"\x14CreateNoticeCategory\x12..api.keel_admin.v1.CreateNoticeCategoryRequest\x1a&.api.keel_admin.v1.NoticeCategoryReply\"!\x82\xd3\xe4\x93\x02\x1b:\x01*\"\x16/v1/notices/categories\x12\x83\x01\n" +
-	"\x14DeleteNoticeCategory\x12..api.keel_admin.v1.DeleteNoticeCategoryRequest\x1a\x16.google.protobuf.Empty\"#\x82\xd3\xe4\x93\x02\x1d*\x1b/v1/notices/categories/{id}B4Z2github.com/go-keel/keel-admin/api/keel_admin/v1;v1b\x06proto3"
+	"ListNotice\x12#.api.admin_app.v1.ListNoticeRequest\x1a!.api.admin_app.v1.ListNoticeReply\"\x13\x82\xd3\xe4\x93\x02\r\x12\v/v1/notices\x12l\n" +
+	"\fCreateNotice\x12%.api.admin_app.v1.CreateNoticeRequest\x1a\x1d.api.admin_app.v1.NoticeReply\"\x16\x82\xd3\xe4\x93\x02\x10:\x01*\"\v/v1/notices\x12g\n" +
+	"\fDeleteNotice\x12%.api.admin_app.v1.DeleteNoticeRequest\x1a\x16.google.protobuf.Empty\"\x18\x82\xd3\xe4\x93\x02\x12*\x10/v1/notices/{id}\x12|\n" +
+	"\x11BatchDeleteNotice\x12*.api.admin_app.v1.BatchDeleteNoticeRequest\x1a\x16.google.protobuf.Empty\"#\x82\xd3\xe4\x93\x02\x1d:\x01*\"\x18/v1/notices/batch-delete\x12\xa9\x01\n" +
+	"\x19ListNoticeCategoryOptions\x122.api.admin_app.v1.ListNoticeCategoryOptionsRequest\x1a0.api.admin_app.v1.ListNoticeCategoryOptionsReply\"&\x82\xd3\xe4\x93\x02 \x12\x1e/v1/notices/categories/options\x12\x8c\x01\n" +
+	"\x12ListNoticeCategory\x12+.api.admin_app.v1.ListNoticeCategoryRequest\x1a).api.admin_app.v1.ListNoticeCategoryReply\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/v1/notices/categories\x12\x8f\x01\n" +
+	"\x14CreateNoticeCategory\x12-.api.admin_app.v1.CreateNoticeCategoryRequest\x1a%.api.admin_app.v1.NoticeCategoryReply\"!\x82\xd3\xe4\x93\x02\x1b:\x01*\"\x16/v1/notices/categories\x12\x82\x01\n" +
+	"\x14DeleteNoticeCategory\x12-.api.admin_app.v1.DeleteNoticeCategoryRequest\x1a\x16.google.protobuf.Empty\"#\x82\xd3\xe4\x93\x02\x1d*\x1b/v1/notices/categories/{id}B3Z1github.com/go-keel/keel-admin/api/admin_app/v1;v1b\x06proto3"
 
 var (
-	file_keel_admin_v1_notice_proto_rawDescOnce sync.Once
-	file_keel_admin_v1_notice_proto_rawDescData []byte
+	file_admin_app_v1_notice_proto_rawDescOnce sync.Once
+	file_admin_app_v1_notice_proto_rawDescData []byte
 )
 
-func file_keel_admin_v1_notice_proto_rawDescGZIP() []byte {
-	file_keel_admin_v1_notice_proto_rawDescOnce.Do(func() {
-		file_keel_admin_v1_notice_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_keel_admin_v1_notice_proto_rawDesc), len(file_keel_admin_v1_notice_proto_rawDesc)))
+func file_admin_app_v1_notice_proto_rawDescGZIP() []byte {
+	file_admin_app_v1_notice_proto_rawDescOnce.Do(func() {
+		file_admin_app_v1_notice_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_admin_app_v1_notice_proto_rawDesc), len(file_admin_app_v1_notice_proto_rawDesc)))
 	})
-	return file_keel_admin_v1_notice_proto_rawDescData
+	return file_admin_app_v1_notice_proto_rawDescData
 }
 
-var file_keel_admin_v1_notice_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
-var file_keel_admin_v1_notice_proto_goTypes = []any{
-	(*NoticeReply)(nil),                      // 0: api.keel_admin.v1.NoticeReply
-	(*NoticeListItem)(nil),                   // 1: api.keel_admin.v1.NoticeListItem
-	(*ListNoticeRequest)(nil),                // 2: api.keel_admin.v1.ListNoticeRequest
-	(*ListNoticeReply)(nil),                  // 3: api.keel_admin.v1.ListNoticeReply
-	(*CreateNoticeRequest)(nil),              // 4: api.keel_admin.v1.CreateNoticeRequest
-	(*DeleteNoticeRequest)(nil),              // 5: api.keel_admin.v1.DeleteNoticeRequest
-	(*BatchDeleteNoticeRequest)(nil),         // 6: api.keel_admin.v1.BatchDeleteNoticeRequest
-	(*NoticeCategoryReply)(nil),              // 7: api.keel_admin.v1.NoticeCategoryReply
-	(*NoticeCategoryListItem)(nil),           // 8: api.keel_admin.v1.NoticeCategoryListItem
-	(*NoticeCategoryOption)(nil),             // 9: api.keel_admin.v1.NoticeCategoryOption
-	(*ListNoticeCategoryOptionsRequest)(nil), // 10: api.keel_admin.v1.ListNoticeCategoryOptionsRequest
-	(*ListNoticeCategoryOptionsReply)(nil),   // 11: api.keel_admin.v1.ListNoticeCategoryOptionsReply
-	(*ListNoticeCategoryRequest)(nil),        // 12: api.keel_admin.v1.ListNoticeCategoryRequest
-	(*ListNoticeCategoryReply)(nil),          // 13: api.keel_admin.v1.ListNoticeCategoryReply
-	(*CreateNoticeCategoryRequest)(nil),      // 14: api.keel_admin.v1.CreateNoticeCategoryRequest
-	(*DeleteNoticeCategoryRequest)(nil),      // 15: api.keel_admin.v1.DeleteNoticeCategoryRequest
+var file_admin_app_v1_notice_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_admin_app_v1_notice_proto_goTypes = []any{
+	(*NoticeReply)(nil),                      // 0: api.admin_app.v1.NoticeReply
+	(*NoticeListItem)(nil),                   // 1: api.admin_app.v1.NoticeListItem
+	(*ListNoticeRequest)(nil),                // 2: api.admin_app.v1.ListNoticeRequest
+	(*ListNoticeReply)(nil),                  // 3: api.admin_app.v1.ListNoticeReply
+	(*CreateNoticeRequest)(nil),              // 4: api.admin_app.v1.CreateNoticeRequest
+	(*DeleteNoticeRequest)(nil),              // 5: api.admin_app.v1.DeleteNoticeRequest
+	(*BatchDeleteNoticeRequest)(nil),         // 6: api.admin_app.v1.BatchDeleteNoticeRequest
+	(*NoticeCategoryReply)(nil),              // 7: api.admin_app.v1.NoticeCategoryReply
+	(*NoticeCategoryListItem)(nil),           // 8: api.admin_app.v1.NoticeCategoryListItem
+	(*NoticeCategoryOption)(nil),             // 9: api.admin_app.v1.NoticeCategoryOption
+	(*ListNoticeCategoryOptionsRequest)(nil), // 10: api.admin_app.v1.ListNoticeCategoryOptionsRequest
+	(*ListNoticeCategoryOptionsReply)(nil),   // 11: api.admin_app.v1.ListNoticeCategoryOptionsReply
+	(*ListNoticeCategoryRequest)(nil),        // 12: api.admin_app.v1.ListNoticeCategoryRequest
+	(*ListNoticeCategoryReply)(nil),          // 13: api.admin_app.v1.ListNoticeCategoryReply
+	(*CreateNoticeCategoryRequest)(nil),      // 14: api.admin_app.v1.CreateNoticeCategoryRequest
+	(*DeleteNoticeCategoryRequest)(nil),      // 15: api.admin_app.v1.DeleteNoticeCategoryRequest
 	(*emptypb.Empty)(nil),                    // 16: google.protobuf.Empty
 }
-var file_keel_admin_v1_notice_proto_depIdxs = []int32{
-	1,  // 0: api.keel_admin.v1.ListNoticeReply.items:type_name -> api.keel_admin.v1.NoticeListItem
-	9,  // 1: api.keel_admin.v1.ListNoticeCategoryOptionsReply.items:type_name -> api.keel_admin.v1.NoticeCategoryOption
-	8,  // 2: api.keel_admin.v1.ListNoticeCategoryReply.items:type_name -> api.keel_admin.v1.NoticeCategoryListItem
-	2,  // 3: api.keel_admin.v1.NoticeService.ListNotice:input_type -> api.keel_admin.v1.ListNoticeRequest
-	4,  // 4: api.keel_admin.v1.NoticeService.CreateNotice:input_type -> api.keel_admin.v1.CreateNoticeRequest
-	5,  // 5: api.keel_admin.v1.NoticeService.DeleteNotice:input_type -> api.keel_admin.v1.DeleteNoticeRequest
-	6,  // 6: api.keel_admin.v1.NoticeService.BatchDeleteNotice:input_type -> api.keel_admin.v1.BatchDeleteNoticeRequest
-	10, // 7: api.keel_admin.v1.NoticeService.ListNoticeCategoryOptions:input_type -> api.keel_admin.v1.ListNoticeCategoryOptionsRequest
-	12, // 8: api.keel_admin.v1.NoticeService.ListNoticeCategory:input_type -> api.keel_admin.v1.ListNoticeCategoryRequest
-	14, // 9: api.keel_admin.v1.NoticeService.CreateNoticeCategory:input_type -> api.keel_admin.v1.CreateNoticeCategoryRequest
-	15, // 10: api.keel_admin.v1.NoticeService.DeleteNoticeCategory:input_type -> api.keel_admin.v1.DeleteNoticeCategoryRequest
-	3,  // 11: api.keel_admin.v1.NoticeService.ListNotice:output_type -> api.keel_admin.v1.ListNoticeReply
-	0,  // 12: api.keel_admin.v1.NoticeService.CreateNotice:output_type -> api.keel_admin.v1.NoticeReply
-	16, // 13: api.keel_admin.v1.NoticeService.DeleteNotice:output_type -> google.protobuf.Empty
-	16, // 14: api.keel_admin.v1.NoticeService.BatchDeleteNotice:output_type -> google.protobuf.Empty
-	11, // 15: api.keel_admin.v1.NoticeService.ListNoticeCategoryOptions:output_type -> api.keel_admin.v1.ListNoticeCategoryOptionsReply
-	13, // 16: api.keel_admin.v1.NoticeService.ListNoticeCategory:output_type -> api.keel_admin.v1.ListNoticeCategoryReply
-	7,  // 17: api.keel_admin.v1.NoticeService.CreateNoticeCategory:output_type -> api.keel_admin.v1.NoticeCategoryReply
-	16, // 18: api.keel_admin.v1.NoticeService.DeleteNoticeCategory:output_type -> google.protobuf.Empty
+var file_admin_app_v1_notice_proto_depIdxs = []int32{
+	1,  // 0: api.admin_app.v1.ListNoticeReply.items:type_name -> api.admin_app.v1.NoticeListItem
+	9,  // 1: api.admin_app.v1.ListNoticeCategoryOptionsReply.items:type_name -> api.admin_app.v1.NoticeCategoryOption
+	8,  // 2: api.admin_app.v1.ListNoticeCategoryReply.items:type_name -> api.admin_app.v1.NoticeCategoryListItem
+	2,  // 3: api.admin_app.v1.NoticeService.ListNotice:input_type -> api.admin_app.v1.ListNoticeRequest
+	4,  // 4: api.admin_app.v1.NoticeService.CreateNotice:input_type -> api.admin_app.v1.CreateNoticeRequest
+	5,  // 5: api.admin_app.v1.NoticeService.DeleteNotice:input_type -> api.admin_app.v1.DeleteNoticeRequest
+	6,  // 6: api.admin_app.v1.NoticeService.BatchDeleteNotice:input_type -> api.admin_app.v1.BatchDeleteNoticeRequest
+	10, // 7: api.admin_app.v1.NoticeService.ListNoticeCategoryOptions:input_type -> api.admin_app.v1.ListNoticeCategoryOptionsRequest
+	12, // 8: api.admin_app.v1.NoticeService.ListNoticeCategory:input_type -> api.admin_app.v1.ListNoticeCategoryRequest
+	14, // 9: api.admin_app.v1.NoticeService.CreateNoticeCategory:input_type -> api.admin_app.v1.CreateNoticeCategoryRequest
+	15, // 10: api.admin_app.v1.NoticeService.DeleteNoticeCategory:input_type -> api.admin_app.v1.DeleteNoticeCategoryRequest
+	3,  // 11: api.admin_app.v1.NoticeService.ListNotice:output_type -> api.admin_app.v1.ListNoticeReply
+	0,  // 12: api.admin_app.v1.NoticeService.CreateNotice:output_type -> api.admin_app.v1.NoticeReply
+	16, // 13: api.admin_app.v1.NoticeService.DeleteNotice:output_type -> google.protobuf.Empty
+	16, // 14: api.admin_app.v1.NoticeService.BatchDeleteNotice:output_type -> google.protobuf.Empty
+	11, // 15: api.admin_app.v1.NoticeService.ListNoticeCategoryOptions:output_type -> api.admin_app.v1.ListNoticeCategoryOptionsReply
+	13, // 16: api.admin_app.v1.NoticeService.ListNoticeCategory:output_type -> api.admin_app.v1.ListNoticeCategoryReply
+	7,  // 17: api.admin_app.v1.NoticeService.CreateNoticeCategory:output_type -> api.admin_app.v1.NoticeCategoryReply
+	16, // 18: api.admin_app.v1.NoticeService.DeleteNoticeCategory:output_type -> google.protobuf.Empty
 	11, // [11:19] is the sub-list for method output_type
 	3,  // [3:11] is the sub-list for method input_type
 	3,  // [3:3] is the sub-list for extension type_name
@@ -1131,26 +1131,26 @@ var file_keel_admin_v1_notice_proto_depIdxs = []int32{
 	0,  // [0:3] is the sub-list for field type_name
 }
 
-func init() { file_keel_admin_v1_notice_proto_init() }
-func file_keel_admin_v1_notice_proto_init() {
-	if File_keel_admin_v1_notice_proto != nil {
+func init() { file_admin_app_v1_notice_proto_init() }
+func file_admin_app_v1_notice_proto_init() {
+	if File_admin_app_v1_notice_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_keel_admin_v1_notice_proto_rawDesc), len(file_keel_admin_v1_notice_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_admin_app_v1_notice_proto_rawDesc), len(file_admin_app_v1_notice_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_keel_admin_v1_notice_proto_goTypes,
-		DependencyIndexes: file_keel_admin_v1_notice_proto_depIdxs,
-		MessageInfos:      file_keel_admin_v1_notice_proto_msgTypes,
+		GoTypes:           file_admin_app_v1_notice_proto_goTypes,
+		DependencyIndexes: file_admin_app_v1_notice_proto_depIdxs,
+		MessageInfos:      file_admin_app_v1_notice_proto_msgTypes,
 	}.Build()
-	File_keel_admin_v1_notice_proto = out.File
-	file_keel_admin_v1_notice_proto_goTypes = nil
-	file_keel_admin_v1_notice_proto_depIdxs = nil
+	File_admin_app_v1_notice_proto = out.File
+	file_admin_app_v1_notice_proto_goTypes = nil
+	file_admin_app_v1_notice_proto_depIdxs = nil
 }

@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/go-keel/keel-admin/internal/core/sys/biz"
+	"github.com/go-keel/keel-admin/internal/core/timefmt"
 )
 
 func (r *userRepo) List(ctx context.Context, inDeptIDs []int64, f biz.UserFilter, offset, limit int) ([]*biz.User, int64, error) {
@@ -92,7 +93,7 @@ func (r *userRepo) Create(ctx context.Context, u *biz.User, roleIDs []int64) err
 			}
 			return err
 		}
-		u.ID = m.ID
+		u.ID, u.CreatedAt = m.ID, timefmt.RFC3339(m.CreatedAt) // gorm filled CreatedAt before the insert
 		return insertUserRoles(tx, m.ID, roleIDs)
 	})
 }

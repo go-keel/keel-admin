@@ -74,7 +74,8 @@ const (
 	// SelfOpDefault rejects non-root acting on itself and does not limit root; most management actions use it.
 	SelfOpDefault SelfOpTier = iota
 	// SelfOpAntiLockout also rejects root acting on itself. The three anti-lockout exceptions use it: Disable,
-	// SetRoot and changing the IP allowlist in an edit (see ADR admin-0014).
+	// SetRoot and changing the IP allowlist in an edit, each of which could leave no one able to manage the system
+	// (docs/admin/assembly.md, "Kernel boundaries").
 	SelfOpAntiLockout
 )
 
@@ -149,7 +150,7 @@ const (
 
 // Options returns user options: with f.IDs it takes only those users, otherwise it fetches batches by f.Keyword.
 // It sees all users and ignores the manageable department range: it serves the login log filter, and the login
-// log itself shows everyone (ADR admin-0017).
+// log itself shows everyone (docs/admin/permission-model/sessions-and-audit.md).
 func (uc *UserAdminUseCase) Options(ctx context.Context, f UserFilter, offset, limit int) ([]*User, int64, error) {
 	if len(f.IDs) > 0 {
 		return uc.repo.List(ctx, nil, UserFilter{IDs: f.IDs}, 0, len(f.IDs))
@@ -455,8 +456,7 @@ func (uc *UserAdminUseCase) SetRoot(ctx context.Context, actor *Actor, id int64,
 
 // Get is the source of the edit form's initial values: it admits only users the actor can manage (the same range
 // as the list, so non-root cannot read the details of root or of users out of range). It does not go through
-// target: viewing one's own details is not limited by "do not edit oneself", only editing is (see
-// ADR admin-0014, "In the interface").
+// target: viewing one's own details is not limited by "do not edit oneself", only editing is.
 func (uc *UserAdminUseCase) Get(ctx context.Context, actor *Actor, id int64) (*User, error) {
 	if err := uc.arbac.EnsureTargetManageable(ctx, actor, id); err != nil {
 		return nil, err
@@ -488,8 +488,10 @@ func (uc *UserAdminUseCase) ResetPassword(ctx context.Context, actor *Actor, id 
 }
 
 // ResetOTP lets an administrator reset someone else's OTP binding, in the default tier (non-root cannot target
-// itself, root can; a trade-off accepted on purpose, see ADR admin-0014,
-// "A trade-off accepted on purpose"). The injected OTPResetter does the work; this method only decides permission.
+// itself, root can). Root resetting its own authenticator here skips the password the profile page asks for; that is
+// accepted on purpose: whoever gets this far already holds a valid session and a one-time code typed on the spot, and
+// the same credentials can do far worse, such as creating another root. The injected OTPResetter does the work; this
+// method only decides permission.
 func (uc *UserAdminUseCase) ResetOTP(ctx context.Context, actor *Actor, id int64) error {
 	if _, err := uc.target(ctx, actor, id, SelfOpDefault); err != nil {
 		return err

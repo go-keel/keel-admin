@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTree } from './tree';
+import { buildTree, flattenTree } from './tree';
 
 const ids = (nodes: { id?: string; children: { id?: string }[] }[]) =>
   nodes.map((n) => ({ id: n.id, children: n.children.map((c) => c.id) }));
@@ -48,5 +48,22 @@ describe('buildTree', () => {
 
   it('empty input gives an empty tree', () => {
     expect(buildTree([])).toEqual([]);
+  });
+});
+
+describe('flattenTree', () => {
+  it('lists parents before children with their depth, whatever the input order', () => {
+    const flat = flattenTree([
+      { id: '3', parentId: '2' },
+      { id: '2', parentId: '1' },
+      { id: '4', parentId: '0' },
+      { id: '1', parentId: '0' },
+    ]);
+    expect(flat.map(({ node, depth }) => [node.id, depth])).toEqual([
+      ['4', 0],
+      ['1', 0],
+      ['2', 1],
+      ['3', 2],
+    ]);
   });
 });

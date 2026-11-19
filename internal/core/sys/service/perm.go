@@ -106,7 +106,7 @@ var Bindings = perm.Bindings{
 	// audit: each of the two logs has its own view code and can be granted separately (for example, only security staff
 	// see the login log). Read only, no step-up. Holders of the code see everything, with no data scope: the logs do
 	// not record the department at the time, and filtering by the current department would move a person's history
-	// along whenever they change departments (see admin-0017).
+	// along whenever they change departments.
 	v1.OperationAuditServiceListAudit: {Codes: []perm.Code{"sys:audit:view"}},
 	v1.OperationAuditServiceGetAudit:  {Codes: []perm.Code{"sys:audit:view"}},
 	v1.OperationAuditServiceListLogin: {Codes: []perm.Code{"sys:login_log:view"}},

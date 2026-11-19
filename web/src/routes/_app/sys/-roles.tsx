@@ -60,6 +60,7 @@ import {
   roleDetailQueryOptions,
   saveRole,
 } from '@/lib/roles';
+import { flattenTree, indentLabel } from '@/lib/tree';
 
 const EMPTY: RoleFormValues = {
   code: '',
@@ -310,12 +311,13 @@ export function RoleForm({
       </Section>
 
       <Section title={t('roles.manageDepts')} hint={t('roles.manageDeptsHint')}>
-        <div className="grid grid-cols-2 gap-1">
-          {depts.map((d) => (
+        {/* One column in tree order: two columns would read a tree row by row across them. */}
+        <div className="grid gap-1">
+          {flattenTree(depts).map(({ node: d, depth }) => (
             <CheckRow
               key={d.id}
               id={`dept-${d.id}`}
-              label={d.name ?? ''}
+              label={indentLabel(d.name ?? '', depth)}
               checked={manageDepts.includes(d.id ?? '')}
               onChange={(c) =>
                 form.setValue(

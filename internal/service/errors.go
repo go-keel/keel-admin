@@ -7,7 +7,7 @@ import (
 	kerrors "github.com/go-kratos/kratos/v3/errors"
 	goi18n "github.com/nicksnyder/go-i18n/v2/i18n"
 
-	v1 "github.com/go-keel/keel-admin/api/keel_admin/v1"
+	v1 "github.com/go-keel/keel-admin/api/admin_app/v1"
 	"github.com/go-keel/keel-admin/internal/biz"
 	"github.com/go-keel/keel-admin/internal/core/perm"
 	"github.com/go-keel/keel-admin/internal/i18n"

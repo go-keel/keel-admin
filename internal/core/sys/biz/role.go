@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/go-keel/keel-admin/internal/core/perm"
 )
@@ -50,9 +51,8 @@ type RoleUpdate struct {
 
 // RoleListRow is one row of the role management list.
 //
-// It is a separate type from Role rather than Role plus a PermCount: the list wants "how many codes", the detail
-// wants "which codes". Sharing one struct would leave Perms and the three boundaries empty in the list, and an
-// empty field is sooner or later read as "looked up, and empty".
+// It is a separate type from Role: the list carries no boundaries, and sharing one struct would leave them empty, which
+// is sooner or later read as "looked up, and empty". The list shows only the number of Perms.
 type RoleListRow struct {
 	ID        int64
 	Code      string
@@ -60,8 +60,8 @@ type RoleListRow struct {
 	Sensitive int8
 	ForceOTP  int8
 	Status    int8
-	PermCount int32
-	CreatedAt string // UTC RFC3339, formatted by the data layer with timefmt
+	Perms     []string // the codes the role grants (List expands deps, as storedPerms does)
+	CreatedAt string   // UTC RFC3339, formatted by the data layer with timefmt
 }
 
 // RoleFilter is the ListRole query filter.
@@ -136,14 +136,18 @@ func NewRoleUseCase(repo RoleRepo, arbac ARBACRepo, cache CacheInvalidator) *Rol
 // List is the role management list: paging and filtering go to the repo, and it returns slim rows (see
 // RoleListRow).
 //
-// It carries neither the three boundaries nor perms: those are the edit form's initial values and come from Get. If
-// the list sent them, the next person would naturally prefill the form from a list row, which under whole
-// replacement is a silent overwrite.
+// The endpoint sends neither the three boundaries nor perms, only the count of Perms: the edit form's initial values
+// come from Get. If the list sent them, the next person would naturally prefill the form from a list row, which under
+// whole replacement is a silent overwrite.
 func (uc *RoleUseCase) List(ctx context.Context, f RoleFilter, offset, limit int) ([]*RoleListRow, int64, error) {
 	if limit <= 0 { // a negative limit also counts as "not given": gorm treats a negative Limit as unlimited
 		limit = defaultPageSize
 	}
-	return uc.repo.List(ctx, f, offset, limit)
+	rows, total, err := uc.repo.List(ctx, f, offset, limit)
+	for _, r := range rows {
+		r.Perms = storedPerms(r.Perms) // roles saved before deps were stored still count what they grant
+	}
+	return rows, total, err
 }
 
 // Options returns the role selector's option set (id/code/name only, see RoleOption).
@@ -179,6 +183,7 @@ func (uc *RoleUseCase) Get(ctx context.Context, id int64) (*Role, error) {
 	if err != nil {
 		return nil, err
 	}
+	r.Perms = storedPerms(r.Perms) // roles saved before deps were stored read back with them, as every read does
 	if err := uc.fillBoundaries(ctx, []*Role{r}); err != nil {
 		return nil, err
 	}
@@ -202,7 +207,7 @@ func (uc *RoleUseCase) PermissionsOf(ctx context.Context, actor *Actor, id int64
 	if !all && !allowed[id] {
 		return nil, ErrRoleOutOfRange
 	}
-	return r.Perms, nil
+	return storedPerms(r.Perms), nil // what the role grants, deps included, also for roles saved before deps were stored
 }
 
 // fillBoundaries reads back the three boundaries in batch (one query per dimension, no per-row fan-out).
@@ -274,7 +279,7 @@ func (uc *RoleUseCase) Create(ctx context.Context, code string, in RoleUpdate) (
 	} else if !errors.Is(err, ErrRoleNotFound) {
 		return nil, err
 	}
-	in.Perms = knownPerms(in.Perms)
+	in.Perms = storedPerms(in.Perms)
 	if err := validateScopes(ctx, in.Scopes); err != nil {
 		return nil, err
 	}
@@ -307,7 +312,7 @@ func (uc *RoleUseCase) Update(ctx context.Context, id int64, in RoleUpdate) (*Ro
 	// and after a code is removed from the code base a role in the database may still hold it. It is a dead code
 	// (the effective expansion ignores unknown codes anyway) and must not fail the whole edit. A role edit replaces
 	// everything, so it simply clears the dead codes along the way.
-	in.Perms = knownPerms(in.Perms)
+	in.Perms = storedPerms(in.Perms)
 	if err := validateScopes(ctx, in.Scopes); err != nil {
 		return nil, err
 	}
@@ -341,16 +346,19 @@ func (uc *RoleUseCase) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-// knownPerms keeps the function permission codes still in the registry and drops dead codes that were retired. A
-// role's perms are replaced as a whole, so an edit simply clears dead codes instead of failing over a leftover code.
-func knownPerms(codes []string) []string {
-	reg := perm.All()
-	out := make([]string, 0, len(codes))
-	for _, c := range codes {
-		if _, ok := reg[perm.Code(c)]; ok {
-			out = append(out, c)
-		}
+// storedPerms is the set a role stores: the codes still in the registry with their deps closure, sorted. Retired
+// codes are dropped, so an edit clears them instead of failing over a leftover code. Deps are stored too, so the role
+// reads back as what it grants; perm.Effective still expands at grant time, which covers roles saved before.
+func storedPerms(codes []string) []string {
+	granted := make([]perm.Code, len(codes))
+	for i, c := range codes {
+		granted[i] = perm.Code(c)
 	}
+	out := make([]string, 0, len(codes))
+	for c := range perm.Effective(granted) { // registered codes only, deps included
+		out = append(out, string(c))
+	}
+	slices.Sort(out)
 	return out
 }
 
