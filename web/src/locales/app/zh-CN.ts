@@ -43,7 +43,6 @@ const zhCN: Translations<typeof appEnUS> = {
   },
   workbench: {
     title: '工作台',
-    greeting: '你好，{{name}}',
     shortcuts: '常用功能',
   },
 };

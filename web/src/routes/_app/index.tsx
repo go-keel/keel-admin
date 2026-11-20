@@ -33,12 +33,11 @@ const shortcuts: { path: NavLeaf['path']; icon: LucideIcon }[] = [
   { path: '/sys/audit', icon: ScrollTextIcon },
 ];
 
-/** Landing page (`/`): a greeting with the current account's name and the shortcuts it may open. */
+/** Landing page (`/`): the page title and the shortcuts the current account may open. */
 function HomePage() {
   const { t } = useTranslation('app');
   const profile = useProfile();
   const router = useRouter();
-  const name = profile.nickname || profile.username || '';
   const entries = shortcuts.flatMap(({ path, icon }) => {
     const layers = routeLayersOf(router, path) ?? [];
     return canEnter(profile, layers)
@@ -48,9 +47,7 @@ function HomePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-3xl tracking-tight">
-        {t('workbench.greeting', { name })}
-      </h1>
+      <h1 className="text-3xl">{t('workbench.title')}</h1>
 
       {entries.length > 0 && (
         <section className="flex flex-col gap-3">

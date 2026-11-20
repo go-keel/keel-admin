@@ -44,7 +44,6 @@ export default {
   },
   workbench: {
     title: 'Workbench',
-    greeting: 'Hello, {{name}}',
     shortcuts: 'Shortcuts',
   },
 } as const;

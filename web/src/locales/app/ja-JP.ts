@@ -48,7 +48,6 @@ const jaJP: Translations<typeof appEnUS> = {
   },
   workbench: {
     title: 'ワークベンチ',
-    greeting: 'こんにちは、{{name}} さん',
     shortcuts: 'よく使う機能',
   },
 };
