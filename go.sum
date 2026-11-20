@@ -48,8 +48,8 @@ github.com/glebarez/go-sqlite v1.21.2 h1:3a6LFC4sKahUunAmynQKLZceZCOzUthkRkEAl9g
 github.com/glebarez/go-sqlite v1.21.2/go.mod h1:sfxdZyhQjTM2Wry3gVYWaW072Ri1WMdWJi0k6+3382k=
 github.com/glebarez/sqlite v1.11.0 h1:wSG0irqzP6VurnMEpFGer5Li19RpIRi2qvQz++w0GMw=
 github.com/glebarez/sqlite v1.11.0/go.mod h1:h8/o8j5wiAsqSPoWELDUdJXhjAhsVliSn7bWZjOhrgQ=
-github.com/go-keel/keel v0.1.1 h1:i4w1Qi+fZtXBYGflcbrtA5S7UJnT1ckaADPyqyMZxGQ=
-github.com/go-keel/keel v0.1.1/go.mod h1:+Cef9F76sUxqe79BzX4jTnDzyFbdNX7+ewqCEaOIcLw=
+github.com/go-keel/keel v0.1.2 h1:iDl9iClahqxbG3O/AJqm3nr5WWtiKGhdlk6r44956D8=
+github.com/go-keel/keel v0.1.2/go.mod h1:+Cef9F76sUxqe79BzX4jTnDzyFbdNX7+ewqCEaOIcLw=
 github.com/go-keel/keel/core/kdb/mysql v0.0.0-20261119095434-f2ef390808c0 h1:e1dxtvO1bPWlJKuU/m+PNPhMo1cS8HV+9Nzz/VPLtsg=
 github.com/go-keel/keel/core/kdb/mysql v0.0.0-20261119095434-f2ef390808c0/go.mod h1:GGt46B1qg2hulBonExRzwYw4mYjHogGn9Wtvi2rDD1w=
 github.com/go-keel/keel/core/khttpclient v0.0.0-20261119095434-f2ef390808c0 h1:BdkgzO+g7OCo2Al+2tH5U/qD1LYxjMPC0itE/tb/uBM=

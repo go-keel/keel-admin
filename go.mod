@@ -7,7 +7,7 @@ require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/alicebob/miniredis/v2 v2.40.0
 	github.com/glebarez/sqlite v1.11.0
-	github.com/go-keel/keel v0.1.1
+	github.com/go-keel/keel v0.1.2
 	github.com/go-keel/keel/core/kdb/mysql v0.0.0-20261119095434-f2ef390808c0
 	github.com/go-keel/keel/core/khttpclient v0.0.0-20261119095434-f2ef390808c0
 	github.com/go-kratos/kratos/v3 v3.0.0
