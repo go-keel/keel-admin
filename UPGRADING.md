@@ -3,6 +3,39 @@
 This file holds entries only, one per change that actually happened; how to write entries and how to follow
 upstream: `docs/upgrading-protocol.md`.
 
+## 2026-11-25 · 1
+
+> Follows keel-layout 3d9374f
+
+**What changed.** Tests come in three layers, one command each: unit tests (`make test`, Go and the frontend's
+vitest), narrow integration tests (`make integration`) and end-to-end tests (`make e2e`, still to come); the terms are
+in the shared segment of `GLOSSARY.md` and the rules in `docs/guides/testing.md`. `make check` runs static checks only,
+no test (still including the frontend's `pnpm lint` and `pnpm build`), and vets the `integration` and `e2e` build tags
+too. `make integration` needs all four of `TEST_MYSQL_DSN`, `TEST_POSTGRES_DSN`, `TEST_REDIS_ADDR` and `TEST_NATS_URL`,
+pointing at servers for tests only; `TEST_REDIS_ADDR` is new to the kernel's tests: the login lockout and the
+authenticator code replay guard (`internal/core/sys/data/`) are now narrow integration tests on a real Redis, database
+0, and the `github.com/alicebob/miniredis/v2` dependency is gone. The test commands build with `CGO_ENABLED=0`, and add
+`-race` only on macOS. The kernel's `internal/core/testdb` moved to the shared package `internal/testdb` (build tags
+`integration || e2e`), same `testdb.ForEachDB`. The admin database and the business database pick their drivers
+independently (`docs/admin/domain-model.md`, "Schema"), and `cmd/admin` blank-imports both `kdb/mysql` and
+`kdb/postgres`, so switching either database is a config change.
+
+**Why.** One command per layer: static checks and unit tests need no server and run before every commit, the slower
+layers run when a change calls for them. Real servers instead of emulators, because an emulator differs from the real
+server in details. Nothing joins across the two databases, so they need not share a dialect.
+
+**How to apply.**
+
+1. Wherever only `make check` ran (before commits, in CI), run `make check test`.
+2. Set `TEST_REDIS_ADDR` and `TEST_NATS_URL` next to the two DSNs for `make integration`, all on servers for tests only.
+3. `make sync-upstream`: it writes the kernel and `internal/testdb/testdb.go` (add
+   `keel-layout internal/testdb/testdb.go` to `scripts/cross-repo-sync.list` first, with your direct upstream in the
+   first field). Delete `internal/core/testdb/`, and in your own `*_integration_test.go` files (at least
+   `internal/data/testdb_integration_test.go`) change the import to `<module>/internal/testdb`.
+4. Add `_ "github.com/go-keel/keel/core/kdb/postgres"` next to `kdb/mysql` in `cmd/<app>/main.go`, then
+   `go mod tidy`; or keep only the drivers your two databases use.
+5. Replace emulators in your own tests (SQLite, miniredis, an embedded NATS server) with the real test servers.
+
 ## 2026-11-24 · 1
 
 > Follows keel-layout 6ae3cd9

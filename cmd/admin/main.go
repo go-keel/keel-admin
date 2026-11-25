@@ -5,7 +5,9 @@ import (
 
 	_ "go.uber.org/automaxprocs"
 
+	// Both drivers: database.<name>.driver picks one, per database. A repository on one database may delete the other line.
 	_ "github.com/go-keel/keel/core/kdb/mysql"
+	_ "github.com/go-keel/keel/core/kdb/postgres"
 
 	"github.com/go-keel/keel"
 	"github.com/go-keel/keel-admin/internal/conf"

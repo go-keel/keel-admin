@@ -7,7 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/go-keel/keel-admin/internal/core/testdb"
+	"github.com/go-keel/keel-admin/internal/testdb"
 )
 
 // forEachDB runs fn once per dialect kept under migrations/, each on a fresh admin database built from

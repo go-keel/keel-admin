@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/go-keel/keel-admin/internal/core/perm"
-	"github.com/go-keel/keel-admin/internal/core/testdb"
+	"github.com/go-keel/keel-admin/internal/testdb"
 )
 
 // item is a throwaway table used only to exercise ApplyScope's generated SQL against a real SQL engine.

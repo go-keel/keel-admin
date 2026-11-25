@@ -49,6 +49,11 @@ Built in:
 
 ## Quick start
 
+**On Windows**, run every `make` command from Git Bash (installed with Git for Windows), with GNU make on its path
+(`scoop install make` or `winget install ezwinports.make`): the Makefile and `scripts/` are shell. There is no
+PowerShell or Go entry point instead. Tests there, as on Linux, run without the race detector
+(`docs/guides/testing.md`).
+
 The frontend needs Node.js ≥24; `web/package.json` pins pnpm to 12.14.0. pnpm settings are in
 `web/pnpm-workspace.yaml`; `.npmrc` is only for the registry and authentication.
 
@@ -67,8 +72,8 @@ mysql -h127.0.0.1 -uroot -p -e 'CREATE DATABASE IF NOT EXISTS `keel-admin`; CREA
 mysql -h127.0.0.1 -uroot -p keel-admin < migrations/admin/mysql/0_schema.sql
 mysql -h127.0.0.1 -uroot -p keel-biz   < migrations/business/mysql/0_schema.sql
 # On PostgreSQL: create the two databases, run migrations/admin/postgres/0_schema.sql and
-# migrations/business/postgres/0_schema.sql with psql -v ON_ERROR_STOP=1 -f, and switch driver, source and the
-# driver import as the database section of configs/config.yaml says.
+# migrations/business/postgres/0_schema.sql with psql -v ON_ERROR_STOP=1 -f, and switch driver and source as the
+# database section of configs/config.yaml says. Each database picks its own driver.
 
 make build-web     # build the frontend (web/dist)
 make build         # build bin/admin
@@ -77,10 +82,12 @@ make build         # build bin/admin
 ./bin/admin        # :8080
 ```
 
-Tests run without any infrastructure:
+The unit tests (Go and frontend) run without any server or environment variable; the other test command needs real
+servers (`docs/guides/testing.md`):
 
 ```bash
-go test ./...
+make check test   # static checks, then unit tests: a change is done when this passes
+make integration  # narrow integration tests; needs the four TEST_* variables
 ```
 
 ## Fork into your own repo
@@ -124,7 +131,7 @@ forked, keep `lint-strict` instead and change `keel-admin` in its patterns to yo
 `lint-strict` checks everything and reports the paths of your own business area; `lint` checks only what upstream is
 responsible for (see `docs/adr/layout-0005-doc-link-check-distribution-boundary.md`). Also delete the
 `scripts/check-english.sh` line in the `check` target: requiring English is this template's own rule, and your
-service writes in its team's language. Do this before deleting the examples, or the final `make check` below fails.
+service writes in its team's language. Do this before deleting the examples, or the final `make check test` below fails.
 
 **A repo that will itself be forked** sets `TEMPLATE_MODULE`, `TEMPLATE_CMD` and `TEMPLATE_DOMAIN` at the top of
 `scripts/rename.sh` to its own module path, entry name and business package segment once its rename is done, so its
@@ -221,7 +228,7 @@ imports the compiler now reports as unused. Three steps, in this order:
    What is left empty stays as the place for your first module: `internal/biz/errors.go`, `internal/data/model.go`
    and `internal/service/http.go` with only their package clause and comments, `migrations/business/mysql/0_schema.sql`
    with only `SET NAMES` and `migrations/business/postgres/0_schema.sql` with only the `ci` collation, the empty `nav: {}` in `web/src/locales/app/` and the `registerTimeZones()` call with no
-   entries. Delete the emptied directory `web/src/routes/_app/notices/`. Finally run `make check`.
+   entries. Delete the emptied directory `web/src/routes/_app/notices/`. Finally run `make check test`.
 
 Both greps exclude `*.pb.go`: the marker comments are carried into generated artifacts, and the hits there vanish
 on regeneration; do not edit generated artifacts by hand.

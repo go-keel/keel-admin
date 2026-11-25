@@ -3,9 +3,9 @@
 
 # Testing: permissions, data scope and the frontend
 
-Read this when writing tests in an admin built on keel-admin, after `docs/guides/testing.md`: the guide covers fakes,
-table-driven tests, service tests and data tests on real databases at the storage boundary; this page covers only what
-the admin adds. `<app>` is the entry directory name.
+Read this when writing tests in an admin built on keel-admin, after `docs/guides/testing.md`: the guide defines the
+three test layers and their commands, and covers fakes, table-driven tests, service tests and data tests on real
+databases at the storage boundary; this page covers only what the admin adds. `<app>` is the entry directory name.
 
 ## Backend seams the admin adds
 
@@ -47,9 +47,9 @@ and audit actions is tested here too.
 
 ## Real-database tests
 
-Data tests are `*_integration_test.go` files with `//go:build integration`, run by `make integration` with
-`TEST_MYSQL_DSN` and `TEST_POSTGRES_DSN`; a missing variable for a dialect the repository runs on fails the test. The
-helper is the kernel's `internal/core/testdb` (`testdb.ForEachDB`): once per dialect the repository runs on (those every
+Data tests are narrow integration tests: `*_integration_test.go` files with `//go:build integration`, run by
+`make integration` with `TEST_MYSQL_DSN` and `TEST_POSTGRES_DSN`; a missing variable for a dialect the repository runs
+on fails the test. The helper is the shared `internal/testdb` (`testdb.ForEachDB`): once per dialect the repository runs on (those every
 `migrations/<database>/` has; `migrations/admin/` keeps both, so the business directories decide), it creates a fresh
 database, applies the complete schemas of the databases it is given and drops it afterwards. Each package wraps it in
 a `forEachDB` whose callback receives a `*gorm.DB`, the handle `Data` holds:
@@ -60,14 +60,21 @@ a `forEachDB` whose callback receives a `*gorm.DB`, the handle `Data` holds:
   it is this repository's own, so a database that is not MySQL or PostgreSQL (Doris, say) stays out of `migrations/`
   or out of its list.
 
+The kernel's Redis code is tested the same way, on the real Redis in `TEST_REDIS_ADDR` (database 0): the login lockout
+and the authenticator code replay guard (`internal/core/sys/data/lockout_integration_test.go`,
+`otp_replay_integration_test.go`). Each test writes only keys unique to the test and run, and deletes them when it
+ends. Time to live is asserted with `PTTL`, and time passing is stood in for with `PEXPIRE`, never by waiting: that the
+key then expires is Redis's own behaviour.
+
 Concurrency tests (locks, unique keys) use the same helper and so run under both MySQL's repeatable read and
 PostgreSQL's read committed; kernel examples: the concurrent role save and user edit tests in
 `internal/core/sys/data/`. Seed rows give every `NOT NULL` column without a default, as the real tables require.
 
 ## Frontend tests
 
-`web/` tests are vitest (`pnpm test`, jsdom environment, no watch). Validating a frontend change = `pnpm lint` (Biome +
-`tsc --noEmit`, including `*.test.ts`) + `pnpm test`, both run in `web/`.
+`web/` tests are vitest (`pnpm test`, jsdom environment, no watch), unit tests run by `make test`; `make check` runs
+`pnpm lint` (Biome + `tsc --noEmit`, including `*.test.ts`) and `pnpm build`. So `make check test` validates a frontend
+change too.
 
 Coverage is deliberately narrow, with the same criterion as the backend: **"would this logic be silently wrong if it
 broke"**. Logic that fails loudly (a page that does not render) is caught by running it; logic that fails silently is

@@ -53,8 +53,11 @@ one directory per database, and in it one per dialect (`mysql/`, `postgres/`):
 - **The business directories are this repository's own**: upstream ships `migrations/business/<dialect>/0_schema.sql`
   with the example tables only, and this repository manages its business databases by the guide's rules from there on. One
   more business database means one more directory under `migrations/`.
-- **Both databases run the same dialect** (`database.admin.driver` and `database.default.driver` match), and `cmd/<app>`
-  blank-imports that dialect's `kdb` package.
+- **Each database picks its own driver**: `database.admin.driver` and `database.default.driver` do not constrain each
+  other, and `cmd/admin` blank-imports both `kdb` drivers (a repository on one database may delete the other line).
+  The admin database is supported on real MySQL and PostgreSQL only. The business database may also be one that
+  speaks either protocol (such as Doris or RisingWave); whether this repository's business code is correct on it is
+  this repository's to verify.
 
 ## Table design choices each repository makes
 

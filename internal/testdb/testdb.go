@@ -1,8 +1,11 @@
-//go:build integration
+//go:build integration || e2e
 
-// Package testdb gives data-layer tests (build tag integration, run by make integration) real databases on every
-// dialect the repository keeps schema scripts for. It is test-only: nothing outside *_integration_test.go imports it,
-// and the build tag keeps it out of every other build.
+// Shared file: carried verbatim; never localized outside its source repository.
+// Checked by scripts/check-cross-repo-sync.sh; see docs/upgrading-protocol.md.
+
+// Package testdb gives narrow integration tests (build tag integration, run by make integration) and end-to-end tests
+// (build tag e2e, run by make e2e) real databases on every dialect the repository keeps schema scripts for. It is
+// test-only: the build tags keep it out of every other build.
 package testdb
 
 import (

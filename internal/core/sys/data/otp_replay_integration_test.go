@@ -1,33 +1,39 @@
+//go:build integration
+
 package data
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
-
-	"github.com/alicebob/miniredis/v2"
-	"github.com/redis/go-redis/v9"
 
 	"github.com/go-keel/keel-admin/internal/core/sys/biz"
 	"github.com/go-keel/keel/core/kredis"
 )
 
-// replayTestGuard wires a guard onto a miniredis instance through the real
-// constructor (so the maxUses normalization is on the tested path), returning
-// the miniredis handle for TTL/FastForward assertions.
-func replayTestGuard(t *testing.T, maxUses int64) (biz.ReplayGuard, *miniredis.Miniredis) {
+// replayTestGuard wires a guard onto the real Redis through the real constructor (so the maxUses normalization is on
+// the tested path). It returns the client for TTL assertions and a user ID unique to this run: the key is
+// otp:used:<userID>:<code hash>, so the ID is what keeps runs apart, and the test's keys under it are deleted when it
+// ends.
+func replayTestGuard(t *testing.T, maxUses int64) (biz.ReplayGuard, *kredis.Redis, int64) {
 	t.Helper()
-	mr, err := miniredis.Run()
-	if err != nil {
-		t.Fatalf("miniredis.Run: %v", err)
-	}
-	t.Cleanup(mr.Close)
-
-	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = client.Close() })
-
-	return NewOTPReplayGuard(&kredis.Redis{UniversalClient: client}, maxUses), mr
+	rdb := testRedis(t)
+	uid := time.Now().UnixNano()
+	t.Cleanup(func() { deleteReplayKeys(rdb, uid) })
+	return NewOTPReplayGuard(rdb, maxUses), rdb, uid
 }
+
+// deleteReplayKeys deletes every count key of one user.
+func deleteReplayKeys(rdb *kredis.Redis, uid int64) {
+	ctx := context.Background()
+	if keys, _ := rdb.Keys(ctx, replayKeyPattern(uid)).Result(); len(keys) > 0 {
+		_ = rdb.Del(ctx, keys...).Err()
+	}
+}
+
+// replayKeyPattern matches every count key of one user.
+func replayKeyPattern(uid int64) string { return fmt.Sprintf("otp:used:%d:*", uid) }
 
 // spend calls TryUse n times, requiring every one of them to be allowed.
 func spend(t *testing.T, g biz.ReplayGuard, n int64, uid int64, code string) {
@@ -48,10 +54,10 @@ func spend(t *testing.T, g biz.ReplayGuard, n int64, uid int64, code string) {
 // used".
 func TestReplayGuardHonorsConfiguredMax(t *testing.T) {
 	for _, max := range []int64{1, 2, 5} {
-		guard, _ := replayTestGuard(t, max)
-		spend(t, guard, max, 7, "123456")
+		guard, _, uid := replayTestGuard(t, max)
+		spend(t, guard, max, uid, "123456")
 
-		ok, err := guard.TryUse(context.Background(), 7, "123456")
+		ok, err := guard.TryUse(context.Background(), uid, "123456")
 		if err != nil {
 			t.Fatalf("max=%d: TryUse over the limit must not error (a rejection is not a failure): %v", max, err)
 		}
@@ -65,10 +71,10 @@ func TestReplayGuardHonorsConfiguredMax(t *testing.T) {
 // is usable" and would lock everyone out.
 func TestReplayGuardUnsetMaxFallsBackToDefault(t *testing.T) {
 	for _, unset := range []int64{0, -1} {
-		guard, _ := replayTestGuard(t, unset)
-		spend(t, guard, biz.DefaultMaxOTPUses, 7, "123456")
+		guard, _, uid := replayTestGuard(t, unset)
+		spend(t, guard, biz.DefaultMaxOTPUses, uid, "123456")
 
-		ok, _ := guard.TryUse(context.Background(), 7, "123456")
+		ok, _ := guard.TryUse(context.Background(), uid, "123456")
 		if ok {
 			t.Fatalf("max=%d should fall back to the default %d, and use #%d must be rejected",
 				unset, biz.DefaultMaxOTPUses, biz.DefaultMaxOTPUses+1)
@@ -80,42 +86,51 @@ func TestReplayGuardUnsetMaxFallsBackToDefault(t *testing.T) {
 // itself (the code is long past the skew window and fails verification, but the count still takes space, pure
 // garbage); worse, the "window" would slide with use instead of being a fixed 90s from the first use.
 func TestReplayGuardTTLArmedOnceNotExtended(t *testing.T) {
-	guard, mr := replayTestGuard(t, 0)
+	guard, rdb, uid := replayTestGuard(t, 0)
 	ctx := context.Background()
 
-	if _, err := guard.TryUse(ctx, 7, "123456"); err != nil {
+	if _, err := guard.TryUse(ctx, uid, "123456"); err != nil {
 		t.Fatalf("first TryUse: %v", err)
 	}
-	keys := mr.Keys()
+	keys, err := rdb.Keys(ctx, replayKeyPattern(uid)).Result()
+	if err != nil {
+		t.Fatalf("KEYS: %v", err)
+	}
 	if len(keys) != 1 {
 		t.Fatalf("exactly 1 count key should be written, got %v", keys)
 	}
-	if ttl := mr.TTL(keys[0]); ttl != replayTTL {
-		t.Fatalf("TTL after first use = %v, want %v", ttl, replayTTL)
+	if ttl := pttl(t, rdb, keys[0]); ttl <= 0 || ttl > replayTTL {
+		t.Fatalf("TTL after first use = %v, want in (0, %v]", ttl, replayTTL)
 	}
 
-	const elapsed = 30 * time.Second
-	mr.FastForward(elapsed)
-	if _, err := guard.TryUse(ctx, 7, "123456"); err != nil {
+	// Stand in for time passing without waiting: shorten what is left of the TTL, then use the code again. A renewed
+	// TTL would jump back to the whole replayTTL.
+	const left = 5 * time.Second
+	if err := rdb.PExpire(ctx, keys[0], left).Err(); err != nil {
+		t.Fatalf("PEXPIRE: %v", err)
+	}
+	if _, err := guard.TryUse(ctx, uid, "123456"); err != nil {
 		t.Fatalf("second TryUse: %v", err)
 	}
-	if ttl := mr.TTL(keys[0]); ttl != replayTTL-elapsed {
-		t.Fatalf("TTL after second use = %v, want %v (must not be renewed)", ttl, replayTTL-elapsed)
+	if ttl := pttl(t, rdb, keys[0]); ttl <= 0 || ttl > left {
+		t.Fatalf("TTL after second use = %v, want in (0, %v] (must not be renewed)", ttl, left)
 	}
 }
 
 // The quota is independent per (userID, code): the key uses the first 16 hex digits of the code hash, short enough to
 // look tidy, but short enough to collide would make two different codes share one quota.
 func TestReplayGuardBudgetIsPerUserAndCode(t *testing.T) {
-	guard, _ := replayTestGuard(t, 0)
+	guard, rdb, uid := replayTestGuard(t, 0)
+	otherUID := uid + 1
+	t.Cleanup(func() { deleteReplayKeys(rdb, otherUID) })
 	ctx := context.Background()
-	spend(t, guard, biz.DefaultMaxOTPUses, 7, "123456")
+	spend(t, guard, biz.DefaultMaxOTPUses, uid, "123456")
 
-	ok, err := guard.TryUse(ctx, 7, "654321")
+	ok, err := guard.TryUse(ctx, uid, "654321")
 	if err != nil || !ok {
 		t.Fatalf("another code of the same user should have its own quota: %v %v", ok, err)
 	}
-	ok, err = guard.TryUse(ctx, 8, "123456")
+	ok, err = guard.TryUse(ctx, otherUID, "123456")
 	if err != nil || !ok {
 		t.Fatalf("the same code of another user should have its own quota: %v %v", ok, err)
 	}
