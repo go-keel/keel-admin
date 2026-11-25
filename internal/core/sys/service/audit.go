@@ -14,20 +14,12 @@ import (
 	"github.com/go-keel/keel/middleware/locale"
 )
 
-// displayName looks up the audit display name in the request's language. When the request's language lacks the
-// message, go-i18n returns the default language (en) text together with MessageNotFoundErr, which is still more
-// readable than the raw identifier, so only an empty text counts: only when no language has the message (a business
-// module forgot to register it, or a legacy action) does it fall back to the raw fallback value.
+// displayName looks up the audit display name in the request's language. A language without the message gets the
+// default language (en) text, which is still more readable than the raw identifier; only when no language has the
+// message (a business module forgot to register it, or a legacy action), or without a localizer, does it fall back to
+// the raw fallback value.
 func displayName(ctx context.Context, id, fallback string) string {
-	loc, ok := locale.FromContext(ctx)
-	if !ok {
-		return fallback
-	}
-	s, _ := loc.Localize(&goi18n.LocalizeConfig{MessageID: id})
-	if s == "" {
-		return fallback
-	}
-	return s
+	return locale.Localize(ctx, &goi18n.Message{ID: id, Other: fallback})
 }
 
 // AuditService implements api.keel_admin.v1.AuditService (root-only).

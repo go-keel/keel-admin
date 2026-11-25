@@ -59,7 +59,7 @@ Biz declares the repo interface and data implements it; this inverted dependency
 type ArticleRepo interface {
     Create(ctx context.Context, article *Article) (*Article, error)
     FindByID(ctx context.Context, id int64) (*Article, error)
-    List(ctx context.Context, opts ListOptions) ([]*Article, int64, error)
+    List(ctx context.Context, opts ListArticleOptions) ([]*Article, int64, error)
     // Update writes only the listed fields: a partial update must be one UPDATE; reading the row, merging in
     // memory and writing the whole row back overwrites the other half of a concurrent change.
     Update(ctx context.Context, article *Article, fields []string) (*Article, error)
@@ -91,8 +91,8 @@ in its file.
 
 Define a Request struct when a method has more than 3 parameters or they come from several sources; define a Result
 struct when the return has several independent fields; otherwise pass parameters and return the entity or error
-directly. `ListOptions` for list queries (filters, sort, `Offset` / `Limit` in one struct, translated into a storage
-query by data) is the common case of the first. Another example:
+directly. `ListArticleOptions` (`List<Resource>Options`) for list queries (filters, sort, `Offset` / `Limit` in one
+struct, translated into a storage query by data) is the common case of the first. Another example:
 
 ```go
 // More than 3 parameters, or parameters from several sources: a Request struct,
@@ -370,12 +370,12 @@ import "github.com/go-keel/keel/core/kredis/lock"
 
 type ArchiveUseCase struct {
     repo   ArticleRepo
-    locker lock.Locker
+    locker *lock.Locker
 }
 
 func (uc *ArchiveUseCase) ArchiveExpired(ctx context.Context) error {
     // Size the TTL for the worst case, generously: the lock is not renewed and another instance takes it at expiry.
-    release, err := uc.locker.TryAcquireLock(ctx, "archive:article", 60)
+    release, err := uc.locker.TryAcquireLock(ctx, "archive:article", time.Minute)
     if errors.Is(err, lock.ErrLockNotAcquired) {
         slog.InfoContext(ctx, "archive already running elsewhere, skip")
         return nil // not an error: skip this run and wait for the next schedule

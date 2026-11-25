@@ -40,8 +40,6 @@ func wireApp(bootstrap *kconfig.Dynamic[conf.Bootstrap]) (*keel.App, func(), err
 	cleanups = append(cleanups, otelCleanup)
 
 	keel.SetupLogger(config)
-	appFactory := keel.NewAppFactory(keel.NewConfig(config))
-
 	// Both databases are required, and a missing one fails right here: db = admin database (all sys_* tables),
 	// bizDB = business database (the business area's own tables). default belongs to the derived repo's own code, and
 	// the kernel, as a guest, takes a named instance; this and why there is no fallback: ADR admin-0002.
@@ -89,7 +87,7 @@ func wireApp(bootstrap *kconfig.Dynamic[conf.Bootstrap]) (*keel.App, func(), err
 
 	// The chain: Keel's defaults, then the kernel's links (principal, authz, audit, locale, sentinel); your own
 	// middleware goes in after this call, before or after a named link (docs/admin/assembly.md).
-	chain := mw.Default(config.Config)
+	chain := mw.Default(config)
 	kernel.Middleware(chain, nsvc.RegisterErrors(service.NewErrorSentinel()))
 
 	// The business area's raw routes (http.Handlers that skip the chain, such as webhooks and downloads) are passed
@@ -100,7 +98,7 @@ func wireApp(bootstrap *kconfig.Dynamic[conf.Bootstrap]) (*keel.App, func(), err
 	if err != nil {
 		return nil, cleanup, err
 	}
-	app, err := appFactory.New(httpSrv)
+	app, err := keel.NewApp(config, httpSrv)
 	if err != nil {
 		return nil, cleanup, err
 	}

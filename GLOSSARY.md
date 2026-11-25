@@ -209,7 +209,7 @@ _Avoid_: the business system's database (a database outside the admin that the a
 The four-dimensional permission engine and the system domain (accounts, roles, departments, audit, one-time codes):
 `internal/core/` and `internal/server/`, the admin database's schema `migrations/admin/`, the frontend kernel
 (`docs/admin/shell.md`, "Frontend zones") and the English and Chinese kernel copy (`web/src/locales/sys/`,
-`internal/i18n/sys.{en,zh-CN}.toml`, and `internal/i18n/localed.go`: kernel, although the keel-layout segment counts message files under
+`internal/i18n/sys.{en,zh-CN}.toml`: kernel, although the keel-layout segment counts message files under
 `internal/i18n/` as assembly seams). Read-only for derived repos and a **zero-diff area**: replaced as a whole on
 upgrade. Assembly seams, by contrast, are read-only in shape but merged by
 hand. The frontend directory is named `sys`, not after the repository, because `make rename` does not rename

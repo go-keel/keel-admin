@@ -1,8 +1,8 @@
 # Example file: delete the whole file after forking. It shows "the kernel partly translated, the rest falls back to
 # English", in the same batch as the frontend locales/sys/ja-JP.ts: only a few system-level errors common to all pages
 # are translated; the auth / login domain, the system administration domain, audit action names and permission tree
-# display names are deliberately left out. A missing entry falls back to English in
-# internal/i18n.MustLocalizeMessage, which is not an omission: signing in with a wrong user name or password after
+# display names are deliberately left out. A missing entry falls back to English (Keel's
+# locale.Localize and sentinel.OnMessage), which is not an omission: signing in with a wrong user name or password after
 # switching to Japanese still shows the error in English, and that is exactly what this sample demonstrates (see
 # docs/adr/admin-0010-languages-and-copy-ownership.md). The kernel only guarantees that sys.en.toml and sys.zh-CN.toml
 # have the same key set (bundle_test.go); this partial file is not subject to that check.

@@ -1,7 +1,7 @@
 # Business messages: entries referenced by internal/biz|data|service/. Kernel messages are in sys.*.toml in the same
 # directory, see the comment at its top. The kernel does not check whether this file is fully translated; a derived
 # repo that wants that guarantee adds its own check on its message files. Missing entries fall back to English
-# (internal/i18n.MustLocalizeMessage).
+# (Keel's locale.Localize and sentinel.OnMessage).
 
 # ============ Business domain (internal/biz, extend here) ============
 

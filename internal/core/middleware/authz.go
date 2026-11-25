@@ -12,7 +12,6 @@ import (
 
 	"github.com/go-keel/keel-admin/internal/core/perm"
 	"github.com/go-keel/keel-admin/internal/core/sys/biz"
-	"github.com/go-keel/keel-admin/internal/i18n"
 	kauth "github.com/go-keel/keel/middleware/auth"
 	"github.com/go-keel/keel/middleware/locale"
 	"github.com/go-keel/keel/mw"
@@ -50,16 +49,11 @@ var (
 // per request locale. Middleware errors do not pass through the sentinel middleware (it wraps the handler and
 // sits deeper than authz), so they must be localized where they are raised; WithLocale is fixed right after metadata
 // (before auth), so the localizer is already in ctx. Code and reason are kept as they are, so errors.Is is
-// unchanged. A missing entry falls back to English through internal/i18n.MustLocalizeMessage (the same behaviour as
-// internal/i18n.Localed), instead of falling back to the English hard-coded in the proto, so the two English wordings
-// need not be kept in step by hand.
+// unchanged. A missing entry falls back to the English in the message files through locale.Localize (the same
+// behaviour as the sentinel's OnMessage), and only without that to the English hard-coded in the proto, so the two
+// English wordings need not be kept in step by hand.
 func localized(ctx context.Context, proto *errors.Error, msgID string) *errors.Error {
-	l, ok := locale.FromContext(ctx)
-	if !ok {
-		return proto
-	}
-	msg := i18n.MustLocalizeMessage(l, &goi18n.Message{ID: msgID, Other: proto.Message})
-	return errors.New(int(proto.Code), proto.Reason, msg)
+	return errors.New(int(proto.Code), proto.Reason, locale.Localize(ctx, &goi18n.Message{ID: msgID, Other: proto.Message}))
 }
 
 // StepUpVerifier verifies a fresh OTP code for sensitive (require_otp)

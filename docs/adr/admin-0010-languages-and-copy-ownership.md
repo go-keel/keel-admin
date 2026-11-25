@@ -47,7 +47,7 @@ of the code, docs and error codes.
 
 What needs solving is the judgement between "fall back to English" and "report an error": when go-i18n returns
 `MessageNotFoundErr`, it is not a loading failure; the message really is missing, and the library has already fallen
-back to English by design. `internal/i18n.MustLocalizeMessage` and the frontend's `fallbackLng: 'en-US'` judge this
+back to English by design. Keel's `locale.Localize` and the frontend's `fallbackLng: 'en-US'` judge this
 signal "normal" and route it down one path, instead of scattered, inconsistent failures (panic / empty string /
 hard-coded English).
 

@@ -50,6 +50,7 @@ keel-layout docs/guides/raw-http.md
 keel-layout docs/guides/task.md
 keel-layout docs/guides/testing.md
 keel-layout internal/testdb/testdb.go
+keel-layout internal/i18n/bundle.go
 keel-layout e2e/harness/harness.go norm
 keel-layout docs/guides/deploy-nginx.md
 keel-layout deploy/nginx/conf.d/client-ip.conf
@@ -69,7 +70,7 @@ keel-layout deploy/nginx/site.conf.example
 # in another directory under docs/.
 #keel-admin docs/admin
 # The kernel (its contracts in api/keel_admin/v1, internal/core, internal/server, the admin database's schema
-# migrations/admin, the kernel copy internal/i18n/sys.{en,zh-CN}.toml and localed.go, and the frontend kernel, scoped as in the
+# migrations/admin, the kernel copy internal/i18n/sys.{en,zh-CN}.toml, and the frontend kernel, scoped as in the
 # frontend directory rules of AGENTS.md) differs from upstream only by the module path make rename replaces, so it is
 # compared after norm normalization. The kernel contracts are listed file by file: their generated *.pb.go are
 # regenerated with make all, never copied (a renamed module path would corrupt their descriptors).
@@ -91,7 +92,6 @@ keel-layout deploy/nginx/site.conf.example
 #keel-admin migrations/admin norm
 #keel-admin internal/i18n/sys.en.toml norm
 #keel-admin internal/i18n/sys.zh-CN.toml norm
-#keel-admin internal/i18n/localed.go norm
 #keel-admin scripts/gen-error-reason.mjs norm
 #keel-admin web/src/components norm !web/src/components/ui
 #keel-admin web/src/hooks norm

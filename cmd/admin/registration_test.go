@@ -108,7 +108,7 @@ func TestPermissionRegistryHasLocalizedNames(t *testing.T) {
 
 	bundle := i18n.NewBundle()
 	for _, lang := range []string{"en", "zh-CN"} {
-		loc := goi18n.NewLocalizer(bundle.Bundle, lang)
+		loc := goi18n.NewLocalizer(bundle, lang)
 		for _, id := range ids {
 			if _, err := loc.Localize(&goi18n.LocalizeConfig{MessageID: id}); err != nil {
 				t.Errorf("lang %s: missing i18n entry [%s] in internal/i18n/sys.%s.toml", lang, id, lang)
@@ -131,7 +131,7 @@ func TestAuditedOperationsHaveLocalizedNames(t *testing.T) {
 
 	bundle := i18n.NewBundle()
 	for _, lang := range []string{"en", "zh-CN"} {
-		loc := goi18n.NewLocalizer(bundle.Bundle, lang)
+		loc := goi18n.NewLocalizer(bundle, lang)
 		for _, op := range perm.Audited() {
 			ids := []string{
 				audit.ActionNameKey(audit.ActionOf(op)),

@@ -158,9 +158,9 @@ func testUpdateMyProfile(t *testing.T, e *env) {
 	eq(t, "email", a.str("email"), "v@example.com")
 	eq(t, "phone", a.str("phone"), "+86 138-0000-0000")
 
-	for _, bad := range []obj{{"nickname": "x", "email": "bad"}, {"nickname": "x", "phone": "12"}} {
-		if msg := u.put(t, "/v1/sys/auth/profile", bad).wantError(t, 400, "VALIDATOR"); !hasHan(msg) {
-			t.Fatalf("validation message not in the request language: %q", msg)
+	for field, bad := range map[string]obj{"email": {"nickname": "x", "email": "bad"}, "phone": {"nickname": "x", "phone": "12"}} {
+		if msg := u.put(t, "/v1/sys/auth/profile", bad).wantError(t, 400, "VALIDATOR"); !strings.Contains(msg, field) {
+			t.Fatalf("validation message %q should name the field %s", msg, field)
 		}
 	}
 	u.put(t, "/v1/sys/auth/profile", obj{"nickname": "x", "avatar": avatar(300 << 10)}).wantError(t, 400, "AVATAR_TOO_LARGE")

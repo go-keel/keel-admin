@@ -3,6 +3,60 @@
 This file holds entries only, one per change that actually happened; how to write entries and how to follow
 upstream: `docs/upgrading-protocol.md`.
 
+## 2026-11-25 · 13
+
+> Follows keel-layout ef4608d
+> Follows keel-layout 6fa085f
+
+**What changed.** The template follows Keel's one way of doing i18n (Keel's `UPGRADING.md`, "`locale.Bundle` is gone")
+and keel-layout's `2026-11-25 · 6`: `internal/i18n/bundle.go` is now taken from keel-layout;
+`internal/i18n/localed.go` (`i18n.Localed`) and `MustLocalizeMessage` are gone. The kernel maps
+its errors with `OnMessage` and translates elsewhere with `locale.Localize`; the business area's
+`internal/service/errors.go` uses `OnMessage` too. `docs/admin/errors.md` says why this repository writes its message
+entries by hand, and that a `VALIDATOR` error now carries the validation library's English text naming the field, for
+developers: frontend forms check the same constraints first.
+
+**Why.** Keel now translates with fallback itself (`locale.Localize`, `sentinel.OnMessage`), so the template's own
+helpers were a second way to do it.
+
+**How to apply.**
+
+1. Take the kernel (`internal/core/`), the shared guides and `internal/i18n/bundle.go` with `make sync-upstream`;
+   delete `internal/i18n/localed.go`, and add the `keel-layout internal/i18n/bundle.go` line to
+   `scripts/cross-repo-sync.list`, dropping the `internal/i18n/localed.go` line.
+2. In your own code, replace `OnLocaled(err, i18n.Localed("ErrX", "English.", v1.ErrorX))` with
+   `OnMessage(err, &goi18n.Message{ID: "ErrX", Other: "English."}, v1.ErrorX)`, and
+   `i18n.MustLocalizeMessage(l, msg)` with `locale.Localize(ctx, msg)`.
+3. Business forms whose zod schema misses a constraint of the proto now let users see that English text: align the
+   schemas with the proto (`docs/admin/forms.md`).
+
+## 2026-11-25 · 12
+
+> Follows keel-layout 9969e8e
+
+**What changed.** The template follows Keel v0.2.0 (its `UPGRADING.md`, section "v0.2.0"):
+`cmd/<app>/di.go` no longer builds `keel.NewAppFactory(keel.NewConfig(config))`; it builds the chain with
+`mw.Default(config)` and the app with `keel.NewApp(config, httpSrv)`. The kernel test
+`internal/core/sys/service/errors_test.go` writes the client IP with `metadata.Set`. The shared guides teach the new
+Keel calls (`keel.NewApp`, `keel.NewServiceClient(config, ...)`, `metadata.Get` / `metadata.Set`, `*lock.Locker`
+with `time.Duration` TTLs, `worker.NewServer`), say "where the entry point builds its middleware chain" instead of
+naming `newApp`, and name list options `List<Resource>Options`, as do the examples in `docs/admin/permission.md`. `go.mod`
+names Keel `v0.2.0`, and the optional modules (`core/kdb/mysql`, `core/kdb/postgres`, `core/khttpclient`) the
+pseudo-version of that tag's commit, `v0.0.0-20261125211609-9d679e606cb4`.
+
+**Why.** Keel replaced its config wrapper and factories with the loaded `*kconfig.Config`, and changed the metadata,
+lock and worker APIs.
+
+**How to apply.**
+
+1. Set the Keel versions in `go.mod` to the ones above, run `go mod tidy`, and apply Keel's own `UPGRADING.md`
+   entries between your version and that one; `go build ./...` and `go vet -tags e2e ./...` list the call sites.
+2. Take the kernel (`internal/core/`) and the shared guides with `make sync-upstream`.
+3. In `cmd/<app>/di.go`: delete `appFactory := keel.NewAppFactory(...)`, change `mw.Default(config.Config)` to
+   `mw.Default(config)` and `appFactory.New(httpSrv)` to `keel.NewApp(config, httpSrv)`.
+4. Multiply every `TryAcquireLock` TTL in your own code by `time.Second` (a bare integer still compiles and means
+   nanoseconds).
+
 ## 2026-11-25 · 11
 
 **What changed.** The kernel assembles itself. `server.NewKernel(config, sysConf, adminDB, redis)` builds the whole
@@ -13,7 +67,7 @@ exported fields `ScopeUseCase`, `RefRepo`, `BusinessZone` and `Brand` are what t
 kernel's and the business's services and builds the HTTP server, SPA last; `server.RegisterKernelPermissions()`
 registers the kernel batch; `server.ServedOperations(businessServices)` lists what Seal checks. Gone from
 `internal/server`: `KernelHTTPServers`, `ServiceNames`, `ProvideBusinessZone`, `ProvideAuthUseCase`,
-`ProvideOTPCipher`, `ProvideOTPUseCase` and `NewCaptchaProvider` (entry 10's call moves into the kernel). `newApp`
+`ProvideOTPCipher` and `ProvideOTPUseCase`. `newApp`
 leaves `cmd/<app>/main.go`; `cmd/<app>/chain_order_test.go` moves to `internal/server/` (kernel).
 
 **Why.** About 100 lines of kernel wiring lived in each derived repository's `di.go` and `main.go`, and every kernel
@@ -27,8 +81,7 @@ change had to be copied there by hand.
    of `main`, the driver blank imports, loading `configs/app.yaml`, `wireApp` and `app.Run()`.
 3. `cmd/<app>/di.go`, in `wireApp`: keep everything up to and including `kredis.NewRedis` (config, otel, logger,
    `appFactory`, both databases, Redis, and any infrastructure of your own). Replace everything from the kernel data
-   (`coredata.NewData(db)`) through the kernel services, `refRepo`, `scopeUseCase`, `brand`, `businessZone` and the
-   captcha provider with:
+   (`coredata.NewData(db)`) through the kernel services, `refRepo`, `scopeUseCase`, `brand` and `businessZone` with:
 
    ```go
    kernel, kernelCleanup, err := server.NewKernel(config, bootstrap.Get().Sys, db, redis)
@@ -73,29 +126,16 @@ change had to be copied there by hand.
 **What changed.** The captcha provider is built from config instead of looked up in a global registry:
 `captcha.MustRegister`, `captcha.Get`, `captcha.Names` and `captcha.ResetForTest` are gone, and so are
 `biz.CaptchaGate`, `biz.NewCaptchaGate`, `biz.AuthConfig.CaptchaEnabled` and the startup errors
-`captcha.provider-name-empty` / `captcha.provider-duplicate`. `server.NewCaptchaProvider(sysConf.GetCaptcha(), redis)`
-returns the selected provider (with a cleanup), or nil when `sys.captcha.enabled` is false; `biz.NewAuthUseCase` and
-`server.ProvideAuthUseCase` take that `captcha.Provider` as their last argument. With captcha off, the anonymous
-`POST /v1/sys/auth/captcha` no longer writes a challenge to Redis.
+`captcha.provider-name-empty` / `captcha.provider-duplicate`. The kernel builds the provider selected by
+`sys.captcha` itself, none when `sys.captcha.enabled` is false; `biz.NewAuthUseCase` takes that `captcha.Provider` as
+its last argument. With captcha off, the anonymous `POST /v1/sys/auth/captcha` no longer writes a challenge to Redis.
 
 **Why.** Both providers were registered on every start, and the anonymous captcha endpoint kept issuing challenges
 with captcha off.
 
-**How to apply.**
-
-1. Take the kernel (`internal/core/`, `internal/server/`).
-2. In `cmd/<app>/di.go`, replace the two `captcha.MustRegister` calls, the turnstile cleanup, the `cap.GetEnabled()`
-   self-check block and `biz.NewCaptchaGate(...)` with:
-
-   ```go
-   captchaProvider, captchaCleanup, err := server.NewCaptchaProvider(sysConf.GetCaptcha(), redis)
-   if err != nil {
-       return nil, cleanup, err
-   }
-   cleanups = append(cleanups, captchaCleanup)
-   ```
-
-   and pass `captchaProvider` where `captchaGate` went.
+**How to apply.** Apply it together with entry 11, which takes the kernel and replaces the kernel wiring in
+`cmd/<app>/di.go` with `server.NewKernel`: in `di.go`, delete the two `captcha.MustRegister` calls, the turnstile
+cleanup, the `cap.GetEnabled()` self-check block and `biz.NewCaptchaGate(...)`; the kernel builds the provider.
 
 ## 2026-11-25 · 9
 
@@ -188,7 +228,7 @@ The escaper and `localed` were copied between the kernel and the business area.
 
 ## 2026-11-25 · 4
 
-> Follows keel-layout 679fd27
+> Follows keel-layout a749476
 
 **What changed.** The `Makefile` no longer sets `VERSION` or passes `-X main.Version=...` to the linker (no `main.go`
 declares that variable; the version a service reports is `app.version` in `configs/app.yaml`), and `make generate`
@@ -229,7 +269,7 @@ manual test run.
 
 ## 2026-11-25 · 2
 
-> Follows keel-layout 3e227cf
+> Follows keel-layout b7404bd
 
 **What changed.** The shared end-to-end harness arrives: `e2e/harness/harness.go` (a shared file) builds `cmd/*`, runs
 the binaries as processes with only the committed configs and `KEEL_` variables, collects their JSON log and stops
@@ -247,7 +287,7 @@ round table and `make e2e` are still to come.
 
 ## 2026-11-25 · 1
 
-> Follows keel-layout 3d9374f
+> Follows keel-layout cb06f58
 
 **What changed.** Tests come in three layers, one command each: unit tests (`make test`, Go and the frontend's
 vitest), narrow integration tests (`make integration`) and end-to-end tests (`make e2e`, still to come); the terms are
@@ -280,7 +320,7 @@ server in details. Nothing joins across the two databases, so they need not shar
 
 ## 2026-11-24 · 1
 
-> Follows keel-layout 6ae3cd9
+> Follows keel-layout 03dd4bc
 
 **What changed.** The admin runs on MySQL or PostgreSQL. Schema scripts moved into one directory per dialect:
 `migrations/admin/{mysql,postgres}/0_schema.sql` (kernel) and `migrations/business/{mysql,postgres}/0_schema.sql`. Data

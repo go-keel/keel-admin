@@ -206,7 +206,7 @@ choosing it, read `permission-model/data-scope.md` §5.1 and §11 S10.
 type ArticleRepo interface {
     // spec filters the article's own rows (owner columns); catSpec is the grant scope of the "category" resource,
     // applied to the category_id foreign key column (an explicit assignment gate, see the data layer).
-    List(ctx context.Context, spec, catSpec perm.ScopeSpec, opts ListOptions) ([]*Article, int64, error)
+    List(ctx context.Context, spec, catSpec perm.ScopeSpec, opts ListArticleOptions) ([]*Article, int64, error)
     Create(ctx context.Context, a *Article) error
     // Delete returns the number of rows actually deleted. 0 rows (the id does not exist, or exists but is out of
     // scope) becomes ErrArticleNotFound in the use case; the two cases are deliberately indistinguishable (existence
@@ -225,7 +225,7 @@ type ArticleUseCase struct {
 
 // Two independent resolutions: the row scope (ResArticle) and the category grant (ResArticleCategory), intersected
 // (AND) in the data layer.
-func (uc *ArticleUseCase) List(ctx context.Context, actor *perm.Principal, opts ListOptions) ([]*Article, int64, error) {
+func (uc *ArticleUseCase) List(ctx context.Context, actor *perm.Principal, opts ListArticleOptions) ([]*Article, int64, error) {
     spec, err := uc.scope.Resolve(ctx, actor, ResArticle)
     if err != nil {
         return nil, 0, err
@@ -272,7 +272,7 @@ Get/Update/Delete fetch by id directly leaves a back door around the scope contr
 // key. The same grant is a row filter on the category table (default id column) and a gate on the article table.
 var catCols = permdata.Cols{PK: "category_id"}
 
-func (r *articleRepo) List(ctx context.Context, spec, catSpec perm.ScopeSpec, opts biz.ListOptions) ([]*biz.Article, int64, error) {
+func (r *articleRepo) List(ctx context.Context, spec, catSpec perm.ScopeSpec, opts biz.ListArticleOptions) ([]*biz.Article, int64, error) {
     q := r.data.DB.WithContext(ctx).Model(&article{}).
         Scopes(permdata.ApplyScope(spec), permdata.ApplyScopeWith(catSpec, catCols))
     // ... filter conditions go on the same q, then Count + Offset/Limit/Find

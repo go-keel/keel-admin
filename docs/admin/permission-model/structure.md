@@ -57,8 +57,8 @@ Legend: **▣ = kernel, read-only**; **★ = business writes**; **☆ = half-ope
 │   ├── server/                    # ▣ kernel: NewKernel (kernel assembly), chain links, HTTP server and
 │   │                              #   registration, SPA/brand mounting
 │   ├── testdb/                    # shared from keel-layout: per-test databases for integration and e2e tests
-│   └── i18n/                      # ▣ localed.go, sys.en.toml, sys.zh-CN.toml (kernel copy;
-│                                  #   the overwrite covers only these three files)
+│   └── i18n/                      # ▣ sys.en.toml, sys.zh-CN.toml (kernel copy;
+│                                  #   the overwrite covers only these two files)
 │                                  # bundle.go comes from keel-layout, as in every derived service
 │                                  # ☆ app.*.toml (business copy) and sys.<other language>.toml
 │                                  #   translated by the derived repo: upstream touches neither

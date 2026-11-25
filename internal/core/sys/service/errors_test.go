@@ -5,11 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/BurntSushi/toml"
 	kerrors "github.com/go-kratos/kratos/v3/errors"
-	kmd "github.com/go-kratos/kratos/v3/metadata"
-	goi18n "github.com/nicksnyder/go-i18n/v2/i18n"
-	"golang.org/x/text/language"
 
 	"github.com/go-keel/keel-admin/internal/core/perm"
 	"github.com/go-keel/keel-admin/internal/i18n"
@@ -19,20 +15,28 @@ import (
 
 // The IP allowlist rejection message must carry the request's client IP, so the user can ask an administrator to
 // add that address. It renders the real zh-CN message, so a misspelled template variable in the message is caught
-// here too.
+// here too; without a localizer the English text carries the IP as well.
 func TestIPNotAllowedMessageCarriesRemoteIP(t *testing.T) {
-	b := goi18n.NewBundle(language.English)
-	b.RegisterUnmarshalFunc("toml", toml.Unmarshal)
-	if _, err := b.LoadMessageFile("../../../i18n/sys.zh-CN.toml"); err != nil {
-		t.Fatalf("load zh-CN: %v", err)
+	ctx, err := metadata.Set(context.Background(), metadata.KeyRemoteAddress, "203.0.113.7")
+	if err != nil {
+		t.Fatal(err)
 	}
-	ctx := kmd.NewServerContext(context.Background(), kmd.Metadata{metadata.KeyRemoteAddress: {"203.0.113.7"}})
+	zhCtx, err := metadata.Set(ctx, metadata.KeyAcceptLanguage, "zh-CN")
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := func(ctx context.Context, _ any) (any, error) { return nil, ipNotAllowed(ctx, nil) }
 
-	err := ipNotAllowed(ctx, goi18n.NewLocalizer(b, "zh-CN"), nil)
-
-	msg := kerrors.FromError(err).Message
-	if !strings.Contains(msg, "203.0.113.7") {
-		t.Fatalf("the message should carry the client IP, got %q", msg)
+	_, zhErr := locale.Server(i18n.NewBundle())(h)(zhCtx, nil)
+	_, enErr := h(ctx, nil)
+	for name, err := range map[string]error{"zh-CN": zhErr, "no localizer": enErr} {
+		msg := kerrors.FromError(err).Message
+		if !strings.Contains(msg, "203.0.113.7") || strings.Contains(msg, "{{") {
+			t.Errorf("%s: the message should carry the client IP, got %q", name, msg)
+		}
+	}
+	if kerrors.FromError(zhErr).Message == kerrors.FromError(enErr).Message {
+		t.Errorf("zh-CN message is the English one: %q", kerrors.FromError(zhErr).Message)
 	}
 }
 

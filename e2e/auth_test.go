@@ -69,8 +69,8 @@ func testLoginValidatorMessage(t *testing.T, e *env) {
 	zh := anon.post(t, "/v1/sys/auth/login", obj{"username": "", "password": "x"}).wantError(t, 400, "VALIDATOR")
 	anon.lang = "en"
 	en := anon.post(t, "/v1/sys/auth/login", obj{"username": "", "password": "x"}).wantError(t, 400, "VALIDATOR")
-	if !hasHan(zh) || hasHan(en) || strings.Contains(en, "username") {
-		t.Fatalf("want a generic message per language: zh %q, en %q", zh, en)
+	if !strings.Contains(en, "username") || zh != en {
+		t.Fatalf("want the validation library's text naming the field, untranslated: zh %q, en %q", zh, en)
 	}
 }
 

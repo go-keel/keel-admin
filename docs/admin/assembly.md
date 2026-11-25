@@ -37,14 +37,14 @@ path in this repository's `go.mod`.
 On top of the guide's order, the kernel and permission registration sit between the infrastructure and the server:
 
 ```
-kconfig.NewConfig → kotel.Setup → keel.SetupLogger → keel.NewAppFactory
+kconfig.NewConfig → kotel.Setup → keel.SetupLogger
   → infrastructure: kdb.NewNamedDB(config, "admin") + kdb.NewDB(config) + kredis.NewRedis
   → server.NewKernel(config, bootstrap.Get().Sys, adminDB, redis): the whole kernel (sys.* read once at startup)
   → business area data → biz → service (internal/data|biz|service), taking kernel.ScopeUseCase / RefRepo / BusinessZone
   → registerPermissions(...): server.RegisterKernelPermissions, then perm.MustRegisterGroups / MustRegister per module
-  → chain := mw.Default(config.Config) → kernel.Middleware(chain, sentinelGroup) → your own middleware
+  → chain := mw.Default(config) → kernel.Middleware(chain, sentinelGroup) → your own middleware
   → kernel.NewHTTPServer(chain, httpServices(...), raw routes...): perm.Seal(every served operation) → the server
-  → appFactory.New(httpSrv)
+  → keel.NewApp(config, httpSrv)
 ```
 
 - **The kernel is built in one call and its wiring is not in di.go**: `server.NewKernel` returns a `*server.Kernel`
@@ -110,7 +110,7 @@ A new module also passes `nil` for each parameter it adds to `httpServices` or `
 
 ## The chain: three more links, the SPA on the same server
 
-di.go builds the chain with `mw.Default(config.Config)`, which reserves the authentication slot that the server
+di.go builds the chain with `mw.Default(config)`, which reserves the authentication slot that the server
 fills, and hands it to `kernel.Middleware(chain, sentinelGroup)`. The kernel inserts, in order, `principal`
 (verified claims → principal) → `authz` (permission-code bindings in code, and step-up) → `audit` (write-operation
 audit) right after the validate slot, so after authentication; locale right after metadata; sentinel last
@@ -119,7 +119,7 @@ audit) right after the validate slot, so after authentication; locale right afte
 around `"principal"`, `"authz"` or `"audit"` (or Keel's slots), never by editing the kernel:
 
 ```go
-chain := mw.Default(config.Config)
+chain := mw.Default(config)
 kernel.Middleware(chain, nsvc.RegisterErrors(service.NewErrorSentinel()))
 chain.InsertAfter("audit", quota, "quota") // ← a business mw.Middleware that needs the principal
 ```

@@ -110,7 +110,6 @@ func (s *MetaService) ListPermissions(ctx context.Context, _ *v1.ListPermissions
 func (s *MetaService) ListResources(ctx context.Context, _ *v1.ListResourcesRequest) (*v1.ListResourcesReply, error) {
 	// Resource display names are translated per request language (the same server-side localization as error
 	// messages). A non-HTTP context has no localizer; name then stays empty and the frontend falls back to the slug.
-	localizer, hasLocale := locale.FromContext(ctx)
 	defs := perm.Resources()
 	items := make([]*v1.ResourceDef, 0, len(defs))
 	for _, d := range defs {
@@ -119,19 +118,12 @@ func (s *MetaService) ListResources(ctx context.Context, _ *v1.ListResourcesRequ
 			AnchorSelf: d.Anchors&perm.AnchorSelf != 0,
 			AnchorDept: d.Anchors&perm.AnchorDept != 0,
 		}
-		localize := func(key string) string {
-			if !hasLocale || key == "" {
-				return ""
-			}
-			// When the current language lacks the message, go-i18n still falls back to the default language (en)
-			// text, only adding MessageNotFoundErr (as displayName in audit.go does), so it ignores err and checks
-			// only for empty text: only a key that does not exist at all (a misspelled NameKey) gives an empty
-			// string, and the frontend then falls back to the slug; for a merely untranslated message, English
-			// is more readable than the slug.
-			s, _ := localizer.Localize(&i18n.LocalizeConfig{MessageID: key})
-			return s
+		// A language without the message gets the default language (en) text, more readable than the slug; only a
+		// key that does not exist at all (a misspelled NameKey), or no localizer, gives an empty string, and the
+		// frontend then falls back to the slug.
+		if d.NameKey != "" {
+			it.Name = locale.Localize(ctx, &i18n.Message{ID: d.NameKey})
 		}
-		it.Name = localize(d.NameKey)
 		// The grantable instance options: perm.GrantOptions calls the business-registered ListGrantable callback on
 		// the spot (instances are runtime business data) and enforces the MaxGrantOptions ceiling. A failing
 		// callback or an exceeded ceiling fails the whole request: a configuration page given incomplete options

@@ -20,7 +20,10 @@ only what an admin built on keel-admin adds. `<pkg>` is the proto package direct
    `nsvc.RegisterErrors(service.NewErrorSentinel())`, kernel mappings underneath, business mappings on top.
 4. Add the messages to every `internal/i18n/app.<lang>.toml` this repository ships. The kernel does not check that business
    entries are fully translated, and missing ones fall back to English; a derived repo that wants a guarantee adds
-   its own check. Message IDs are passed in variables, so goi18n's extract cannot find them; write them by hand.
+   its own check. Write the entries by hand; this repository has no `i18n-extract` / `i18n-merge` targets. goi18n's
+   extract writes every message it finds into one set of files, while the copy here is split by owner: kernel
+   entries in `sys.*.toml` (replaced as a whole on upgrade) and business entries in `app.*.toml` (this repository's
+   own). Permission and resource names are looked up by IDs built from their codes, which extract cannot see anyway.
 
 **The frontend needs no registration for a new reason**: the default toast is right (see "The frontend has two
 rules" below).
@@ -28,13 +31,14 @@ rules" below).
 ```go
 // internal/service/errors.go (a fictional ErrArticleNotFound)
 func RegisterErrors(g *sentinel.Group) *sentinel.Group {
-    g.OnLocaled(biz.ErrArticleNotFound, i18n.Localed("ErrArticleNotFound", "Article not found.", v1.ErrorArticleNotFound))
+    g.OnMessage(biz.ErrArticleNotFound, &goi18n.Message{ID: "ErrArticleNotFound", Other: "Article not found."}, v1.ErrorArticleNotFound)
     return g
 }
 ```
 
-`i18n.Localed` (`internal/i18n/localed.go`) is the one helper the kernel and the business area share: it looks the
-message up in the current language, falls back to English, and hands it to the reason's constructor.
+`OnMessage` is Keel's (`keel:docs/middleware.md#sentinel`), used the same way by the kernel and the business area: it
+looks the message up in the current language, falls back to English, and hands it to the reason's constructor. Text
+translated outside the sentinel uses `locale.Localize`, which falls back the same way.
 
 ## The reason is the contract, the HTTP status is derived
 
@@ -92,10 +96,10 @@ retry; the rest of the page keeps showing and keeps working.** The trade-offs ar
 
 ## Contract-layer validation messages
 
-A request that fails the proto annotations returns reason `VALIDATOR` with one generic sentence in the request's
-language, chosen by Keel (`keel:docs/middleware.md#validate`); the field-level detail goes to the log. Frontend forms
-validate against the same constraints first, so normal use never reaches this point, and the frontend shows the
-sentence like any other error.
+A request that fails the proto annotations returns reason `VALIDATOR` with the validation library's English text,
+naming the field and the constraint, in every language (`keel:docs/middleware.md#validate`). It is for developers:
+frontend forms validate against the same constraints first, so normal use never reaches this point, and a `VALIDATOR`
+error means a form is missing a check. The frontend shows it like any other error; it gets no message-file entry.
 
 ## Kernel startup errors carry rule IDs
 

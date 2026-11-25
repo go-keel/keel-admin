@@ -202,11 +202,11 @@ imports the compiler now reports as unused. Three steps, in this order:
      whose formatting check runs before the type check; the type check then points at the menu items in
      `web/src/nav.ts` and the workbench shortcuts in `web/src/routes/_app/index.tsx` that reference deleted pages.
 
-   When the compiler reports `bizDB` and `scopeUseCase` as "declared and not used", **do not delete them**: the
-   former is the business database connection (both databases are required, see
-   `docs/adr/admin-0002-two-databases-and-default-ownership.md`), the latter the resolver of business data scopes;
-   the first business module needs both. Hold them with a `_ = bizDB` / `_ = scopeUseCase` line after their
-   construction, and delete that line when you wire in the first business module.
+   When the compiler reports `bizDB` as "declared and not used", **do not delete it**: it is the business database
+   connection (both databases are required, see `docs/adr/admin-0002-two-databases-and-default-ownership.md`), and
+   the first business module needs it. Hold it with a `_ = bizDB` line after its construction, and delete that line
+   when you wire in the first business module. The resolver of business data scopes stays on the kernel as
+   `kernel.ScopeUseCase`, with nothing to hold.
 
 3. **Delete the leftovers the compiler cannot see.** Error codes, sentinel errors and their mappings, i18n entries,
    table statements, menus and frontend text still compile after the examples are gone. Delete each place marked
