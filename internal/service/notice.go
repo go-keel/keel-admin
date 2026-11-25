@@ -8,6 +8,7 @@ import (
 
 	v1 "github.com/go-keel/keel-admin/api/admin_app/v1"
 	"github.com/go-keel/keel-admin/internal/biz"
+	"github.com/go-keel/keel-admin/internal/core/perm"
 	"github.com/go-keel/keel-admin/internal/core/timefmt"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -28,7 +29,7 @@ func NewNoticeService(uc *biz.NoticeUseCase, names NameResolver, businessZone *t
 }
 
 func (s *NoticeService) ListNotice(ctx context.Context, req *v1.ListNoticeRequest) (*v1.ListNoticeReply, error) {
-	actor, err := actorFromContext(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +53,7 @@ func (s *NoticeService) ListNotice(ctx context.Context, req *v1.ListNoticeReques
 }
 
 func (s *NoticeService) CreateNotice(ctx context.Context, req *v1.CreateNoticeRequest) (*v1.NoticeReply, error) {
-	actor, err := actorFromContext(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +67,7 @@ func (s *NoticeService) CreateNotice(ctx context.Context, req *v1.CreateNoticeRe
 // ListNoticeCategoryOptions is the category selector's option set (bound to ops:notice:view): the notice page's filter
 // dropdown, submission form and category names of list rows all need it, so whoever can open the page can fetch it.
 func (s *NoticeService) ListNoticeCategoryOptions(ctx context.Context, _ *v1.ListNoticeCategoryOptionsRequest) (*v1.ListNoticeCategoryOptionsReply, error) {
-	actor, err := actorFromContext(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +84,7 @@ func (s *NoticeService) ListNoticeCategoryOptions(ctx context.Context, _ *v1.Lis
 
 // ListNoticeCategory is the category management list (bound to ops:notice:category), paged.
 func (s *NoticeService) ListNoticeCategory(ctx context.Context, req *v1.ListNoticeCategoryRequest) (*v1.ListNoticeCategoryReply, error) {
-	actor, err := actorFromContext(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +108,7 @@ func (s *NoticeService) CreateNoticeCategory(ctx context.Context, req *v1.Create
 }
 
 func (s *NoticeService) DeleteNoticeCategory(ctx context.Context, req *v1.DeleteNoticeCategoryRequest) (*emptypb.Empty, error) {
-	actor, err := actorFromContext(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +119,7 @@ func (s *NoticeService) DeleteNoticeCategory(ctx context.Context, req *v1.Delete
 }
 
 func (s *NoticeService) DeleteNotice(ctx context.Context, req *v1.DeleteNoticeRequest) (*emptypb.Empty, error) {
-	actor, err := actorFromContext(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +131,7 @@ func (s *NoticeService) DeleteNotice(ctx context.Context, req *v1.DeleteNoticeRe
 
 // BatchDeleteNotice serves batch delete from the table's multi-select: one request, one audit entry, all or nothing.
 func (s *NoticeService) BatchDeleteNotice(ctx context.Context, req *v1.BatchDeleteNoticeRequest) (*emptypb.Empty, error) {
-	actor, err := actorFromContext(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}

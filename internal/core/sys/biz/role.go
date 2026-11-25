@@ -195,7 +195,7 @@ func (uc *RoleUseCase) Get(ctx context.Context, id int64) (*Role, error) {
 //
 // Non-root can query only roles it can assign (assignableRange); otherwise this would be a hole for enumerating
 // the permissions of any role, leaking sensitive roles too (which non-root should never see).
-func (uc *RoleUseCase) PermissionsOf(ctx context.Context, actor *Actor, id int64) ([]string, error) {
+func (uc *RoleUseCase) PermissionsOf(ctx context.Context, actor *perm.Principal, id int64) ([]string, error) {
 	r, err := uc.repo.Get(ctx, id)
 	if err != nil {
 		return nil, err
@@ -244,7 +244,7 @@ func (uc *RoleUseCase) fillBoundaries(ctx context.Context, rs []*Role) error {
 //
 // An option set is not paged: the dropdown must reach any item. It uses ListBrief, since it never needs perms and
 // has no reason to run an N+1 for them.
-func (uc *RoleUseCase) ListAssignable(ctx context.Context, actor *Actor) ([]*Role, error) {
+func (uc *RoleUseCase) ListAssignable(ctx context.Context, actor *perm.Principal) ([]*Role, error) {
 	rs, err := uc.repo.ListBrief(ctx)
 	if err != nil {
 		return nil, err

@@ -1,6 +1,10 @@
 package biz
 
-import "context"
+import (
+	"context"
+
+	"github.com/go-keel/keel-admin/internal/core/perm"
+)
 
 // ARBACRepo loads a manager's assignable-role and manageable-dept boundaries,
 // and role protection flags.
@@ -42,7 +46,7 @@ func NewARBACUseCase(repo ARBACRepo, users UserRepo) *ARBACUseCase {
 
 // CanManageDept reports whether the actor may manage the dept (root bypasses).
 // ManageableDeptIDs returns the set of departments the actor can manage; all=true means unlimited (root).
-func (uc *ARBACUseCase) ManageableDeptIDs(ctx context.Context, actor *Actor) (ids []int64, all bool, err error) {
+func (uc *ARBACUseCase) ManageableDeptIDs(ctx context.Context, actor *perm.Principal) (ids []int64, all bool, err error) {
 	if actor.IsRoot {
 		return nil, true, nil
 	}
@@ -50,7 +54,7 @@ func (uc *ARBACUseCase) ManageableDeptIDs(ctx context.Context, actor *Actor) (id
 	return ids, false, err
 }
 
-func (uc *ARBACUseCase) CanManageDept(ctx context.Context, actor *Actor, deptID int64) (bool, error) {
+func (uc *ARBACUseCase) CanManageDept(ctx context.Context, actor *perm.Principal, deptID int64) (bool, error) {
 	if actor.IsRoot {
 		return true, nil
 	}
@@ -63,7 +67,7 @@ func (uc *ARBACUseCase) CanManageDept(ctx context.Context, actor *Actor, deptID 
 
 // AssignableRange returns the set of roles the actor can assign to others; all=true means unlimited (root). The
 // definition is assignableRange.
-func (uc *ARBACUseCase) AssignableRange(ctx context.Context, actor *Actor) (allowed map[int64]bool, all bool, err error) {
+func (uc *ARBACUseCase) AssignableRange(ctx context.Context, actor *perm.Principal) (allowed map[int64]bool, all bool, err error) {
 	return assignableRange(ctx, uc.repo, actor)
 }
 
@@ -75,7 +79,7 @@ func (uc *ARBACUseCase) AssignableRange(ctx context.Context, actor *Actor) (allo
 // which existing roles stay pinned when editing a user, the assignment dropdown (RoleUseCase.ListAssignable) and
 // viewing the permissions a role grants (RoleUseCase.PermissionsOf). A disabled role is therefore out of range: it
 // is not in the dropdown, submitting it is rejected, and editing a user keeps it pinned as is.
-func assignableRange(ctx context.Context, repo ARBACRepo, actor *Actor) (map[int64]bool, bool, error) {
+func assignableRange(ctx context.Context, repo ARBACRepo, actor *perm.Principal) (map[int64]bool, bool, error) {
 	if actor.IsRoot {
 		return nil, true, nil
 	}
@@ -96,7 +100,7 @@ func assignableRange(ctx context.Context, repo ARBACRepo, actor *Actor) (map[int
 
 // CanAssignRoles reports whether the actor may assign all target roles.
 // Sensitive roles are never assignable by non-root.
-func (uc *ARBACUseCase) CanAssignRoles(ctx context.Context, actor *Actor, targetRoleIDs []int64) (bool, error) {
+func (uc *ARBACUseCase) CanAssignRoles(ctx context.Context, actor *perm.Principal, targetRoleIDs []int64) (bool, error) {
 	if actor.IsRoot || len(targetRoleIDs) == 0 {
 		return true, nil
 	}
@@ -114,7 +118,7 @@ func (uc *ARBACUseCase) CanAssignRoles(ctx context.Context, actor *Actor, target
 
 // EnsureTargetManageable blocks managing root/protected accounts by non-root,
 // or accounts outside the actor's manageable dept range. root is not limited.
-func (uc *ARBACUseCase) EnsureTargetManageable(ctx context.Context, actor *Actor, targetUserID int64) error {
+func (uc *ARBACUseCase) EnsureTargetManageable(ctx context.Context, actor *perm.Principal, targetUserID int64) error {
 	if actor.IsRoot {
 		return nil
 	}
@@ -128,7 +132,7 @@ func (uc *ARBACUseCase) EnsureTargetManageable(ctx context.Context, actor *Actor
 // ensureManageable makes the same decision as EnsureTargetManageable but takes a user already loaded instead of
 // looking it up by ID again: UserAdminUseCase.target has already called FindByID, so flows that load the detail
 // before deciding, such as editing a user, do not query the database twice for the same target.
-func (uc *ARBACUseCase) ensureManageable(ctx context.Context, actor *Actor, u *User) error {
+func (uc *ARBACUseCase) ensureManageable(ctx context.Context, actor *perm.Principal, u *User) error {
 	if actor.IsRoot {
 		return nil
 	}
@@ -143,13 +147,6 @@ func (uc *ARBACUseCase) ensureManageable(ctx context.Context, actor *Actor, u *U
 		return ErrDeptOutOfRange
 	}
 	return nil
-}
-
-// Actor is the management subject (from principal).
-type Actor struct {
-	UserID  int64
-	IsRoot  bool
-	RoleIDs []int64
 }
 
 func contains(s []int64, v int64) bool {

@@ -31,11 +31,10 @@ BindOTP/ConfirmOTP; step 4 of `function-permissions.md` §4.4), and the frontend
 An operation bound with `Requirement.RequireOTP: true` must carry the `X-OTP-Code` header on every call, verified and
 used on the spot; **root is not exempt**.
 
-**The decision reads only `Requirement.RequireOTP`** (authz reads nothing else). `Permission.RequireOTP` is not a second
-criterion but a display marker **derived** by `Seal()` from the bindings: as soon as any step-up operation references a
-code, the code is marked as "includes operations that need re-verification", so the grant UI can flag it. Writing it by
-hand is rejected by Seal: two declarations would inevitably drift (if a code marked step-up only on the binding side
-sent a hand-written field to the frontend, the high-risk flag would be missing).
+**The decision reads only `Requirement.RequireOTP`** (authz reads nothing else). `perm.RequiresOTP(code)` is not a
+second criterion but a display marker **derived** by `Seal()` from the bindings: as soon as any step-up operation
+references a code, the code is marked as "includes operations that need re-verification", so the grant UI can flag it.
+There is no field to write it by hand, so it cannot drift from the bindings.
 
 **The frontend cooperates (explicit integration, no automatic replay)**:
 
@@ -75,8 +74,7 @@ as putting several step-up points in one form): a deployment can set it back to 
 Runs as **step 0** of the login state machine (before the password check), independent of and complementary to
 brute-force protection (`sessions-and-audit.md` §8).
 
-**Interface and registration** (the same philosophy as perm: an interface + explicit registration in di.go + switching
-by config):
+**Interface and construction** (an interface, built from config at assembly; captcha off builds none):
 
 ```go
 type Provider interface { // internal/core/captcha
@@ -86,9 +84,9 @@ type Provider interface { // internal/core/captcha
     Ready() error                                          // usable right now (such as its secret being set)
 }
 
-// di.go: built-in base64 (local image code, mojocn/base64Captcha) and turnstile (Cloudflare)
-captcha.MustRegister("base64", base64captcha.New(redis, length, ttl))
-captcha.MustRegister(turnstile.Name, turnstileProvider)
+// server.NewKernel builds the built-in base64 (local image code, mojocn/base64Captcha) or turnstile (Cloudflare) from
+// sys.captcha; none when sys.captcha.enabled is false, and then login skips step 0 and the captcha endpoint issues
+// nothing
 ```
 
 **Configuration**: the `sys.captcha` section of app.yaml (`deployment-and-config.md` §13, read once at startup, restart
@@ -96,10 +94,8 @@ after changes): `enabled / provider / base64_length / base64_ttl / turnstile.{si
 defaults in `configs/app.yaml`; secret parameters (turnstile.secret_key, otp.aes_key) are never committed: the app.yaml
 in the repository holds only development placeholders, and production injects them on the deployment side (the red lines
 in `deployment-and-config.md` §13). When `enabled`, **the selected provider checks itself at startup** (`Ready`): a
-missing secret or an unregistered name fails startup and lists the names in the registry; without that check it would
-show up as "every login is rejected": fail-closed is right, but with no clue why. If an unregistered name is still hit
-at runtime (say the registry was changed), it stays fail-closed: verification always fails (with a Warn log), never
-silently degrading to "no captcha".
+missing secret or an unknown name fails startup and lists the built-in names; without that check it would show up as
+"every login is rejected": fail-closed is right, but with no clue why.
 
 **Contract**:
 

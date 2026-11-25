@@ -154,9 +154,6 @@ The kernel orders the actions within a module itself, not by the declaration ord
 (`permission-model/function-permissions.md` §4.3.2). Standard CRUD actions use `view/create/update/delete`; do not add
 numeric prefixes to codes or reorder the slice to adjust the screen.
 
-**Do not write `Permission.RequireOTP` by hand**: it is a display flag that `Seal()` derives from the bindings
-(`Requirement.RequireOTP` in step 5 is what decides), and Seal rejects a hand-written one.
-
 **About `NameKey`**: the resource's display name on the data scope screen, as an i18n message ID (not a literal name).
 `ListResources` translates it on the spot by the request's `Accept-Language` and returns it as `name`; the business
 only adds the entry in `internal/i18n/app.*.toml`. Left empty, the screen falls back to the slug. The friendly names of
@@ -197,13 +194,10 @@ configured; ALL is always available). The anchors must match the columns created
 and a department holding rows of a resource that declares it counts as not empty; a resource without it is not checked
 (`permission-model/management-boundary.md` §6).
 
-**Derived resources (Via)**: when a resource has no ownership column of its own and its ownership comes through a
-parent resource (an "order" through its "merchant"), declare
-`ResourceDef{Res: ResOrder, Via: &perm.Derive{Parent: ResMerchant, FK: "merchant_id"}}`.
-**Via is currently consumed only during `Seal()` validation (it checks that the parent resource exists and allows only
-one level); it does not build a subquery on the query side for you.** The subquery (or a set of visible parent IDs
-sent across systems) is written by the business in its own repo. Before choosing it, read
-`permission-model/data-scope.md` §5.1 and §11 S10.
+**A child table without ownership columns registers no resource**: when its ownership comes through a parent resource
+(an "order" through its "merchant"), its query resolves the parent's resource and filters by the foreign key; the
+subquery (or a set of visible parent IDs sent across systems) is written by the business in its own repo. Before
+choosing it, read `permission-model/data-scope.md` §5.1 and §11 S10.
 
 ## 3. biz: DO, repo interface, use case (inject ScopeResolver)
 
@@ -301,8 +295,9 @@ tables across databases (`docs/admin/domain-model.md`).
 
 ## 5. service: transport adapter and permission binding
 
-The service only takes the `Principal` out of ctx and passes it to the use case (`actorFromContext` in
-`internal/service/errors.go`); the decision is made in the authz middleware, not in the service. The operation → code
+The service only takes the operator out of ctx with `perm.Current(ctx)` and passes the `*perm.Principal` to the use
+case (its error maps to 401 "sign in first" in the kernel's sentinel group, so return it as is); the decision is made
+in the authz middleware, not in the service. The operation → code
 bindings **go in a separate file**:
 
 ```go
@@ -376,27 +371,27 @@ column names use `ApplyScopeWith` instead of forcing a rename. Where the script 
 // cmd/<app>/di.go (excerpt; business area packages share names with core/sys, so by convention they are imported
 // as nbiz/ndata/nsvc)
 articleRepo := ndata.NewArticleRepo(bizData)
-// scopeUseCase implements both perm.ScopeResolver and perm.GrantRevoker, so it is injected twice
-articleUseCase := nbiz.NewArticleUseCase(articleRepo, scopeUseCase, scopeUseCase)
-articleService := nsvc.NewArticleService(articleUseCase, refRepo)
+// kernel.ScopeUseCase implements both perm.ScopeResolver and perm.GrantRevoker, so it is injected twice
+articleUseCase := nbiz.NewArticleUseCase(articleRepo, kernel.ScopeUseCase, kernel.ScopeUseCase)
+articleService := nsvc.NewArticleService(articleUseCase, kernel.RefRepo)
 
 registerPermissions(articleRepo) // ← pass the repos the new module's ResourceDefs need
-services := httpServices(
-    authService, deptService, roleService, userService, metaService, auditService,
+// … the chain …
+// kernel.NewHTTPServer mounts the kernel's services and these, and seals the registry against them
+httpSrv, err := kernel.NewHTTPServer(chain, httpServices(
     articleService, // ← route mounting: pass the new module's service
-)
-// newApp (cmd/<app>/main.go, kernel) mounts services and seals the registry against them
+))
 
-// httpServices, further down in di.go: the kernel's services plus one line per business module
-func httpServices(/* kernel services */, article *nsvc.ArticleService) []server.HTTPService {
-    services := server.KernelHTTPServers(/* kernel services */)
+// httpServices, further down in di.go: one line per business module
+func httpServices(article *nsvc.ArticleService) []server.HTTPService {
+    var services []server.HTTPService
     services = append(services, nsvc.ArticleHTTP(article)) // ← a new business module adds this line
     return services
 }
 
 // registerPermissions, further down in di.go: the only place a module registers its permissions
 func registerPermissions(articleRepo nbiz.ArticleRepo) {
-    registerKernelPermissions()                  // kernel batch, already present, leave it alone
+    server.RegisterKernelPermissions()           // kernel batch, already present, leave it alone
     perm.MustRegisterGroups(nbiz.ArticleGroups)  // ← a new business module adds this line
     perm.MustRegister(nbiz.ArticlePerms, nsvc.ArticleBindings, nbiz.ArticleResourceDefs(articleRepo)) // ← and this one
 }
@@ -406,14 +401,15 @@ func registerPermissions(articleRepo nbiz.ArticleRepo) {
   hang their own modules under the same business domain. A missing group registration → `Seal()` fails, and startup
   fails.
 - **Business modules use `perm.MustRegister`, not `perm.MustRegisterKernel`**: the latter is reserved for the kernel
-  batch, and a business code with the `sys:` prefix fails startup. `Seal()` runs once in `newApp`, after all
-  registration, with every operation of the HTTP services it mounts (`perm.ServedOperations`). One with neither a
+  batch, and a business code with the `sys:` prefix fails startup. `Seal()` runs once in `kernel.NewHTTPServer`,
+  after all registration, with every operation of the HTTP services it mounts (`perm.ServedOperations`). One with neither a
   binding nor `allow_anonymous` fails startup (`perm.operation-unowned`), so a module left unregistered is found
   before it answers 403 to everyone. A proto linked in only to call another service is not mounted, so it is not
   checked.
 - `cmd/<app>/registration_test.go` seals the same `registerPermissions` (with nil repos) against the same
   `httpServices` (with nil services): a new module passes `nil` there for each parameter it adds to either function
-  (`registerAll` calls `registerPermissions`, `servedOperations` calls `httpServices`).
+  (`registerAll` calls `registerPermissions`, `servedOperations` calls `httpServices`); the kernel's services are
+  always included.
 - The other assembly rules (two databases, HTTP registration appended after the kernel's) are in
   `docs/admin/assembly.md`.
 

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	v1 "github.com/go-keel/keel-admin/api/keel_admin/v1"
+	"github.com/go-keel/keel-admin/internal/core/perm"
 	"github.com/go-keel/keel-admin/internal/core/sys/biz"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -53,7 +54,7 @@ func (s *RoleService) ListRole(ctx context.Context, req *v1.ListRoleRequest) (*v
 // drag the perms and three-dimension boundary fields along with every item: even always empty, they would announce
 // to non-root callers "each role's codes belong here", and the next person would naturally fill them in.
 func (s *RoleService) ListAssignableRoleOptions(ctx context.Context, _ *v1.ListAssignableRoleOptionsRequest) (*v1.ListAssignableRoleOptionsReply, error) {
-	actor, err := actorFrom(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +86,7 @@ func (s *RoleService) ListRoleOptions(ctx context.Context, req *v1.ListRoleOptio
 // GetRolePermissions serves business administrators who may assign the role (not root-only, see perm.go): it gives
 // only the permission codes, not the role's configuration, which is GetRole's job and root-only.
 func (s *RoleService) GetRolePermissions(ctx context.Context, req *v1.GetRolePermissionsRequest) (*v1.GetRolePermissionsReply, error) {
-	actor, err := actorFrom(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}

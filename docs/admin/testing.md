@@ -14,7 +14,7 @@ databases at the storage boundary; this page covers only what the admin adds. `<
 | Data scope branches in biz | A fake `perm.ScopeResolver` injecting a fixed `ScopeSpec` | No infrastructure |
 | Data scope filtering in data | The WHERE built by `permdata.ApplyScope`, run on every dialect kept (`make integration`) | MySQL, PostgreSQL |
 | Permission registration | Kernel and business batches registered together, then `perm.Seal` on di.go's HTTP services (`cmd/<app>/registration_test.go`) | None |
-| Middleware order (authentication before principal / authz / audit) | `cmd/<app>/chain_order_test.go`, already written upstream | None |
+| Middleware order (authentication before principal / authz / audit) | `internal/server/chain_order_test.go` (kernel), already written upstream | None |
 
 **Data scope is the branch most worth testing**: the same call must give different results under different specs.
 

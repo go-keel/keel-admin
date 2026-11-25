@@ -5,8 +5,9 @@
 
 Every developer-facing error the admin kernel returns at startup or registration starts with `keel-admin/<id>`; each
 ID has a section here (checked by `internal/core/errs/errs_test.go`). Errors starting with `keel/<id>` come from the
-framework: see `keel:docs/errors.md`. Runtime failures and messages shown to
-end users are not listed.
+framework: see `keel:docs/errors.md`; a missing required key of `configs/app.yaml` (the protovalidate rules in
+`internal/conf/app.proto`) is one of them, `keel/kconfig.invalid`. Runtime failures and messages shown to end users are
+not listed.
 
 ## perm.registered-after-seal
 
@@ -58,13 +59,6 @@ A business permission uses the `sys:` prefix, which belongs to the kernel.
 
 Fix: pick another business domain.
 
-## perm.require-otp-manual
-
-A `Permission` sets `RequireOTP` itself. Whether a permission requires a one-time code is derived from the bindings
-that use it, so a hand-set value could disagree with them.
-
-Fix: remove it from the `Permission` and set `RequireOTP` on the `Requirement` in the bindings.
-
 ## perm.domain-group-missing
 
 A permission's business domain has no group, so the permission cannot be shown in the role editor.
@@ -113,36 +107,11 @@ authorization, so the binding never runs.
 
 Fix: remove the binding, or remove allow_anonymous if the operation needs a signed-in user.
 
-## perm.resource-parent-unknown
-
-A resource derives its data scope (`Via`) from a parent that is not registered.
-
-Fix: register the parent resource or correct `Via.Parent` (docs/admin/permission-model/data-scope.md).
-
-## perm.resource-nested-derivation
-
-A resource derives its scope from a resource that is itself derived. Only one `Via` level is allowed, so scope checks
-stay a single join.
-
-Fix: derive from a resource that has its own scope.
-
 ## perm.dep-cycle
 
 Permission dependencies form a cycle, so none of them could be granted first.
 
 Fix: remove one dependency on the cycle.
-
-## sys.brand-title-missing
-
-`sys.brand.title` is empty; the login page and browser tab need a product name.
-
-Fix: set `sys.brand.title` (docs/admin/config.md).
-
-## sys.business-zone-missing
-
-`sys.business_time_zone` is empty; business days are computed in this zone.
-
-Fix: set it to an IANA zone such as `Asia/Shanghai` (docs/admin/config.md).
 
 ## sys.business-zone-invalid
 
@@ -165,18 +134,11 @@ authentication middleware reads the token from it, so without a name a browser s
 
 Fix: set `cookie_name` under `server.http.default.auth` (docs/admin/auth.md).
 
-## sys.otp-key-missing
-
-`sys.otp.aes_key` is empty; one-time-code secrets are stored encrypted with it.
-
-Fix: inject `sys.otp.aes_key` from the deployment environment; never commit it.
-
 ## captcha.provider-unknown
 
-`sys.captcha.provider` names a provider that is not registered.
+`sys.captcha.provider` names a provider that is not built in.
 
-Fix: set it to a registered provider, or register the provider with `captcha.MustRegister` in `di.go`
-(docs/admin/auth.md).
+Fix: set it to `base64` or `turnstile` (docs/admin/auth.md).
 
 ## captcha.provider-not-ready
 
@@ -184,17 +146,3 @@ The selected captcha provider failed its self-check, usually a missing secret. W
 rejected with no hint why.
 
 Fix: supply the settings the message names, or set `sys.captcha.enabled` to false.
-
-## captcha.provider-name-empty
-
-`captcha.MustRegister` was called with an empty name, which `sys.captcha.provider` could never select. It panics at
-assembly in `di.go`.
-
-Fix: pass the provider's name, the value `sys.captcha.provider` uses to select it.
-
-## captcha.provider-duplicate
-
-Two providers were registered under the same name with `captcha.MustRegister`; the second would silently replace the
-first. It panics at assembly in `di.go`.
-
-Fix: register each provider once, under a distinct name.

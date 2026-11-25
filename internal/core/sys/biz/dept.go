@@ -46,7 +46,7 @@ func NewDeptUseCase(repo DeptRepo, arbac *ARBACUseCase) *DeptUseCase {
 // so nothing is "visible but not editable". No manageable departments means an empty set. A non-root actor gets
 // only its manageable subtrees, so a mid-level department shows up as a tree root (its ancestors are not in the
 // result); that is acceptable.
-func (uc *DeptUseCase) List(ctx context.Context, actor *Actor) ([]*Dept, error) {
+func (uc *DeptUseCase) List(ctx context.Context, actor *perm.Principal) ([]*Dept, error) {
 	all, err := uc.repo.List(ctx)
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func (uc *DeptUseCase) List(ctx context.Context, actor *Actor) ([]*Dept, error) 
 
 // Create checks the management boundary against parentID: the actor must be able to manage the parent department
 // (root passes inside the check).
-func (uc *DeptUseCase) Create(ctx context.Context, actor *Actor, parentID int64, name string, sort int) (*Dept, error) {
+func (uc *DeptUseCase) Create(ctx context.Context, actor *perm.Principal, parentID int64, name string, sort int) (*Dept, error) {
 	// Only root creates a root department (parentID=0): the top level hangs under no manageable department, so no
 	// non-root actor can reach that position. A non-root actor creates departments under a parent it can manage.
 	if parentID == 0 {
@@ -103,7 +103,7 @@ func (uc *DeptUseCase) Create(ctx context.Context, actor *Actor, parentID int64,
 
 // Get is the source of the edit form's initial values: it admits only departments the actor can manage (the same
 // range as the list).
-func (uc *DeptUseCase) Get(ctx context.Context, actor *Actor, id int64) (*Dept, error) {
+func (uc *DeptUseCase) Get(ctx context.Context, actor *perm.Principal, id int64) (*Dept, error) {
 	if ok, err := uc.arbac.CanManageDept(ctx, actor, id); err != nil {
 		return nil, err
 	} else if !ok {
@@ -119,7 +119,7 @@ func (uc *DeptUseCase) Get(ctx context.Context, actor *Actor, id int64) (*Dept, 
 // Update checks the management boundary against the department's own ID. The organization tree does not support
 // moving a department (changing its parent): proto UpdateDeptRequest has no parent_id field, and reparenting would
 // need its own migration and endpoint (see docs/admin/permission-model/management-boundary.md §6).
-func (uc *DeptUseCase) Update(ctx context.Context, actor *Actor, id int64, name string, sort int, status int8) (*Dept, error) {
+func (uc *DeptUseCase) Update(ctx context.Context, actor *perm.Principal, id int64, name string, sort int, status int8) (*Dept, error) {
 	if ok, err := uc.arbac.CanManageDept(ctx, actor, id); err != nil {
 		return nil, err
 	} else if !ok {
@@ -146,7 +146,7 @@ func (uc *DeptUseCase) Update(ctx context.Context, actor *Actor, id int64, name 
 // that business domains register at startup, as listed by perm.ResourcesWithDeptOccupancy(). dept (kernel
 // core/sys) depends only on the perm package's registry interface and imports no business package (dependency
 // direction in the doc of perm.ResourceDef.DeptOccupancy).
-func (uc *DeptUseCase) Delete(ctx context.Context, actor *Actor, id int64) error {
+func (uc *DeptUseCase) Delete(ctx context.Context, actor *perm.Principal, id int64) error {
 	if ok, err := uc.arbac.CanManageDept(ctx, actor, id); err != nil {
 		return err
 	} else if !ok {

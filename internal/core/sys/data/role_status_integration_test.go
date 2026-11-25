@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 
 	coredata "github.com/go-keel/keel-admin/internal/core/data"
+	"github.com/go-keel/keel-admin/internal/core/perm"
 	"github.com/go-keel/keel-admin/internal/core/sys/biz"
 )
 
@@ -115,7 +116,7 @@ func TestDisabledTargetRoleNotAssignableAndKeptOnEdit(t *testing.T) {
 		}
 
 		uc := biz.NewUserAdminUseCase(users, biz.NewARBACUseCase(arbac, users), nil)
-		actor := &biz.Actor{UserID: -1, RoleIDs: []int64{9}}
+		actor := &perm.Principal{UserID: -1, RoleIDs: []int64{9}}
 		if _, err := uc.Edit(ctx, actor, 3, biz.UserEdit{Nickname: "bob", DeptID: 100, RoleIDs: []int64{6}}); err != nil {
 			t.Fatalf("edit without the disabled role: %v", err)
 		}

@@ -1,20 +1,9 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/go-keel/keel-admin/internal/core/errs"
-
 	"github.com/go-keel/keel"
 	"github.com/go-keel/keel-admin/internal/conf"
-	"github.com/go-keel/keel-admin/internal/core/captcha"
-	base64captcha "github.com/go-keel/keel-admin/internal/core/captcha/base64"
-	"github.com/go-keel/keel-admin/internal/core/captcha/turnstile"
-	coredata "github.com/go-keel/keel-admin/internal/core/data"
 	"github.com/go-keel/keel-admin/internal/core/perm"
-	"github.com/go-keel/keel-admin/internal/core/sys"
-	"github.com/go-keel/keel-admin/internal/core/sys/biz"
-	"github.com/go-keel/keel-admin/internal/core/sys/data"
 	"github.com/go-keel/keel-admin/internal/core/sys/service"
 
 	// The business area's packages (internal/biz|data|service) share names with core/sys, so they are imported with
@@ -27,6 +16,7 @@ import (
 	"github.com/go-keel/keel/core/kdb"
 	"github.com/go-keel/keel/core/kotel"
 	"github.com/go-keel/keel/core/kredis"
+	"github.com/go-keel/keel/mw"
 )
 
 // wireApp assembles dependencies by hand: constructed in dependency order, cleaned up in reverse (LIFO).
@@ -75,139 +65,55 @@ func wireApp(bootstrap *kconfig.Dynamic[conf.Bootstrap]) (*keel.App, func(), err
 	}
 	cleanups = append(cleanups, redisCleanup)
 
-	// data
-	dataData := coredata.NewData(db)
-	userAdminRepo := data.NewUserAdminRepo(dataData)
-	loginLogger := data.NewLoginLogger(dataData)
-	permCache := data.NewPermCache(redis)
-	otpRepo := data.NewOTPRepo(dataData)
-
-	// Framework config: the sys.* node of app.yaml, read once at startup (restart after a change).
-	sysConf := bootstrap.Get().Sys
-	brand, err := server.ProvideBrand(sysConf)
+	// The kernel: the sys_* domain on the admin database, its services, captcha and the permission middleware's
+	// dependencies. sys.* of app.yaml is read once here (restart after a change).
+	kernel, kernelCleanup, err := server.NewKernel(config, bootstrap.Get().Sys, db, redis)
+	cleanups = append(cleanups, kernelCleanup)
 	if err != nil {
 		return nil, cleanup, err
 	}
-	businessZone, err := server.ProvideBusinessZone(sysConf)
-	if err != nil {
-		return nil, cleanup, err
-	}
-	cap := sysConf.GetCaptcha()
-	lockoutGuard := data.NewLockoutGuard(redis)
-
-	// captcha providers: both are registered unconditionally, and sys.captcha.provider decides which is used (the
-	// selected one then checks its own settings with Ready, see biz.CaptchaGate). A new provider is registered here,
-	// see internal/core/captcha.
-	captcha.MustRegister("base64", base64captcha.New(redis, int(cap.GetBase64Length()), cap.GetBase64Ttl().AsDuration()))
-	turnstileProvider, turnstileCleanup, err := turnstile.New(cap.GetTurnstile().GetSecretKey())
-	if err != nil {
-		return nil, cleanup, err
-	}
-	cleanups = append(cleanups, turnstileCleanup)
-	captcha.MustRegister(turnstile.Name, turnstileProvider)
-
-	// The selected provider must pass its self-check right here. Without it, turnstile missing a secret would show up
-	// as "every login is rejected": fail-closed is right, but with no clue why, and that is exactly why
-	// captcha.Provider.Ready exists. Only the selected one is checked: missing settings of an unselected provider
-	// should not bring startup down.
-	if cap.GetEnabled() {
-		active, ok := captcha.Get(cap.GetProvider())
-		if !ok {
-			return nil, cleanup, errs.Rules.New("captcha.provider-unknown",
-				fmt.Sprintf("sys.captcha.provider %q is not registered (registered: %v)", cap.GetProvider(), captcha.Names()),
-				"set sys.captcha.provider to a registered provider, or register it with captcha.MustRegister in di.go")
-		}
-		if err := active.Ready(); err != nil {
-			return nil, cleanup, errs.Rules.Wrap(err, "captcha.provider-not-ready",
-				fmt.Sprintf("sys.captcha.provider %q is not ready: %v", cap.GetProvider(), err),
-				"supply the provider's settings named above, or set sys.captcha.enabled to false")
-		}
-	}
-
-	// Cipher for OTP secrets: the key comes from sys.otp.aes_key (app.yaml commits a development placeholder; the
-	// deployment layer injects the real one in production).
-	cipher, err := server.ProvideOTPCipher(sysConf)
-	if err != nil {
-		return nil, cleanup, err
-	}
-	otpReplayGuard := data.NewOTPReplayGuard(redis, sysConf.GetOtp().GetMaxUses())
-	otpUseCase := server.ProvideOTPUseCase(otpRepo, cipher, brand, otpReplayGuard)
-
-	// biz → service
-	captchaGate := biz.NewCaptchaGate(cap.GetEnabled(), cap.GetProvider())
-	authUseCase, err := server.ProvideAuthUseCase(userAdminRepo, loginLogger, permCache, otpUseCase, sysConf, config, lockoutGuard, captchaGate)
-	if err != nil {
-		return nil, cleanup, err
-	}
-	httpAuth := config.GetServer().GetHttp()["default"].GetAuth()
-	refRepo := data.NewRefRepo(dataData)
-	authService, err := service.NewAuthService(authUseCase, otpUseCase, userAdminRepo, refRepo,
-		sysConf.GetSessionTtl().AsDuration(), httpAuth.GetCookieName(), sysConf.GetCookieSecure())
-	if err != nil {
-		return nil, cleanup, err
-	}
-
-	roleRepo := data.NewRoleRepo(dataData)
-	arbacRepo := data.NewARBACRepo(dataData)
-	roleUseCase := biz.NewRoleUseCase(roleRepo, arbacRepo, permCache)
-	roleService := service.NewRoleService(roleUseCase, refRepo)
-
-	arbacUseCase := biz.NewARBACUseCase(arbacRepo, userAdminRepo)
-
-	deptRepo := data.NewDeptRepo(dataData)
-	deptUseCase := biz.NewDeptUseCase(deptRepo, arbacUseCase)
-	deptService := service.NewDeptService(deptUseCase)
-
-	// otpUseCase satisfies biz.OTPResetter (Reset(ctx, userID) error): ResetOTP's checks and its effect both live in
-	// UserAdminUseCase, with no detour through the service.
-	userAdminUseCase := biz.NewUserAdminUseCase(userAdminRepo, arbacUseCase, otpUseCase)
-	userService := service.NewUserService(userAdminUseCase, userAdminRepo, refRepo)
-
-	metaService := service.NewMetaService(businessZone)
-
-	scopeRepo := data.NewScopeRepo(dataData)
-	scopeUseCase := biz.NewScopeUseCase(scopeRepo)
-
-	auditRepo := data.NewAuditRepo(dataData)
-	auditUseCase := biz.NewAuditUseCase(auditRepo, loginLogger)
-	auditService := service.NewAuditService(auditUseCase)
 
 	// Example: delete after forking (up to noticeService)
 	// notice: the first resident of the business area (internal/biz|data|service), proving that business stays out of
-	// core/sys. Injecting scopeUseCase (core/sys/biz, implementing perm.ScopeResolver and perm.GrantRevoker) across
-	// the business area / kernel boundary is legitimate: notice depends only on core/perm interfaces and does not
-	// import core/sys. GrantRevoker cleans up explicit-assignment rows after a category is deleted (business code
-	// never writes sys_* tables directly).
+	// core/sys. Injecting kernel.ScopeUseCase (implementing perm.ScopeResolver and perm.GrantRevoker) across the
+	// business area / kernel boundary is legitimate: notice depends only on core/perm interfaces and does not import
+	// core/sys. GrantRevoker cleans up explicit-assignment rows after a category is deleted (business code never
+	// writes sys_* tables directly).
 	noticeRepo := ndata.NewNoticeRepo(ndata.NewData(bizDB))
-	noticeUseCase := nbiz.NewNoticeUseCase(noticeRepo, scopeUseCase, scopeUseCase)
-	noticeService := nsvc.NewNoticeService(noticeUseCase, refRepo, businessZone)
+	noticeUseCase := nbiz.NewNoticeUseCase(noticeRepo, kernel.ScopeUseCase, kernel.ScopeUseCase)
+	noticeService := nsvc.NewNoticeService(noticeUseCase, kernel.RefRepo, kernel.BusinessZone)
 
-	// Permission kernel assembly: after all services are constructed, register each domain's permission declarations;
-	// newApp seals the registry, checking every operation of the HTTP services it mounts.
+	// After all services are constructed, register each domain's permission declarations; kernel.NewHTTPServer seals
+	// the registry, checking every operation of the HTTP services it mounts.
 	registerPermissions(noticeRepo) // Example: delete after forking (the argument only)
-	services := httpServices(
-		authService, deptService, roleService, userService, metaService, auditService,
-		noticeService, // Example: delete after forking
-	)
-	sentinelGroup := nsvc.RegisterErrors(service.NewErrorSentinel())
 
-	app, err := newApp(appFactory, services, authUseCase, otpUseCase, auditUseCase, sentinelGroup, brand)
+	// The chain: Keel's defaults, then the kernel's links (principal, authz, audit, locale, sentinel); your own
+	// middleware goes in after this call, before or after a named link (docs/admin/assembly.md).
+	chain := mw.Default(config.Config)
+	kernel.Middleware(chain, nsvc.RegisterErrors(service.NewErrorSentinel()))
+
+	// The business area's raw routes (http.Handlers that skip the chain, such as webhooks and downloads) are passed
+	// after httpServices(...) as further arguments; the kernel mounts the SPA after them.
+	httpSrv, err := kernel.NewHTTPServer(chain, httpServices(
+		noticeService, // Example: delete after forking
+	))
+	if err != nil {
+		return nil, cleanup, err
+	}
+	app, err := appFactory.New(httpSrv)
 	if err != nil {
 		return nil, cleanup, err
 	}
 	return app, cleanup, nil
 }
 
-// httpServices lists the HTTP services: the kernel provides its list and business modules append theirs, so adding a
-// module adds one parameter and one line here, without changing internal/server/http.go (kernel, overwritten as a
-// whole). The same list mounts the routes and names what the permission check covers; cmd/admin/registration_test.go
-// seals it too.
+// httpServices lists the business area's HTTP services, mounted after the kernel's: adding a module adds one parameter
+// and one line here. The same list names what the permission check covers; cmd/admin/registration_test.go seals it
+// too.
 func httpServices(
-	auth *service.AuthService, dept *service.DeptService, role *service.RoleService, user *service.UserService,
-	meta *service.MetaService, audit *service.AuditService,
 	notice *nsvc.NoticeService, // Example: delete after forking
 ) []server.HTTPService {
-	services := server.KernelHTTPServers(auth, dept, role, user, meta, audit)
+	var services []server.HTTPService
 	services = append(services, nsvc.NoticeHTTP(notice)) // Example: delete after forking
 	return services
 }
@@ -223,7 +129,7 @@ func httpServices(
 func registerPermissions(
 	noticeRepo nbiz.NoticeRepo, // Example: delete after forking
 ) {
-	registerKernelPermissions()
+	server.RegisterKernelPermissions()
 	perm.MustRegisterGroups(nbiz.NoticeGroups) // Example: delete after forking
 	// Example: delete after forking (up to perm.MustRegister)
 	// notice is a business module: it registers the codes of the ops: business domain through perm.MustRegister (the
@@ -233,10 +139,4 @@ func registerPermissions(
 	// the callbacks through perm.ResourcesWithDeptOccupancy(), so the kernel neither imports business packages nor
 	// knows business table names.
 	perm.MustRegister(nbiz.NoticePerms, nsvc.NoticeBindings, nbiz.NoticeResourceDefs(noticeRepo))
-}
-
-// registerKernelPermissions registers the kernel batch; the sys: business domain is reserved for it.
-func registerKernelPermissions() {
-	perm.MustRegisterGroups(sys.Groups)
-	perm.MustRegisterKernel(sys.Perms, service.Bindings, sys.Resources)
 }

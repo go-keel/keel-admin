@@ -22,17 +22,22 @@ Answers "which rows of this kind of resource can this role see". Policies are co
 > and decide on its own (it is the final gatekeeper of its own data). The runtime dependency always points admin →
 > business (see scenario S10).
 
-**Resources come in two kinds by ownership shape** (declared at registration, `docs/admin/permission.md` step 2):
+**Only resources with an ownership of their own are registered** (`docs/admin/permission.md` step 2): the table carries
+ownership columns directly (owner_user_id / owner_dept_id), such as merchants, where the salesperson who opens one
+writes their own coordinates; or its instances are granted explicitly, such as categories.
 
-- **Anchored resources**: the table carries ownership columns directly (owner_user_id / owner_dept_id), such as
-  merchants: the salesperson who opens one writes their own coordinates;
-- **Derived resources**: ownership is derived through a parent resource, declared as `Via{Parent, FK}`, such as orders:
-  "my department's orders" = "orders of merchants I can see", and the order table has zero ownership columns. In the
-  same database this is a subquery (`merchant_id IN (SELECT id FROM merchant WHERE <scope>)`); across systems the set
-  of visible parent IDs is passed down. **Via allows only one level** (multi-level chains make query cost and semantic
-  complexity climb steeply; if one is really needed, flatten it with a redundant column). Derived vs redundant is the
-  business's choice: a redundant ownership column queries fast but must be refreshed when the parent resource is handed
-  over; derivation needs no maintenance but costs one more hop.
+**A child table without ownership columns is not registered as a resource of its own**: its query takes the parent
+resource's scope and filters by the foreign key, such as orders: "my department's orders" = "orders of merchants I can
+see", and the order table has zero ownership columns. In the same database this is a subquery
+(`merchant_id IN (SELECT id FROM merchant WHERE <scope>)`) or, for an explicitly assigned parent, the parent's spec on
+the foreign key column (§5.3); across systems the set of visible parent IDs is passed down. The kernel does not know
+about the relation; the business repo writes it. Recommendations:
+
+- **Keep it to one hop.** A chain of parents makes query cost and meaning climb steeply; when a grandchild needs
+  scope, give it a redundant foreign key to the resource that owns the scope.
+- **Filtering through the parent versus a redundant ownership column is the business's choice**: filtering through the
+  parent needs no maintenance, and the child's visibility follows the parent when the parent is handed over; a
+  redundant ownership column queries faster but must be refreshed during that handover.
 
 **resource_type** identifies one kind of business data under data scope control (usually one business table or one
 aggregate). It is the typed `perm.Resource` (treated like `perm.Code`); **the constant is defined where the biz
@@ -134,9 +139,9 @@ ListGrantable on the spot); business code takes no part.
   operation (changing owner_user_id / owner_dept_id; **audit facts such as created_by never change**), checking that
   both departments are within the operator's ARBAC manageable range + `Audit: true`; the kernel migrates nothing
   automatically.
-- **Derived resources follow the parent automatically**: when a merchant is handed over to another department, the
-  visibility of its orders changes with it, with zero maintenance (the redundant column approach needs the business to
-  refresh it during the handover).
+- **A child table filtered through its parent follows the parent**: when a merchant is handed over to another
+  department, the visibility of its orders changes with it, with zero maintenance (the redundant column approach needs
+  the business to refresh it during the handover).
 - Closing the loop with department deletion: only empty departments (`management-boundary.md` §6), and "empty" includes
   the resource ownership check: hand resources over first.
 

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"testing"
+
+	"github.com/go-keel/keel-admin/internal/core/perm"
 )
 
 // fakeDeptRepo is a hand-written fake: biz tests depend only on the repo interface and need no infrastructure.
@@ -72,7 +74,7 @@ func setDeptOccupancy(t *testing.T, occupied bool) {
 
 // rootActor / boundedActor: dept tests all go through the real ARBACUseCase + fakeARBACRepoDept (the same
 // fixture as user_admin_arbac_test.go) and add no extra mock interface.
-func rootActor() *Actor { return &Actor{UserID: 1, IsRoot: true} }
+func rootActor() *perm.Principal { return &perm.Principal{UserID: 1, IsRoot: true} }
 
 func newDeptUC(repo DeptRepo, manageableDeptIDs []int64) *DeptUseCase {
 	arbac := NewARBACUseCase(&fakeARBACRepoDept{deptIDs: manageableDeptIDs}, nil)
@@ -146,7 +148,7 @@ func TestDeptUseCase_Delete_Guards(t *testing.T) {
 // department gets ErrDeptOutOfRange (Create's manageable-boundary target is parentID).
 func TestDeptCreateOutOfRange(t *testing.T) {
 	uc := newDeptUC(newFakeDeptRepo(), nil) // the manageable set is empty
-	actor := &Actor{UserID: 7, RoleIDs: []int64{2}}
+	actor := &perm.Principal{UserID: 7, RoleIDs: []int64{2}}
 	if _, err := uc.Create(context.Background(), actor, 2, "x", 0); !errors.Is(err, ErrDeptOutOfRange) {
 		t.Fatalf("a parent department out of range should be rejected: %v", err)
 	}
@@ -155,7 +157,7 @@ func TestDeptCreateOutOfRange(t *testing.T) {
 // TestDeptUpdateOutOfRange: Update's manageable-boundary target is the department's own id.
 func TestDeptUpdateOutOfRange(t *testing.T) {
 	uc := newDeptUC(newFakeDeptRepo(), nil)
-	actor := &Actor{UserID: 7, RoleIDs: []int64{2}}
+	actor := &perm.Principal{UserID: 7, RoleIDs: []int64{2}}
 	if _, err := uc.Update(context.Background(), actor, 2, "x", 0, 1); !errors.Is(err, ErrDeptOutOfRange) {
 		t.Fatalf("a department out of range should be rejected: %v", err)
 	}
@@ -165,7 +167,7 @@ func TestDeptUpdateOutOfRange(t *testing.T) {
 // when the department is empty.
 func TestDeptDeleteOutOfRange(t *testing.T) {
 	uc := newDeptUC(newFakeDeptRepo(), nil)
-	actor := &Actor{UserID: 7, RoleIDs: []int64{2}}
+	actor := &perm.Principal{UserID: 7, RoleIDs: []int64{2}}
 	if err := uc.Delete(context.Background(), actor, 2); !errors.Is(err, ErrDeptOutOfRange) {
 		t.Fatalf("a department out of range should be rejected: %v", err)
 	}
@@ -176,7 +178,7 @@ func TestDeptDeleteNonEmpty(t *testing.T) {
 	repo := newFakeDeptRepo()
 	repo.users[2] = true
 	uc := newDeptUC(repo, []int64{2})
-	actor := &Actor{UserID: 7, RoleIDs: []int64{2}}
+	actor := &perm.Principal{UserID: 7, RoleIDs: []int64{2}}
 	if err := uc.Delete(context.Background(), actor, 2); !errors.Is(err, ErrDeptNotEmpty) {
 		t.Fatalf("deleting a non-empty department should be rejected: %v", err)
 	}

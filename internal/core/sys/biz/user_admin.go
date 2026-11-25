@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/go-keel/keel-admin/internal/core/perm"
 	"github.com/go-keel/keel/pkg/pwd"
 )
 
@@ -81,7 +82,7 @@ const (
 
 // checkSelfOp is the one decision of "may you do this to yourself": non-root acting on itself is always rejected,
 // and the anti-lockout tier rejects root as well. target and the IP allowlist change in Edit both use it.
-func checkSelfOp(actor *Actor, id int64, tier SelfOpTier) error {
+func checkSelfOp(actor *perm.Principal, id int64, tier SelfOpTier) error {
 	if actor.UserID == id && (!actor.IsRoot || tier == SelfOpAntiLockout) {
 		return ErrSelfManageForbidden
 	}
@@ -105,7 +106,7 @@ func NewUserAdminUseCase(repo UserAdminRepo, arbac *ARBACUseCase, otp OTPResette
 // rejected, root passes per tier; in the anti-lockout tier root acting on itself is rejected too; the target must
 // be within the actor's manageable range) with one database query: it decides on the user already loaded instead
 // of letting EnsureTargetManageable call FindByID again, so one edit does not query twice.
-func (uc *UserAdminUseCase) target(ctx context.Context, actor *Actor, id int64, tier SelfOpTier) (*User, error) {
+func (uc *UserAdminUseCase) target(ctx context.Context, actor *perm.Principal, id int64, tier SelfOpTier) (*User, error) {
 	if err := checkSelfOp(actor, id, tier); err != nil {
 		return nil, err
 	}
@@ -122,7 +123,7 @@ func (uc *UserAdminUseCase) target(ctx context.Context, actor *Actor, id int64, 
 // List filters by the actor's manageable department range (no limit for root). The fields of f are filters the user
 // chooses, which differ from the department range here (the ARBAC boundary, not optional): the former is a query,
 // the latter is authorization.
-func (uc *UserAdminUseCase) List(ctx context.Context, actor *Actor, f UserFilter, offset, limit int) ([]*User, int64, error) {
+func (uc *UserAdminUseCase) List(ctx context.Context, actor *perm.Principal, f UserFilter, offset, limit int) ([]*User, int64, error) {
 	if limit <= 0 { // a negative limit also counts as "not given": gorm treats a negative Limit as unlimited
 		limit = defaultPageSize
 	}
@@ -182,7 +183,7 @@ type UserCreate struct {
 // root-only, step-up operation (SetUserRoot) done after creation. Avatar, contact details and the IP allowlist are
 // editable like in Edit and can be set at creation. As in Edit, every check that can fail runs before anything is
 // written, and the account, roles and allowlist are written at once.
-func (uc *UserAdminUseCase) Create(ctx context.Context, actor *Actor, in UserCreate) (*User, error) {
+func (uc *UserAdminUseCase) Create(ctx context.Context, actor *perm.Principal, in UserCreate) (*User, error) {
 	username, deptID, roleIDs := in.Username, in.DeptID, in.RoleIDs
 	if err := validateAvatar(in.Avatar); err != nil {
 		return nil, err
@@ -276,7 +277,7 @@ type RoleResolver func(current []int64) (final []int64, changed bool, err error)
 // A submitted set beyond the range is rejected at once, without waiting to find that it "changed": such a set can
 // never equal the current assignable part (which lies entirely within the range), so both orders reach the same
 // conclusion, and rejecting first saves a transaction.
-func (uc *UserAdminUseCase) planRoleEdit(ctx context.Context, actor *Actor, submitted []int64) (RoleResolver, error) {
+func (uc *UserAdminUseCase) planRoleEdit(ctx context.Context, actor *perm.Principal, submitted []int64) (RoleResolver, error) {
 	allowed, all, err := uc.arbac.AssignableRange(ctx, actor)
 	if err != nil {
 		return nil, err
@@ -338,7 +339,7 @@ func resolveRoleEdit(allowed map[int64]bool, all bool, submitted, current []int6
 // Roles are the exception and split in two halves: a submitted set beyond the range is rejected here, and the final
 // write set (which invisible roles to pin back, whether it is empty) is computed by repo.Edit after locking the
 // user row; see RoleResolver.
-func (uc *UserAdminUseCase) Edit(ctx context.Context, actor *Actor, id int64, in UserEdit) (*User, error) {
+func (uc *UserAdminUseCase) Edit(ctx context.Context, actor *perm.Principal, id int64, in UserEdit) (*User, error) {
 	cur, err := uc.target(ctx, actor, id, SelfOpDefault)
 	if err != nil {
 		return nil, err
@@ -410,7 +411,7 @@ func sameInt64Set(a, b []int64) bool {
 
 // Disable disables an account in the anti-lockout tier: even root cannot disable itself (so the only super
 // administrator cannot lock itself out).
-func (uc *UserAdminUseCase) Disable(ctx context.Context, actor *Actor, id int64) error {
+func (uc *UserAdminUseCase) Disable(ctx context.Context, actor *perm.Principal, id int64) error {
 	if _, err := uc.target(ctx, actor, id, SelfOpAntiLockout); err != nil {
 		return err
 	}
@@ -428,7 +429,7 @@ func (uc *UserAdminUseCase) Disable(ctx context.Context, actor *Actor, id int64)
 //
 // It does not bump token_version: disabling already did, so the user holds no valid token now; enabling only lets
 // them log in again, with no old ticket to revoke.
-func (uc *UserAdminUseCase) Enable(ctx context.Context, actor *Actor, id int64) error {
+func (uc *UserAdminUseCase) Enable(ctx context.Context, actor *perm.Principal, id int64) error {
 	if _, err := uc.target(ctx, actor, id, SelfOpDefault); err != nil {
 		return err
 	}
@@ -443,7 +444,7 @@ func (uc *UserAdminUseCase) Enable(ctx context.Context, actor *Actor, id int64) 
 // so at least one root (the operator) always remains. After the change it bumps token_version to revoke all of
 // the target's sessions at once: a grant takes effect on the next login, and a revocation takes root away
 // immediately with no window.
-func (uc *UserAdminUseCase) SetRoot(ctx context.Context, actor *Actor, id int64, isRoot bool) error {
+func (uc *UserAdminUseCase) SetRoot(ctx context.Context, actor *perm.Principal, id int64, isRoot bool) error {
 	u, err := uc.target(ctx, actor, id, SelfOpAntiLockout)
 	if err != nil {
 		return err
@@ -457,7 +458,7 @@ func (uc *UserAdminUseCase) SetRoot(ctx context.Context, actor *Actor, id int64,
 // Get is the source of the edit form's initial values: it admits only users the actor can manage (the same range
 // as the list, so non-root cannot read the details of root or of users out of range). It does not go through
 // target: viewing one's own details is not limited by "do not edit oneself", only editing is.
-func (uc *UserAdminUseCase) Get(ctx context.Context, actor *Actor, id int64) (*User, error) {
+func (uc *UserAdminUseCase) Get(ctx context.Context, actor *perm.Principal, id int64) (*User, error) {
 	if err := uc.arbac.EnsureTargetManageable(ctx, actor, id); err != nil {
 		return nil, err
 	}
@@ -466,7 +467,7 @@ func (uc *UserAdminUseCase) Get(ctx context.Context, actor *Actor, id int64) (*U
 
 // Kick forces a user offline: it changes no account state and only increments token_version so that issued tokens
 // stop working.
-func (uc *UserAdminUseCase) Kick(ctx context.Context, actor *Actor, id int64) error {
+func (uc *UserAdminUseCase) Kick(ctx context.Context, actor *perm.Principal, id int64) error {
 	if _, err := uc.target(ctx, actor, id, SelfOpDefault); err != nil {
 		return err
 	}
@@ -475,7 +476,7 @@ func (uc *UserAdminUseCase) Kick(ctx context.Context, actor *Actor, id int64) er
 
 // ResetPassword lets an administrator reset someone else's password (users change their own with
 // ChangeMyPassword).
-func (uc *UserAdminUseCase) ResetPassword(ctx context.Context, actor *Actor, id int64, newPassword string) error {
+func (uc *UserAdminUseCase) ResetPassword(ctx context.Context, actor *perm.Principal, id int64, newPassword string) error {
 	if _, err := uc.target(ctx, actor, id, SelfOpDefault); err != nil {
 		return err
 	}
@@ -492,7 +493,7 @@ func (uc *UserAdminUseCase) ResetPassword(ctx context.Context, actor *Actor, id 
 // accepted on purpose: whoever gets this far already holds a valid session and a one-time code typed on the spot, and
 // the same credentials can do far worse, such as creating another root. The injected OTPResetter does the work; this
 // method only decides permission.
-func (uc *UserAdminUseCase) ResetOTP(ctx context.Context, actor *Actor, id int64) error {
+func (uc *UserAdminUseCase) ResetOTP(ctx context.Context, actor *perm.Principal, id int64) error {
 	if _, err := uc.target(ctx, actor, id, SelfOpDefault); err != nil {
 		return err
 	}

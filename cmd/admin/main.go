@@ -9,18 +9,8 @@ import (
 	_ "github.com/go-keel/keel/core/kdb/mysql"
 	_ "github.com/go-keel/keel/core/kdb/postgres"
 
-	"github.com/go-keel/keel"
 	"github.com/go-keel/keel-admin/internal/conf"
-	"github.com/go-keel/keel-admin/internal/core/audit"
-	amw "github.com/go-keel/keel-admin/internal/core/middleware"
-	"github.com/go-keel/keel-admin/internal/core/perm"
-	"github.com/go-keel/keel-admin/internal/core/sys/biz"
-	"github.com/go-keel/keel-admin/internal/i18n"
-	"github.com/go-keel/keel-admin/internal/server"
 	"github.com/go-keel/keel/core/kconfig"
-	"github.com/go-keel/keel/middleware/sentinel"
-	"github.com/go-keel/keel/mw"
-	"github.com/go-keel/keel/server/api"
 )
 
 func main() {
@@ -50,48 +40,4 @@ func main() {
 	if err = app.Run(); err != nil {
 		panic(err)
 	}
-}
-
-func newApp(
-	factory *keel.AppFactory,
-	services []server.HTTPService,
-	authUC *biz.AuthUseCase,
-	otpUC *biz.OTPUseCase,
-	auditRec audit.Recorder,
-	sg *sentinel.Group,
-	brand *conf.Brand,
-	// The business area's raw routes (http.Handlers that skip the middleware chain, such as webhooks and downloads)
-	// are appended here.
-	streamRegisters ...api.StreamRegister,
-) (*keel.App, error) {
-	c := factory.Config()
-	httpCfg := c.Server.Http["default"]
-
-	chain := mw.Default(c.Config)
-	// mw.Default already reserves the authentication slot (between metadata and validate); api.NewHTTPServer fills it
-	// with the authentication middleware built from httpCfg.GetAuth().
-	// principal goes right after validate, so after the auth slot: claims can be resolved into a principal.
-	chain.InsertAfter(mw.SlotValidate, amw.Principal(authUC), "principal") // verified claims -> permission principal
-	chain.InsertAfter("principal", amw.Authz(otpUC), "authz")              // code-level permission bindings
-	chain.InsertAfter("authz", amw.Audit(auditRec), "audit")
-	mw.WithLocale(chain, i18n.NewBundle())
-	mw.WithSentinel(chain, sg) // biz sentinel errors -> typed API errors
-
-	// The SPA always goes last: it catches everything with HandlePrefix("/"), and gorilla mux matches in registration
-	// order; placed before the business raw routes it would shadow them entirely, and a webhook would get the SPA's 404.
-	streams := append(append([]api.StreamRegister{}, streamRegisters...), server.RegisterSPA(brand))
-	// Seal freezes the permission registry di.go filled and checks that every operation of the mounted services is
-	// bound or anonymous; failing at startup beats an endpoint that answers 403 to everyone.
-	served, err := perm.ServedOperations(server.ServiceNames(services)...)
-	if err != nil {
-		return nil, err
-	}
-	if err := perm.Seal(served); err != nil {
-		return nil, err
-	}
-	httpSrv, err := api.NewHTTPServer(httpCfg, server.NewHTTPServerRegister(services...), chain, streams...)
-	if err != nil {
-		return nil, err
-	}
-	return factory.New(httpSrv)
 }

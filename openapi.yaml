@@ -2184,13 +2184,6 @@ components:
                          RESOURCE_GRANT needs grantable (a declared ListGrantable callback); ALL is always valid.
                 anchorDept:
                     type: boolean
-                viaParent:
-                    type: string
-                    description: |-
-                        Derived resource: ownership derives from the parent resource, with no owner columns of its own. Empty = an
-                         anchored resource.
-                viaFk:
-                    type: string
                 grantable:
                     type: boolean
                     description: |-

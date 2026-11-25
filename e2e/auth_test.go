@@ -74,11 +74,14 @@ func testLoginValidatorMessage(t *testing.T, e *env) {
 	}
 }
 
-// Basis: auth.proto LoginMeta; configs/app.yaml sys.captcha (off by default).
+// Basis: auth.proto LoginMeta; configs/app.yaml sys.captcha (off by default); docs/admin/auth.md "Captcha" (off issues
+// nothing).
 func testLoginMeta(t *testing.T, e *env) {
-	m := e.user("", "", 0).get(t, "/v1/sys/auth/login-meta").ok(t)
+	anon := e.user("", "", 0)
+	m := anon.get(t, "/v1/sys/auth/login-meta").ok(t)
 	eq(t, "captchaEnabled", m.boolean("captchaEnabled"), false)
 	eq(t, "captchaSiteKey", m.str("captchaSiteKey"), "")
+	eq(t, "captchaId with captcha off", anon.post(t, "/v1/sys/auth/captcha", nil).ok(t).str("captchaId"), "")
 }
 
 // Basis: docs/admin/permission-model/sessions-and-audit.md §8 (lockout after consecutive failures, reset on success);

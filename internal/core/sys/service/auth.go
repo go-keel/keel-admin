@@ -87,9 +87,9 @@ func (s *AuthService) LoginMeta(ctx context.Context, _ *v1.LoginMetaRequest) (*v
 
 // UpdateMyProfile lets users change their own nickname, avatar, email and phone number.
 func (s *AuthService) UpdateMyProfile(ctx context.Context, req *v1.UpdateMyProfileRequest) (*emptypb.Empty, error) {
-	p, ok := perm.FromContext(ctx)
-	if !ok {
-		return nil, biz.ErrInvalidCredential
+	p, err := perm.Current(ctx)
+	if err != nil {
+		return nil, err
 	}
 	if err := s.uc.UpdateMyProfile(ctx, p.UserID, biz.ProfileEdit{
 		Nickname: req.GetNickname(),
@@ -104,9 +104,9 @@ func (s *AuthService) UpdateMyProfile(ctx context.Context, req *v1.UpdateMyProfi
 
 // ChangeMyPassword lets users change their own password (the old password is verified).
 func (s *AuthService) ChangeMyPassword(ctx context.Context, req *v1.ChangeMyPasswordRequest) (*emptypb.Empty, error) {
-	p, ok := perm.FromContext(ctx)
-	if !ok {
-		return nil, biz.ErrInvalidCredential
+	p, err := perm.Current(ctx)
+	if err != nil {
+		return nil, err
 	}
 	if err := s.uc.ChangeMyPassword(ctx, p.UserID, req.GetOldPassword(), req.GetNewPassword()); err != nil {
 		return nil, err
@@ -115,9 +115,9 @@ func (s *AuthService) ChangeMyPassword(ctx context.Context, req *v1.ChangeMyPass
 }
 
 func (s *AuthService) BindOTP(ctx context.Context, _ *v1.BindOTPRequest) (*v1.BindOTPReply, error) {
-	p, ok := perm.FromContext(ctx)
-	if !ok {
-		return nil, biz.ErrInvalidCredential
+	p, err := perm.Current(ctx)
+	if err != nil {
+		return nil, err
 	}
 	u, err := s.uc.Profile(ctx, p.UserID)
 	if err != nil {
@@ -132,9 +132,9 @@ func (s *AuthService) BindOTP(ctx context.Context, _ *v1.BindOTPRequest) (*v1.Bi
 
 // UnbindOTP unbinds the user's own authenticator and requires the password again (see biz.OTPUseCase.Unbind).
 func (s *AuthService) UnbindOTP(ctx context.Context, req *v1.UnbindOTPRequest) (*emptypb.Empty, error) {
-	p, ok := perm.FromContext(ctx)
-	if !ok {
-		return nil, biz.ErrInvalidCredential
+	p, err := perm.Current(ctx)
+	if err != nil {
+		return nil, err
 	}
 	// Password verification belongs to auth (it owns the account) and clearing the binding to otp; each does its own
 	// part, so the password hash is not passed around in the service layer.
@@ -154,9 +154,9 @@ func (s *AuthService) UnbindOTP(ctx context.Context, req *v1.UnbindOTPRequest) (
 // biz.CompleteOTPBootstrap). A logged-in user rebinding on their own gets no token (the caller already holds one), so
 // the distinction is by scope, not by whether a token is present.
 func (s *AuthService) ConfirmOTP(ctx context.Context, req *v1.ConfirmOTPRequest) (*v1.ConfirmOTPReply, error) {
-	p, ok := perm.FromContext(ctx)
-	if !ok {
-		return nil, biz.ErrInvalidCredential
+	p, err := perm.Current(ctx)
+	if err != nil {
+		return nil, err
 	}
 	if err := s.otp.Confirm(ctx, p.UserID, req.GetCode()); err != nil {
 		return nil, err
@@ -183,10 +183,8 @@ func isBindScope(ctx context.Context) bool {
 	return scope == biz.BindScope
 }
 
-// IssueCaptcha issues a fresh challenge from the currently configured
-// captcha provider. A provider that needs no server-issued challenge, or an
-// unregistered/misconfigured provider name, both surface as an empty reply
-// (captcha_id="") rather than an error.
+// IssueCaptcha issues a fresh challenge from the configured captcha provider. A provider that needs no server-issued
+// challenge, or captcha being off, both surface as an empty reply (captcha_id="") rather than an error.
 func (s *AuthService) IssueCaptcha(ctx context.Context, _ *v1.IssueCaptchaRequest) (*v1.IssueCaptchaReply, error) {
 	ch, err := s.uc.IssueCaptcha(ctx)
 	if err != nil {
@@ -199,9 +197,9 @@ func (s *AuthService) IssueCaptcha(ctx context.Context, _ *v1.IssueCaptchaReques
 }
 
 func (s *AuthService) Profile(ctx context.Context, _ *v1.ProfileRequest) (*v1.ProfileReply, error) {
-	p, ok := perm.FromContext(ctx)
-	if !ok {
-		return nil, biz.ErrInvalidCredential
+	p, err := perm.Current(ctx)
+	if err != nil {
+		return nil, err
 	}
 	u, err := s.uc.Profile(ctx, p.UserID)
 	if err != nil {
@@ -235,9 +233,9 @@ const recentLoginCount = 5
 // GetMyAccount returns the user's own account details (for the personal center). Role and department names are
 // dynamic values that can change, so the backend resolves and returns them, as UserService.toUserInfo does.
 func (s *AuthService) GetMyAccount(ctx context.Context, _ *v1.GetMyAccountRequest) (*v1.MyAccountReply, error) {
-	p, ok := perm.FromContext(ctx)
-	if !ok {
-		return nil, biz.ErrInvalidCredential
+	p, err := perm.Current(ctx)
+	if err != nil {
+		return nil, err
 	}
 	u, err := s.uc.Profile(ctx, p.UserID)
 	if err != nil {
@@ -289,9 +287,9 @@ func (s *AuthService) GetMyAccount(ctx context.Context, _ *v1.GetMyAccountReques
 // afterwards. biz guarantees idempotency; the repo's row lock keeps two concurrent changes from overwriting each
 // other.
 func (s *AuthService) AddFavorite(ctx context.Context, req *v1.AddFavoriteRequest) (*v1.UserSettings, error) {
-	p, ok := perm.FromContext(ctx)
-	if !ok {
-		return nil, biz.ErrInvalidCredential
+	p, err := perm.Current(ctx)
+	if err != nil {
+		return nil, err
 	}
 	st, err := s.uc.AddFavorite(ctx, p.UserID, req.GetPath())
 	if err != nil {
@@ -301,9 +299,9 @@ func (s *AuthService) AddFavorite(ctx context.Context, req *v1.AddFavoriteReques
 }
 
 func (s *AuthService) RemoveFavorite(ctx context.Context, req *v1.RemoveFavoriteRequest) (*v1.UserSettings, error) {
-	p, ok := perm.FromContext(ctx)
-	if !ok {
-		return nil, biz.ErrInvalidCredential
+	p, err := perm.Current(ctx)
+	if err != nil {
+		return nil, err
 	}
 	st, err := s.uc.RemoveFavorite(ctx, p.UserID, req.GetPath())
 	if err != nil {
@@ -315,9 +313,9 @@ func (s *AuthService) RemoveFavorite(ctx context.Context, req *v1.RemoveFavorite
 // ReorderFavorites reorders the user's own favorites. It overwrites the whole order but accepts only a permutation of
 // the current set; why it is not a plain full overwrite is explained on biz.ReorderFavorites.
 func (s *AuthService) ReorderFavorites(ctx context.Context, req *v1.ReorderFavoritesRequest) (*v1.UserSettings, error) {
-	p, ok := perm.FromContext(ctx)
-	if !ok {
-		return nil, biz.ErrInvalidCredential
+	p, err := perm.Current(ctx)
+	if err != nil {
+		return nil, err
 	}
 	st, err := s.uc.ReorderFavorites(ctx, p.UserID, req.GetPaths())
 	if err != nil {

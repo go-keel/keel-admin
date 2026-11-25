@@ -45,7 +45,7 @@ var AnonymousOperations = sync.OnceValue(func() map[string]struct{} {
 // ServedOperations lists every operation (e.g. "/api.keel_admin.v1.UserService/ListUser") of the named proto services,
 // sorted. The names come from the HTTP registration list (server.HTTPService), the same list that mounts the routes,
 // so only services this process serves are checked: a proto linked in only to call another service is not named.
-// Every method counts, whatever its HTTP binding or streaming shape. newApp passes the result to Seal so each one must
+// Every method counts, whatever its HTTP binding or streaming shape. server.Kernel.NewHTTPServer passes the result to Seal so each one must
 // be bound or anonymous.
 func ServedOperations(services ...string) ([]string, error) {
 	var ops []string

@@ -9,7 +9,6 @@ import (
 
 	v1 "github.com/go-keel/keel-admin/api/keel_admin/v1"
 	"github.com/go-keel/keel-admin/internal/core/perm"
-	"github.com/go-keel/keel-admin/internal/core/sys/biz"
 	"github.com/go-keel/keel/middleware/locale"
 )
 
@@ -20,7 +19,7 @@ type MetaService struct {
 }
 
 // NewMetaService builds the meta service handler. businessZone is the time zone parsed from
-// sys.business_time_zone (see server.ProvideBusinessZone).
+// sys.business_time_zone (loaded by server.NewKernel).
 func NewMetaService(businessZone *time.Location) *MetaService {
 	return &MetaService{businessZone: businessZone}
 }
@@ -49,7 +48,7 @@ func (s *MetaService) ListPermissions(ctx context.Context, _ *v1.ListPermissions
 			Module:     p.Code.Module(),
 			Action:     p.Code.Action(),
 			Deps:       deps,
-			RequireOtp: p.RequireOTP,
+			RequireOtp: perm.RequiresOTP(p.Code),
 		})
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].GetCode() < items[j].GetCode() })
@@ -148,10 +147,6 @@ func (s *MetaService) ListResources(ctx context.Context, _ *v1.ListResourcesRequ
 				it.GrantOptions = append(it.GrantOptions, &v1.GrantOption{Id: o.ID, Label: o.Label})
 			}
 		}
-		if d.Via != nil {
-			it.ViaParent = string(d.Via.Parent)
-			it.ViaFk = d.Via.FK
-		}
 		items = append(items, it)
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].GetRes() < items[j].GetRes() })
@@ -159,9 +154,9 @@ func (s *MetaService) ListResources(ctx context.Context, _ *v1.ListResourcesRequ
 }
 
 func (s *MetaService) MyPermissions(ctx context.Context, _ *v1.MyPermissionsRequest) (*v1.MyPermissionsReply, error) {
-	p, ok := perm.FromContext(ctx)
-	if !ok {
-		return nil, biz.ErrInvalidCredential
+	p, err := perm.Current(ctx)
+	if err != nil {
+		return nil, err
 	}
 	codes := make([]string, 0, len(p.Perms))
 	for c := range p.Perms {

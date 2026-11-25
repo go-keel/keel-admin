@@ -1,17 +1,14 @@
-package main
+package server
 
 // Authentication must run before principal/authz/audit: all three middlewares depend on the claims authentication
 // writes into ctx. The wrong order is no compile error; it only shows at runtime as "logged in, yet treated as
 // logged out".
 //
-// How it asserts: build the chain in the same order as newApp, start a server on a real port with the real
-// api.NewHTTPServer, and send real HTTP requests. principal calls the PrincipalResolver only after reading claims from
-// ctx (see internal/core/middleware/principal.go), so a call to the resolver proves authentication ran first;
-// conversely, a request without credentials should be rejected at the authentication slot, and the resolver is never
-// called.
-//
-// It replicates the few chain-building lines of newApp instead of calling it: newApp's authUC/otpUC parameters are
-// concrete types that need a real database, while principal/authz/audit take interfaces that accept test doubles.
+// How it asserts: build the chain with the kernel's own insertKernelMiddleware (what Kernel.Middleware runs), start a
+// server on a real port with the real api.NewHTTPServer, and send real HTTP requests. principal calls the
+// PrincipalResolver only after reading claims from ctx (see internal/core/middleware/principal.go), so a call to the
+// resolver proves authentication ran first; conversely, a request without credentials should be rejected at the
+// authentication slot, and the resolver is never called.
 import (
 	"context"
 	"net/http"
@@ -25,7 +22,6 @@ import (
 	"github.com/go-keel/keel-admin/internal/core/audit"
 	amw "github.com/go-keel/keel-admin/internal/core/middleware"
 	"github.com/go-keel/keel-admin/internal/core/perm"
-	"github.com/go-keel/keel-admin/internal/i18n"
 	kconf "github.com/go-keel/keel/conf"
 	"github.com/go-keel/keel/middleware/sentinel"
 	"github.com/go-keel/keel/mw"
@@ -74,15 +70,10 @@ type fakeAuditRecorder struct{}
 
 func (fakeAuditRecorder) Record(context.Context, audit.Entry) {}
 
-// buildTestChain matches the chain-building code in newApp line by line (see main.go), with authUC/otpUC/auditRec
-// replaced by test doubles.
+// buildTestChain runs the kernel's insertion with the use cases replaced by test doubles.
 func buildTestChain(resolver amw.PrincipalResolver) *mw.Chain {
 	chain := mw.Default(nil)
-	chain.InsertAfter(mw.SlotValidate, amw.Principal(resolver), "principal")
-	chain.InsertAfter("principal", amw.Authz(fakeStepUp{}), "authz")
-	chain.InsertAfter("authz", amw.Audit(fakeAuditRecorder{}), "audit")
-	mw.WithLocale(chain, i18n.NewBundle())
-	mw.WithSentinel(chain, sentinel.NewGroup())
+	insertKernelMiddleware(chain, resolver, fakeStepUp{}, fakeAuditRecorder{}, sentinel.NewGroup())
 	return chain
 }
 
@@ -102,7 +93,7 @@ func registerProbeRoute(srv *api.HTTPServer) {
 }
 
 // startChainOrderServer starts an HTTP server on a real port with the real api.NewHTTPServer; the chain is built the
-// same way as in production newApp, and auth is built from cfg.Auth (HS256).
+// same way as in production, and auth is built from cfg.Auth (HS256).
 func startChainOrderServer(t *testing.T, chain *mw.Chain) (base string) {
 	t.Helper()
 	cfg := &kconf.Server_HTTP{

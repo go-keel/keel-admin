@@ -34,7 +34,7 @@ before all other routes, so the SPA fallback cannot swallow it
 (`keel:docs/http.md#liveness-every-http-server-has-health`).
 The cost is that the frontend **cannot have a page route named `/health`**: it would never open.
 
-## Registered in the business area, appended as newApp's variadic arguments
+## Registered in the business area, passed to kernel.NewHTTPServer
 
 ```go
 // internal/service/http.go (business area; a fictional payment callback)
@@ -45,15 +45,14 @@ func NewStreamRegister(webhook *WebhookHandler) api.StreamRegister {
     }
 }
 
-// cmd/<app>/di.go: appended as newApp's variadic arguments (the kernel adds the SPA itself; do not write it)
-app, err := newApp(appFactory, services, authUseCase, otpUseCase,
-    auditRecorder, sentinelGroup, brand,
+// cmd/<app>/di.go: further arguments after httpServices(...) (the kernel adds the SPA itself; do not write it)
+httpSrv, err := kernel.NewHTTPServer(chain, httpServices(/* … */),
     nsvc.NewStreamRegister(webhookHandler))
 ```
 
 Never write it in `internal/server/` (kernel, overwritten whole). **The SPA always comes last**: it is a fallback on
 `HandlePrefix("/")`, routes match in registration order, and placed before the business routes it would shadow every
-business raw route; `newApp` already guarantees that order.
+business raw route; `kernel.NewHTTPServer` already guarantees that order.
 
 ## Anti-patterns
 

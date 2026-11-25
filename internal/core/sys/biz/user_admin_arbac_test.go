@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"testing"
+
+	"github.com/go-keel/keel-admin/internal/core/perm"
 )
 
 // fakeARBACRepoDept is an ARBACRepo fake with a configurable ManageDeptIDs
@@ -42,7 +44,7 @@ func (f *fakeARBACRepoDept) ManageDeptConfigs(context.Context, []int64) (map[int
 
 // resolveFor runs both halves of a role edit: planRoleEdit before the transaction, then the callback it returns,
 // called with current as the roles read under the lock.
-func resolveFor(uc *UserAdminUseCase, actor *Actor, current, submitted []int64) ([]int64, bool, error) {
+func resolveFor(uc *UserAdminUseCase, actor *perm.Principal, current, submitted []int64) ([]int64, bool, error) {
 	resolve, err := uc.planRoleEdit(context.Background(), actor, submitted)
 	if err != nil {
 		return nil, false, err
@@ -66,7 +68,7 @@ func TestResolveRoleEditPinsUnassignable(t *testing.T) {
 		protected:  []int64{7},
 	}, repo)
 	uc := NewUserAdminUseCase(repo, arbac, nil)
-	actor := &Actor{UserID: 1, RoleIDs: []int64{2}}
+	actor := &perm.Principal{UserID: 1, RoleIDs: []int64{2}}
 
 	// Switch to [6]: 5 is removed (within authority, allowed), 7 and 9 are pinned back.
 	final, changed, err := resolveFor(uc, actor, repo.roles, []int64{6})
@@ -87,7 +89,7 @@ func TestResolveRoleEditPinsUnassignable(t *testing.T) {
 	}
 
 	// Root does a full replacement, what you see is what you get, nothing is pinned.
-	root := &Actor{UserID: 2, IsRoot: true}
+	root := &perm.Principal{UserID: 2, IsRoot: true}
 	final, changed, err = resolveFor(uc, root, repo.roles, []int64{6})
 	if err != nil {
 		t.Fatalf("root resolve: %v", err)
@@ -113,7 +115,7 @@ func TestResolveRoleEditChanged(t *testing.T) {
 		protected:  []int64{7},
 	}, repo)
 	uc := NewUserAdminUseCase(repo, arbac, nil)
-	actor := &Actor{UserID: 1, RoleIDs: []int64{2}}
+	actor := &perm.Principal{UserID: 1, RoleIDs: []int64{2}}
 
 	cases := []struct {
 		name      string
@@ -137,7 +139,7 @@ func TestResolveRoleEditChanged(t *testing.T) {
 	}
 
 	// Root can assign everything, so nothing is pinned and the full set is compared: what you see is what you get.
-	root := &Actor{UserID: 2, IsRoot: true}
+	root := &perm.Principal{UserID: 2, IsRoot: true}
 	if _, changed, _ := resolveFor(uc, root, repo.roles, []int64{5, 7, 9}); changed {
 		t.Fatal("root: submitting all current roles should count as unchanged")
 	}
@@ -154,7 +156,7 @@ func TestKickNonRootRejectsRootTarget(t *testing.T) {
 	repo := &fakeAdminRepo{fakeUserRepo: fakeUserRepo{user: &User{ID: 20, Status: 1, IsRoot: true, DeptID: 1}}}
 	arbac := NewARBACUseCase(&fakeARBACRepoDept{deptIDs: []int64{1}}, repo)
 	uc := NewUserAdminUseCase(repo, arbac, nil)
-	actor := &Actor{UserID: 1, IsRoot: false, RoleIDs: []int64{2}}
+	actor := &perm.Principal{UserID: 1, IsRoot: false, RoleIDs: []int64{2}}
 
 	err := uc.Kick(context.Background(), actor, 20)
 	if !errors.Is(err, ErrTargetProtected) {
@@ -171,7 +173,7 @@ func TestKickNonRootRejectsDeptOutOfRange(t *testing.T) {
 	repo := &fakeAdminRepo{fakeUserRepo: fakeUserRepo{user: &User{ID: 21, Status: 1, DeptID: 99}}}
 	arbac := NewARBACUseCase(&fakeARBACRepoDept{deptIDs: []int64{1, 2}}, repo)
 	uc := NewUserAdminUseCase(repo, arbac, nil)
-	actor := &Actor{UserID: 1, IsRoot: false, RoleIDs: []int64{2}}
+	actor := &perm.Principal{UserID: 1, IsRoot: false, RoleIDs: []int64{2}}
 
 	err := uc.Kick(context.Background(), actor, 21)
 	if !errors.Is(err, ErrDeptOutOfRange) {
@@ -187,7 +189,7 @@ func TestCreateRequiresRole(t *testing.T) {
 	repo := &fakeAdminRepo{}
 	arbac := NewARBACUseCase(&fakeARBACRepoDept{}, repo)
 	uc := NewUserAdminUseCase(repo, arbac, nil)
-	root := &Actor{UserID: 1, IsRoot: true}
+	root := &perm.Principal{UserID: 1, IsRoot: true}
 	if _, err := uc.Create(context.Background(), root, UserCreate{Username: "u", Password: "p", Nickname: "n"}); !errors.Is(err, ErrRoleRequired) {
 		t.Fatalf("an empty role set should be rejected with ErrRoleRequired, got %v", err)
 	}
@@ -198,7 +200,7 @@ func TestCreateRequiresRole(t *testing.T) {
 // set separately: with an invalid whitelist the account already existed while the call reported an error, and
 // a retry hit "user already exists".
 func TestCreateIPWhitelist(t *testing.T) {
-	root := &Actor{UserID: 1, IsRoot: true}
+	root := &perm.Principal{UserID: 1, IsRoot: true}
 	newUC := func() (*UserAdminUseCase, *fakeAdminRepo) {
 		repo := &fakeAdminRepo{fakeUserRepo: fakeUserRepo{findByUsernameErr: ErrInvalidCredential}}
 		return NewUserAdminUseCase(repo, NewARBACUseCase(&fakeARBACRepoDept{}, repo), nil), repo
@@ -241,7 +243,7 @@ func TestCreateUsernameLookup(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := &fakeAdminRepo{fakeUserRepo: fakeUserRepo{user: tc.user, findByUsernameErr: tc.findErr}}
 			uc := NewUserAdminUseCase(repo, NewARBACUseCase(&fakeARBACRepoDept{}, repo), nil)
-			root := &Actor{UserID: 1, IsRoot: true}
+			root := &perm.Principal{UserID: 1, IsRoot: true}
 			_, err := uc.Create(context.Background(), root, UserCreate{Username: "u", Password: "p", RoleIDs: []int64{2}})
 			if (tc.wantErr == nil && err != nil) || (tc.wantErr != nil && !errors.Is(err, tc.wantErr)) {
 				t.Fatalf("Create = %v, want %v", err, tc.wantErr)
@@ -260,7 +262,7 @@ func TestKickNonRootAllowsInRangeTarget(t *testing.T) {
 	repo := &fakeAdminRepo{fakeUserRepo: fakeUserRepo{user: &User{ID: 22, Status: 1, DeptID: 2}}}
 	arbac := NewARBACUseCase(&fakeARBACRepoDept{deptIDs: []int64{1, 2}}, repo)
 	uc := NewUserAdminUseCase(repo, arbac, nil)
-	actor := &Actor{UserID: 1, IsRoot: false, RoleIDs: []int64{2}}
+	actor := &perm.Principal{UserID: 1, IsRoot: false, RoleIDs: []int64{2}}
 
 	if err := uc.Kick(context.Background(), actor, 22); err != nil {
 		t.Fatalf("non-root kicking a target inside the manageable range should succeed: %v", err)

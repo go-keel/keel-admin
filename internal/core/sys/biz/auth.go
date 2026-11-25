@@ -99,7 +99,6 @@ type PermCache interface {
 // needs: the login brute-force thresholds and the captcha display info. Read
 // once at boot; changes require a restart.
 type AuthConfig struct {
-	CaptchaEnabled  bool
 	CaptchaProvider string
 	// CaptchaSiteKey is the public key of a widget-style provider, sent with login-meta.
 	CaptchaSiteKey     string
@@ -119,14 +118,14 @@ type AuthUseCase struct {
 	sessionTTL time.Duration
 	lockout    LockoutGuard
 	cfg        AuthConfig
-	captcha    CaptchaGate
+	captcha    captcha.Provider
 }
 
 // NewAuthUseCase builds the auth use case. lockout + cfg drive the login
-// brute-force guard (sys.lockout.*) — see Login. captchaGate drives Login's
-// step 0 admission gate (sys.captcha.*).
-func NewAuthUseCase(users UserRepo, loginLog LoginLogger, cache PermCache, otp OTPGate, signer jwt.Signer, sessionTTL time.Duration, lockout LockoutGuard, cfg AuthConfig, captchaGate CaptchaGate) *AuthUseCase {
-	return &AuthUseCase{users: users, loginLog: loginLog, cache: cache, otp: otp, signer: signer, sessionTTL: sessionTTL, lockout: lockout, cfg: cfg, captcha: captchaGate}
+// brute-force guard (sys.lockout.*) — see Login. captchaProvider drives Login's
+// step 0 admission gate (sys.captcha.*); nil means captcha is off.
+func NewAuthUseCase(users UserRepo, loginLog LoginLogger, cache PermCache, otp OTPGate, signer jwt.Signer, sessionTTL time.Duration, lockout LockoutGuard, cfg AuthConfig, captchaProvider captcha.Provider) *AuthUseCase {
+	return &AuthUseCase{users: users, loginLog: loginLog, cache: cache, otp: otp, signer: signer, sessionTTL: sessionTTL, lockout: lockout, cfg: cfg, captcha: captchaProvider}
 }
 
 // passwordVerify is pwd.VerifyPassword, kept behind a package-level
@@ -236,8 +235,7 @@ func (uc *AuthUseCase) CompleteOTPBootstrap(ctx context.Context, userID int64, i
 // Redis outage there must never lock out legitimate users. Captcha is the
 // opposite: it is only consulted when an operator has explicitly turned it
 // on (sys.captcha.enabled), which is itself a decision to reject on any
-// doubt. So here every non-true Verify outcome — wrong answer, an
-// unregistered/misconfigured provider (see captchaGate.Verify), or an
+// doubt. So here every non-true Verify outcome — wrong answer or an
 // underlying backend error — collapses to ErrCaptchaInvalid and the login
 // is rejected. This also covers the base64 provider's Redis-backed Verify,
 // which by construction cannot distinguish "Redis is down" from "wrong
@@ -251,7 +249,7 @@ func (uc *AuthUseCase) CompleteOTPBootstrap(ctx context.Context, userID int64, i
 // yet, and captcha failures are typically bot noise, not targeted
 // credential guessing.
 func (uc *AuthUseCase) Login(ctx context.Context, username, password, otpCode, captchaID, captchaAnswer, ip string) (token string, bindToken string, user *User, err error) {
-	if uc.captcha.Enabled(ctx) {
+	if uc.captcha != nil {
 		ok, verr := uc.captcha.Verify(ctx, captchaID, captchaAnswer, ip)
 		if verr != nil || !ok {
 			return "", "", nil, ErrCaptchaInvalid
@@ -475,23 +473,20 @@ type LoginMeta struct {
 // anonymous login-meta endpoint.
 func (uc *AuthUseCase) LoginMeta(ctx context.Context) LoginMeta {
 	return LoginMeta{
-		CaptchaEnabled:  uc.cfg.CaptchaEnabled,
+		CaptchaEnabled:  uc.captcha != nil,
 		CaptchaProvider: uc.cfg.CaptchaProvider,
 		CaptchaSiteKey:  uc.cfg.CaptchaSiteKey,
 	}
 }
 
-// IssueCaptcha issues a fresh challenge from the currently configured
-// provider (sys.captcha.provider). A provider that needs no server-issued
-// challenge (a client-rendered widget, say) returns (nil, nil) — same as an
-// unregistered/misconfigured provider name, so a captcha misconfiguration
-// degrades to "no captcha" instead of breaking the login page.
+// IssueCaptcha issues a fresh challenge from the configured provider (sys.captcha.provider). With captcha off it
+// returns (nil, nil) and writes nothing, so the anonymous endpoint cannot be used to fill Redis; a provider that needs
+// no server-issued challenge (a client-rendered widget) returns (nil, nil) too.
 func (uc *AuthUseCase) IssueCaptcha(ctx context.Context) (*captcha.Challenge, error) {
-	p, ok := captcha.Get(uc.cfg.CaptchaProvider)
-	if !ok {
+	if uc.captcha == nil {
 		return nil, nil
 	}
-	return p.Issue(ctx)
+	return uc.captcha.Issue(ctx)
 }
 
 // ResolveWithVersion builds the principal (effective perms) after verifying the

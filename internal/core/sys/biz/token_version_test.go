@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-keel/keel-admin/internal/core/perm"
 	"github.com/go-keel/keel/pkg/pwd"
 )
 
@@ -84,7 +85,7 @@ func TestKickRejectsSelfNonRoot(t *testing.T) {
 	repo := &fakeAdminRepo{fakeUserRepo: fakeUserRepo{user: &User{ID: 1, Status: 1}}}
 	arbac := NewARBACUseCase(nil, nil)
 	uc := NewUserAdminUseCase(repo, arbac, nil)
-	actor := &Actor{UserID: 1, IsRoot: false}
+	actor := &perm.Principal{UserID: 1, IsRoot: false}
 	if err := uc.Kick(context.Background(), actor, 1); !errors.Is(err, ErrSelfManageForbidden) {
 		t.Fatalf("non-root kicking itself should be rejected: %v", err)
 	}
@@ -95,7 +96,7 @@ func TestKickRootSelfAllowed(t *testing.T) {
 	repo := &fakeAdminRepo{fakeUserRepo: fakeUserRepo{user: &User{ID: 1, Status: 1, IsRoot: true}}}
 	arbac := NewARBACUseCase(nil, nil)
 	uc := NewUserAdminUseCase(repo, arbac, nil)
-	actor := &Actor{UserID: 1, IsRoot: true}
+	actor := &perm.Principal{UserID: 1, IsRoot: true}
 	if err := uc.Kick(context.Background(), actor, 1); err != nil {
 		t.Fatalf("root kicking itself should be allowed: %v", err)
 	}
@@ -110,7 +111,7 @@ func TestKickRootSelfAllowed(t *testing.T) {
 func TestSetRootRejectsSelf(t *testing.T) {
 	repo := &fakeAdminRepo{fakeUserRepo: fakeUserRepo{user: &User{ID: 1, Status: 1, IsRoot: true}}}
 	uc := NewUserAdminUseCase(repo, NewARBACUseCase(nil, nil), nil)
-	actor := &Actor{UserID: 1, IsRoot: true}
+	actor := &perm.Principal{UserID: 1, IsRoot: true}
 	if err := uc.SetRoot(context.Background(), actor, 1, false); !errors.Is(err, ErrSelfManageForbidden) {
 		t.Fatalf("changing one's own root status should be rejected: %v", err)
 	}
@@ -120,7 +121,7 @@ func TestSetRootRejectsSelf(t *testing.T) {
 func TestSetRootIdempotentNoBump(t *testing.T) {
 	repo := &fakeAdminRepo{fakeUserRepo: fakeUserRepo{user: &User{ID: 8, Status: 1, IsRoot: true}}}
 	uc := NewUserAdminUseCase(repo, NewARBACUseCase(nil, nil), nil)
-	actor := &Actor{UserID: 1, IsRoot: true}
+	actor := &perm.Principal{UserID: 1, IsRoot: true}
 	if err := uc.SetRoot(context.Background(), actor, 8, true); err != nil {
 		t.Fatalf("the idempotent call should succeed: %v", err)
 	}
@@ -134,7 +135,7 @@ func TestDisableRejectsRootSelf(t *testing.T) {
 	repo := &fakeAdminRepo{fakeUserRepo: fakeUserRepo{user: &User{ID: 1, Status: 1, IsRoot: true}}}
 	arbac := NewARBACUseCase(nil, nil)
 	uc := NewUserAdminUseCase(repo, arbac, nil)
-	actor := &Actor{UserID: 1, IsRoot: true}
+	actor := &perm.Principal{UserID: 1, IsRoot: true}
 	if err := uc.Disable(context.Background(), actor, 1); !errors.Is(err, ErrSelfManageForbidden) {
 		t.Fatalf("root disabling itself should be rejected: %v", err)
 	}
@@ -148,7 +149,7 @@ func TestDisableRejectsRootSelf(t *testing.T) {
 // old sessions would come back when the user is re-enabled. Enabling does not revoke (disabling already did).
 func TestAccountWritesRevokeInSameCall(t *testing.T) {
 	ctx := context.Background()
-	root := &Actor{UserID: 1, IsRoot: true}
+	root := &perm.Principal{UserID: 1, IsRoot: true}
 	cases := []struct {
 		name   string
 		run    func(uc *UserAdminUseCase) error

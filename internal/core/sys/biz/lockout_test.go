@@ -90,7 +90,7 @@ func newLoginUseCase(repo UserRepo, log LoginLogger, guard LockoutGuard, cfg Aut
 	signer := testSigner()
 	// captcha disabled: these tests exercise the lockout guard, not captcha —
 	// see auth_captcha_test.go for captcha step 0 coverage.
-	return NewAuthUseCase(repo, log, &fakePermCache{}, fakeOTPGateNoRequire{}, signer, time.Hour, guard, cfg, &fakeCaptchaGate{enabled: false})
+	return NewAuthUseCase(repo, log, &fakePermCache{}, fakeOTPGateNoRequire{}, signer, time.Hour, guard, cfg, nil)
 }
 
 func TestLoginWithinThresholdRecordsFailureOnBadPassword(t *testing.T) {

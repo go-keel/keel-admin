@@ -15,21 +15,12 @@ const (
 	AnchorDept
 )
 
-// Derive marks a resource as scoped through a parent resource's anchors
-// (e.g. "order_item" derives its scope from "order" via an "order_id" FK).
-// Only one level of derivation is allowed: Parent must not itself be a
-// derived resource (enforced by Seal).
-type Derive struct {
-	Parent Resource
-	FK     string
-}
-
-// ResourceDef declares a dimension-two data-scope resource: its own anchors
-// (Self/Dept) or, for derived resources, the parent it borrows anchors from.
+// ResourceDef declares a dimension-two data-scope resource and the anchors (Self/Dept) it supports. A child table
+// gated by its parent's scope is not registered: its query applies the parent resource's spec to the foreign key
+// column (docs/admin/permission-model/data-scope.md §5.3).
 type ResourceDef struct {
 	Res     Resource
 	Anchors Anchor
-	Via     *Derive // Non-nil marks a derived resource; one level only (Parent must not be derived, Seal checks).
 
 	// NameKey is the i18n message ID of the resource's display name (not a literal name). ListResources translates it
 	// into name on the spot by the request's Accept-Language, the same server-side localisation path as error

@@ -215,22 +215,20 @@ func testBrandConfig(t *testing.T, e *env) {
 // Basis: docs/admin/startup-errors.md (each rule); keel:docs/config.md (validation; the dev overlay refused under
 // KEEL_ENV=prod).
 func testStartupErrors(t *testing.T, e *env) {
-	for _, c := range []struct{ app, config, rule string }{
-		{"sys:\n  brand:\n    title: \"\"\n", "", "keel-admin/sys.brand-title-missing"},
-		{"sys:\n  business_time_zone: \"\"\n", "", "keel-admin/sys.business-zone-missing"},
-		{"sys:\n  business_time_zone: Mars/Base\n", "", "keel-admin/sys.business-zone-invalid"},
-		{"sys:\n  otp:\n    aes_key: \"\"\n", "", "keel-admin/sys.otp-key-missing"},
-		{"", "server:\n  http:\n    default:\n      auth:\n        jwt_secret: \"\"\n", "keel/kconfig.invalid"},
-		{"", "server:\n  http:\n    default:\n      auth:\n        cookie_name: \"\"\n", "keel-admin/sys.cookie-name-missing"},
-		{"sys:\n  captcha:\n    enabled: true\n    provider: nope\n", "", "keel-admin/captcha.provider-unknown"},
-		{"sys:\n  captcha:\n    enabled: true\n    provider: turnstile\n    turnstile:\n      secret_key: \"\"\n", "", "keel-admin/captcha.provider-not-ready"},
+	// names: text the failure must contain besides the rule ID, such as the field a kconfig.invalid names.
+	for _, c := range []struct{ app, config, rule, names string }{
+		{"sys:\n  brand:\n    title: \"\"\n", "", "keel/kconfig.invalid", "sys.brand.title"},
+		{"sys:\n  business_time_zone: \"\"\n", "", "keel/kconfig.invalid", "sys.business_time_zone"},
+		{"sys:\n  business_time_zone: Mars/Base\n", "", "keel-admin/sys.business-zone-invalid", ""},
+		{"sys:\n  otp:\n    aes_key: \"\"\n", "", "keel/kconfig.invalid", "sys.otp.aes_key"},
+		{"", "server:\n  http:\n    default:\n      auth:\n        jwt_secret: \"\"\n", "keel/kconfig.invalid", "jwt_secret"},
+		{"", "server:\n  http:\n    default:\n      auth:\n        cookie_name: \"\"\n", "keel-admin/sys.cookie-name-missing", ""},
+		{"sys:\n  captcha:\n    enabled: true\n    provider: nope\n", "", "keel-admin/captcha.provider-unknown", "base64"},
+		{"sys:\n  captcha:\n    enabled: true\n    provider: turnstile\n    turnstile:\n      secret_key: \"\"\n", "", "keel-admin/captcha.provider-not-ready", ""},
 	} {
 		out := e.mustFail(t, e.overlayDir(t, c.app, c.config), c.rule)
-		if c.rule == "keel/kconfig.invalid" && !strings.Contains(out, "jwt_secret") {
-			t.Fatalf("kconfig.invalid does not name jwt_secret:\n%s", out)
-		}
-		if c.rule == "keel-admin/captcha.provider-unknown" && !strings.Contains(out, "base64") {
-			t.Fatalf("provider-unknown does not list the registered providers:\n%s", out)
+		if !strings.Contains(out, c.names) {
+			t.Fatalf("%s does not name %s:\n%s", c.rule, c.names, out)
 		}
 	}
 	e.mustFail(t, e.overlayDir(t, "{}\n", ""), "keel/kconfig.dev-overlay-in-prod", "KEEL_ENV=prod")

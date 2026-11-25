@@ -269,7 +269,7 @@ func TestRoleUseCase_PermissionsOf_RangeGuard(t *testing.T) {
 
 	// actor can only assign inRange.
 	uc := NewRoleUseCase(repo, fakeARBAC{assignable: []int64{inRange.ID}}, &fakeCacheInvalidator{})
-	actor := &Actor{UserID: 9, IsRoot: false, RoleIDs: []int64{7}}
+	actor := &perm.Principal{UserID: 9, IsRoot: false, RoleIDs: []int64{7}}
 
 	got, err := uc.PermissionsOf(ctx, actor, inRange.ID)
 	if err != nil || len(got) != 1 || got[0] != "sys:dept:view" {
@@ -285,7 +285,7 @@ func TestRoleUseCase_PermissionsOf_RangeGuard(t *testing.T) {
 	}
 	// Root is unrestricted.
 	rootUC := NewRoleUseCase(repo, fakeARBAC{}, &fakeCacheInvalidator{})
-	if got, err := rootUC.PermissionsOf(ctx, &Actor{IsRoot: true}, outRange.ID); err != nil || len(got) != 1 {
+	if got, err := rootUC.PermissionsOf(ctx, &perm.Principal{IsRoot: true}, outRange.ID); err != nil || len(got) != 1 {
 		t.Fatalf("root: expected 1 code, got %v (err %v)", got, err)
 	}
 }
@@ -356,7 +356,7 @@ func TestRoleUseCase_ReadsExpandDepsOfOldRoles(t *testing.T) {
 	repo.roles[r.ID].Perms = []string{"sys:account:update"} // as stored before
 
 	want := []string{"sys:account:update", "sys:account:view"}
-	got, err := uc.PermissionsOf(ctx, &Actor{UserID: 1, IsRoot: true}, r.ID)
+	got, err := uc.PermissionsOf(ctx, &perm.Principal{UserID: 1, IsRoot: true}, r.ID)
 	if err != nil || !slices.Equal(got, want) {
 		t.Fatalf("PermissionsOf = %v (err %v), want %v", got, err, want)
 	}
@@ -431,7 +431,7 @@ func TestRoleUseCase_ListAssignable(t *testing.T) {
 	d, _ := seed.Create(ctx, "d", RoleUpdate{Name: "D", Status: 1})               // not in assignable
 
 	uc := NewRoleUseCase(repo, fakeARBAC{assignable: []int64{a.ID, b.ID}, sensitive: []int64{b.ID}}, &fakeCacheInvalidator{})
-	actor := &Actor{UserID: 9, RoleIDs: []int64{1}}
+	actor := &perm.Principal{UserID: 9, RoleIDs: []int64{1}}
 
 	got, err := uc.ListAssignable(ctx, actor)
 	if err != nil {
@@ -447,7 +447,7 @@ func TestRoleUseCase_ListAssignable(t *testing.T) {
 		}
 	}
 
-	all, err := uc.ListAssignable(ctx, &Actor{UserID: 1, IsRoot: true})
+	all, err := uc.ListAssignable(ctx, &perm.Principal{UserID: 1, IsRoot: true})
 	if err != nil {
 		t.Fatalf("ListAssignable root: %v", err)
 	}
@@ -684,7 +684,7 @@ func TestRoleUseCase_RepoErrorNotRewrittenAsNotFound(t *testing.T) {
 	repo := newFakeRoleRepo()
 	repo.getErr = boom
 	uc := NewRoleUseCase(repo, fakeARBAC{}, &fakeCacheInvalidator{})
-	root := &Actor{IsRoot: true}
+	root := &perm.Principal{IsRoot: true}
 	calls := map[string]func() error{
 		"Get":           func() error { _, err := uc.Get(ctx, 1); return err },
 		"Update":        func() error { _, err := uc.Update(ctx, 1, RoleUpdate{Name: "x", Status: 1}); return err },

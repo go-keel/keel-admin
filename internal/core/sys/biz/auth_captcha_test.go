@@ -9,26 +9,21 @@ import (
 	"github.com/go-keel/keel-admin/internal/core/captcha"
 )
 
-// fakeCaptchaGate is a controllable CaptchaGate test double: Enabled/Verify
-// results are fixed per test case, call counts prove the disabled fast-path
-// makes zero calls into the gate.
-type fakeCaptchaGate struct {
-	enabled   bool
+// fakeCaptcha is a controllable captcha.Provider test double: the Verify result is fixed per test case, and the call
+// count proves Verify ran.
+type fakeCaptcha struct {
 	verifyOK  bool
 	verifyErr error
 
-	enabledCalls int
-	verifyCalls  int
+	verifyCalls int
 }
 
-var _ CaptchaGate = (*fakeCaptchaGate)(nil)
+var _ captcha.Provider = (*fakeCaptcha)(nil)
 
-func (g *fakeCaptchaGate) Enabled(context.Context) bool {
-	g.enabledCalls++
-	return g.enabled
-}
+func (g *fakeCaptcha) Issue(context.Context) (*captcha.Challenge, error) { return nil, nil }
+func (g *fakeCaptcha) Ready() error                                      { return nil }
 
-func (g *fakeCaptchaGate) Verify(context.Context, string, string, string) (bool, error) {
+func (g *fakeCaptcha) Verify(context.Context, string, string, string) (bool, error) {
 	g.verifyCalls++
 	return g.verifyOK, g.verifyErr
 }
@@ -54,7 +49,7 @@ func TestLoginCaptchaVerifyPassContinuesToUserLookup(t *testing.T) {
 	repo := loginTestUser(t, "alice", "correct-pass")
 	guard := &fakeLockoutGuard{}
 	store := AuthConfig{LockoutEnabled: false}
-	gate := &fakeCaptchaGate{enabled: true, verifyOK: true}
+	gate := &fakeCaptcha{verifyOK: true}
 	signer := testSigner()
 	uc := NewAuthUseCase(repo, noopLoginLog{}, &fakePermCache{}, fakeOTPGateNoRequire{}, signer, time.Hour, guard, store, gate)
 
@@ -73,7 +68,7 @@ func TestLoginCaptchaVerifyPassContinuesToUserLookup(t *testing.T) {
 func TestLoginCaptchaVerifyFailReturnsErrCaptchaInvalidNotRecordedAsLockoutFailure(t *testing.T) {
 	guard := &fakeLockoutGuard{}
 	store := AuthConfig{LockoutEnabled: true, LockoutMaxFailures: 5, LockoutLockMinutes: 15}
-	gate := &fakeCaptchaGate{enabled: true, verifyOK: false}
+	gate := &fakeCaptcha{verifyOK: false}
 	signer := testSigner()
 	// panicUserRepo proves captcha runs before FindByUsername.
 	uc := NewAuthUseCase(panicUserRepo{}, noopLoginLog{}, &fakePermCache{}, fakeOTPGateNoRequire{}, signer, time.Hour, guard, store, gate)
@@ -87,33 +82,13 @@ func TestLoginCaptchaVerifyFailReturnsErrCaptchaInvalidNotRecordedAsLockoutFailu
 	}
 }
 
-func TestLoginCaptchaUnregisteredProviderFailsClosed(t *testing.T) {
-	captcha.ResetForTest()
-	defer captcha.ResetForTest()
-	// No provider is registered: captchaGate.Verify fails closed for an unregistered provider.
-
-	guard := &fakeLockoutGuard{}
-	lockStore := AuthConfig{LockoutEnabled: false}
-	gate := NewCaptchaGate(true, "ghost")
-	signer := testSigner()
-	uc := NewAuthUseCase(panicUserRepo{}, noopLoginLog{}, &fakePermCache{}, fakeOTPGateNoRequire{}, signer, time.Hour, guard, lockStore, gate)
-
-	_, _, _, err := uc.Login(context.Background(), "alice", "irrelevant", "", "cid", "answer", "1.2.3.4")
-	if !errors.Is(err, ErrCaptchaInvalid) {
-		t.Fatalf("an unregistered provider should fail closed with ErrCaptchaInvalid, got %v", err)
-	}
-	if guard.calls() != 0 {
-		t.Fatalf("a failed captcha check must not count toward brute-force protection: guard calls=%d", guard.calls())
-	}
-}
-
-func TestLoginCaptchaDisabledBypassesGateEntirely(t *testing.T) {
+// With captcha off there is no provider (nil): login skips step 0.
+func TestLoginCaptchaDisabledSkipsCaptcha(t *testing.T) {
 	repo := loginTestUser(t, "alice", "correct-pass")
 	guard := &fakeLockoutGuard{}
 	store := AuthConfig{LockoutEnabled: false}
-	gate := &fakeCaptchaGate{enabled: false}
 	signer := testSigner()
-	uc := NewAuthUseCase(repo, noopLoginLog{}, &fakePermCache{}, fakeOTPGateNoRequire{}, signer, time.Hour, guard, store, gate)
+	uc := NewAuthUseCase(repo, noopLoginLog{}, &fakePermCache{}, fakeOTPGateNoRequire{}, signer, time.Hour, guard, store, nil)
 
 	token, _, _, err := uc.Login(context.Background(), "alice", "correct-pass", "", "", "", "1.2.3.4")
 	if err != nil {
@@ -122,17 +97,17 @@ func TestLoginCaptchaDisabledBypassesGateEntirely(t *testing.T) {
 	if token == "" {
 		t.Fatal("a token should be issued")
 	}
-	if gate.verifyCalls != 0 {
-		t.Fatalf("with captcha off, gate.Verify should be bypassed entirely: calls=%d", gate.verifyCalls)
-	}
 }
 
 func TestLoginMetaReadsConfig(t *testing.T) {
-	cfg := AuthConfig{CaptchaEnabled: true, CaptchaProvider: "base64"}
-	uc := NewAuthUseCase(nil, nil, nil, nil, nil, 0, nil, cfg, nil)
+	cfg := AuthConfig{CaptchaProvider: "base64"}
+	uc := NewAuthUseCase(nil, nil, nil, nil, nil, 0, nil, cfg, &fakeCaptcha{})
 
 	got := uc.LoginMeta(context.Background())
 	if !got.CaptchaEnabled || got.CaptchaProvider != "base64" {
 		t.Fatalf("LoginMeta should pass through the current config: %+v", got)
+	}
+	if NewAuthUseCase(nil, nil, nil, nil, nil, 0, nil, cfg, nil).LoginMeta(context.Background()).CaptchaEnabled {
+		t.Fatal("without a provider, LoginMeta should report captcha off")
 	}
 }

@@ -76,10 +76,7 @@ message ResourceDef {
   // RESOURCE_GRANT needs grantable (a declared ListGrantable callback); ALL is always valid.
   bool anchor_self = 2;
   bool anchor_dept = 3;
-  // Derived resource: ownership derives from the parent resource, with no owner columns of its own. Empty = an
-  // anchored resource.
-  string via_parent = 4;
-  string via_fk = 5;
+  reserved 4, 5;
   // Whether the resource supports explicit assignment (RESOURCE_GRANT): true when its registration declares a
   // ListGrantable callback. When false, the frontend disables RESOURCE_GRANT.
   bool grantable = 7;

@@ -9,7 +9,7 @@ Read this before changing who may manage which users, departments and roles.
 
 Answers "whom may an administrator manage". It applies to **account and department management operations** and is
 guarded in the biz layer (the decision needs the target object, which the middleware layer does not have). The managing
-subject is Actor = {UserID, IsRoot, RoleIDs}; root bypasses all of it.
+subject is the principal (`*perm.Principal`: UserID, IsRoot, RoleIDs); root bypasses all of it.
 
 | Guard | Meaning | Applied at |
 |---|---|---|

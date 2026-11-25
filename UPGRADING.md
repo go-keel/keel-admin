@@ -3,6 +3,163 @@
 This file holds entries only, one per change that actually happened; how to write entries and how to follow
 upstream: `docs/upgrading-protocol.md`.
 
+## 2026-11-25 · 11
+
+**What changed.** The kernel assembles itself. `server.NewKernel(config, sysConf, adminDB, redis)` builds the whole
+kernel (sys data, use cases and services, the OTP cipher, captcha) and returns a `*server.Kernel` with a cleanup; its
+exported fields `ScopeUseCase`, `RefRepo`, `BusinessZone` and `Brand` are what the business area takes.
+`kernel.Middleware(chain, sentinelGroup)` inserts principal / authz / audit, locale and sentinel into a chain from
+`mw.Default`; `kernel.NewHTTPServer(chain, businessServices, rawRoutes...)` seals the permission registry against the
+kernel's and the business's services and builds the HTTP server, SPA last; `server.RegisterKernelPermissions()`
+registers the kernel batch; `server.ServedOperations(businessServices)` lists what Seal checks. Gone from
+`internal/server`: `KernelHTTPServers`, `ServiceNames`, `ProvideBusinessZone`, `ProvideAuthUseCase`,
+`ProvideOTPCipher`, `ProvideOTPUseCase` and `NewCaptchaProvider` (entry 10's call moves into the kernel). `newApp`
+leaves `cmd/<app>/main.go`; `cmd/<app>/chain_order_test.go` moves to `internal/server/` (kernel).
+
+**Why.** About 100 lines of kernel wiring lived in each derived repository's `di.go` and `main.go`, and every kernel
+change had to be copied there by hand.
+
+**How to apply.**
+
+1. Take the kernel (`internal/core/`, `internal/server/`, including the new `kernel.go` and `chain_order_test.go`);
+   delete `cmd/<app>/chain_order_test.go`.
+2. `cmd/<app>/main.go`: delete `newApp` and the imports only it used. Keep `time.Local = time.UTC` as the first line
+   of `main`, the driver blank imports, loading `configs/app.yaml`, `wireApp` and `app.Run()`.
+3. `cmd/<app>/di.go`, in `wireApp`: keep everything up to and including `kredis.NewRedis` (config, otel, logger,
+   `appFactory`, both databases, Redis, and any infrastructure of your own). Replace everything from the kernel data
+   (`coredata.NewData(db)`) through the kernel services, `refRepo`, `scopeUseCase`, `brand`, `businessZone` and the
+   captcha provider with:
+
+   ```go
+   kernel, kernelCleanup, err := server.NewKernel(config, bootstrap.Get().Sys, db, redis)
+   cleanups = append(cleanups, kernelCleanup)
+   if err != nil {
+       return nil, cleanup, err
+   }
+   ```
+
+   In your business wiring, use `kernel.ScopeUseCase`, `kernel.RefRepo`, `kernel.BusinessZone` and `kernel.Brand`
+   where you used `scopeUseCase`, `refRepo`, `businessZone` and `brand`. Keep `registerPermissions(...)` where it was.
+4. Replace `services := httpServices(...)`, the sentinel group and the `newApp(...)` call at the end of `wireApp` with:
+
+   ```go
+   chain := mw.Default(config.Config)
+   kernel.Middleware(chain, nsvc.RegisterErrors(service.NewErrorSentinel()))
+   // your own chain.InsertBefore / InsertAfter calls, if newApp had any, go here
+   httpSrv, err := kernel.NewHTTPServer(chain, httpServices(
+       /* your business services */
+   ) /* , the raw routes you passed to newApp */)
+   if err != nil {
+       return nil, cleanup, err
+   }
+   app, err := appFactory.New(httpSrv)
+   if err != nil {
+       return nil, cleanup, err
+   }
+   return app, cleanup, nil
+   ```
+
+5. `httpServices` takes only your business services and returns only theirs: drop the six kernel parameters and the
+   `server.KernelHTTPServers(...)` line, start from `var services []server.HTTPService`.
+6. In `registerPermissions`, replace `registerKernelPermissions()` with `server.RegisterKernelPermissions()` and
+   delete the `registerKernelPermissions` function.
+7. `cmd/<app>/registration_test.go`: in `servedOperations`, call
+   `server.ServedOperations(httpServices(/* nil per business parameter */))` instead of
+   `perm.ServedOperations(server.ServiceNames(httpServices(...))...)`; in `registerKernel`, call
+   `server.RegisterKernelPermissions()`.
+
+## 2026-11-25 · 10
+
+**What changed.** The captcha provider is built from config instead of looked up in a global registry:
+`captcha.MustRegister`, `captcha.Get`, `captcha.Names` and `captcha.ResetForTest` are gone, and so are
+`biz.CaptchaGate`, `biz.NewCaptchaGate`, `biz.AuthConfig.CaptchaEnabled` and the startup errors
+`captcha.provider-name-empty` / `captcha.provider-duplicate`. `server.NewCaptchaProvider(sysConf.GetCaptcha(), redis)`
+returns the selected provider (with a cleanup), or nil when `sys.captcha.enabled` is false; `biz.NewAuthUseCase` and
+`server.ProvideAuthUseCase` take that `captcha.Provider` as their last argument. With captcha off, the anonymous
+`POST /v1/sys/auth/captcha` no longer writes a challenge to Redis.
+
+**Why.** Both providers were registered on every start, and the anonymous captcha endpoint kept issuing challenges
+with captcha off.
+
+**How to apply.**
+
+1. Take the kernel (`internal/core/`, `internal/server/`).
+2. In `cmd/<app>/di.go`, replace the two `captcha.MustRegister` calls, the turnstile cleanup, the `cap.GetEnabled()`
+   self-check block and `biz.NewCaptchaGate(...)` with:
+
+   ```go
+   captchaProvider, captchaCleanup, err := server.NewCaptchaProvider(sysConf.GetCaptcha(), redis)
+   if err != nil {
+       return nil, cleanup, err
+   }
+   cleanups = append(cleanups, captchaCleanup)
+   ```
+
+   and pass `captchaProvider` where `captchaGate` went.
+
+## 2026-11-25 · 9
+
+**What changed.** The required `sys.*` keys are protovalidate rules in `internal/conf/app.proto`: `sys`, `sys.brand`
+and `sys.otp` are required messages, `sys.brand.title`, `sys.business_time_zone` and `sys.otp.aes_key` required
+strings. A missing one now fails at config load as `keel/kconfig.invalid` naming the field; the startup errors
+`sys.brand-title-missing`, `sys.business-zone-missing` and `sys.otp-key-missing` are gone, and so is
+`server.ProvideBrand` (use `sysConf.GetBrand()`). `make config` compiles `app.proto` with
+`third_party/protovalidate` as a second module of an inline buf workspace.
+
+**Why.** The config's value constraints belong on the proto, checked once at load, not in Go constructors.
+
+**How to apply.**
+
+1. Take the kernel (`internal/server/`).
+2. Copy the three `required` rules, the `buf/validate/validate.proto` import and the field comments into your
+   `internal/conf/app.proto`; replace the `config` target and its two variables `CONF_BUF_CONFIG` /
+   `CONF_GEN_TEMPLATE` in your `Makefile` with upstream's; run `make config`.
+3. In `cmd/<app>/di.go`, replace `brand, err := server.ProvideBrand(sysConf)` and its error check with
+   `brand := sysConf.GetBrand()`.
+4. Anything matching the three removed IDs (tests, alerts) matches `keel/kconfig.invalid` instead.
+
+## 2026-11-25 · 8
+
+**What changed.** The operator has one type, `*perm.Principal`: `biz.Actor` (kernel `internal/core/sys/biz`) is gone
+and the kernel use cases take `*perm.Principal`. `perm.Current(ctx)` returns the request's principal, or
+`perm.ErrNoPrincipal`, which the kernel's sentinel group maps to 401 `UNAUTHENTICATED` ("sign in first") instead of the
+login page's "invalid username or password". The business area's `actorFromContext` and `errNoPrincipal` in
+`internal/service/errors.go` are gone.
+
+**Why.** Two types carried the same three fields, and a call without a principal answered with a login error.
+
+**How to apply.**
+
+1. Take the kernel (`internal/core/`).
+2. In `internal/service/`: replace `actorFromContext(ctx)` with `perm.Current(ctx)` and delete `actorFromContext`,
+   `errNoPrincipal` and `var _ = actorFromContext` from `errors.go`.
+3. In your own code: replace `*biz.Actor` / `&biz.Actor{...}` with `*perm.Principal` / `&perm.Principal{...}`.
+
+## 2026-11-25 · 7
+
+**What changed.** Derived data-scope resources are gone: `perm.Derive`, `perm.ResourceDef.Via`, the startup errors
+`perm.resource-parent-unknown` and `perm.resource-nested-derivation`, and the `via_parent` / `via_fk` fields of
+`ResourceDef` in `api/keel_admin/v1/meta.proto` (now `reserved 4, 5`; the frontend type loses `viaParent` / `viaFk`).
+
+**Why.** `Via` was only checked at `Seal`; the data scope never read it, so it promised a mechanism that did not
+exist. A child table without ownership columns registers no resource: its query takes the parent resource's scope and
+filters by the foreign key (`docs/admin/permission-model/data-scope.md` §5.1).
+
+**How to apply.** Take the kernel (`internal/core/`, `api/keel_admin/v1/`, then `make all`). Delete each `ResourceDef`
+that sets `Via`, together with its i18n name entry; where a query resolved that resource, resolve the parent resource
+instead and filter by the foreign key.
+
+## 2026-11-25 · 6
+
+**What changed.** `perm.Permission` loses its `RequireOTP` field, and the startup error `perm.require-otp-manual` is
+gone; `perm.RequiresOTP(code)` answers whether a code covers a step-up operation (derived by `Seal` from the bindings).
+
+**Why.** The field was an output of `Seal` sitting in an input struct, kept honest only by a startup rule.
+
+**How to apply.** Take the kernel (`internal/core/`). Replace a read of `perm.All()[code].RequireOTP` in your own
+code with `perm.RequiresOTP(code)`; step-up is still declared only by `RequireOTP` on the `Requirement` in your
+bindings.
+
 ## 2026-11-25 · 5
 
 **What changed.** Five pass-through constructors are gone: `server.ProvideSysConf`, `server.ProvideOTPGate`,

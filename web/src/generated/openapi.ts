@@ -1498,12 +1498,6 @@ export interface components {
             anchorSelf?: boolean;
             anchorDept?: boolean;
             /**
-             * @description Derived resource: ownership derives from the parent resource, with no owner columns of its own. Empty = an
-             *      anchored resource.
-             */
-            viaParent?: string;
-            viaFk?: string;
-            /**
              * @description Whether the resource supports explicit assignment (RESOURCE_GRANT): true when its registration declares a
              *      ListGrantable callback. When false, the frontend disables RESOURCE_GRANT.
              */

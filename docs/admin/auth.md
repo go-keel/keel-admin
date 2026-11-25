@@ -42,7 +42,7 @@ The whole chain of login, issuing, invalidation and logout lives in the kernel (
 ## The three links after authentication
 
 The admin appends `principal` → `authz` → `audit` after authentication (`internal/core/middleware/`; order:
-`docs/admin/assembly.md`, "newApp: three more links in the chain, the SPA on the same server"). `principal` is the
+`docs/admin/assembly.md`, "The chain: three more links, the SPA on the same server"). `principal` is the
 ready example of the guide's "Checks after authentication": it reads the verified claims, checks the token version and turns them into a
 principal; on an anonymous endpoint without claims it passes the request through, and `authz` decides whether login
 is required.
@@ -68,7 +68,8 @@ keys are in `docs/admin/config.md`.
 | `turnstile` | Verifies the token produced by the widget against Cloudflare siteverify (sending the client IP) | The server can reach Cloudflare; like the login IP allowlist it requires the proxy in front to overwrite `X-Forwarded-For` (see "Client IP" below) |
 
 With `enabled: true`, **the selected provider checks itself at startup** (`captcha.Provider.Ready`): a missing
-secret or an unregistered name fails startup, instead of showing up in production as "every login is rejected".
+secret or an unknown name fails startup, instead of showing up in production as "every login is rejected". With
+`enabled: false` no provider is built: login skips the check and the anonymous captcha endpoint issues nothing.
 
 Only the built-in providers (`base64`, `turnstile`) are supported: the login page renders only them, and its form is
 part of the frontend kernel. Report a need for another provider upstream instead of adding one here.

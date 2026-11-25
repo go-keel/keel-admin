@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"testing"
+
+	"github.com/go-keel/keel-admin/internal/core/perm"
 )
 
 // fakeOTPResetter records the reset userIDs for the ResetOTP case to assert on, without setting up a real
@@ -27,24 +29,24 @@ func TestSelfManagementMatrix(t *testing.T) {
 	cases := []struct {
 		name string
 		tier SelfOpTier
-		call func(uc *UserAdminUseCase, actor *Actor, id int64) error
+		call func(uc *UserAdminUseCase, actor *perm.Principal, id int64) error
 	}{
-		{"Disable", SelfOpAntiLockout, func(uc *UserAdminUseCase, actor *Actor, id int64) error {
+		{"Disable", SelfOpAntiLockout, func(uc *UserAdminUseCase, actor *perm.Principal, id int64) error {
 			return uc.Disable(context.Background(), actor, id)
 		}},
-		{"Enable", SelfOpDefault, func(uc *UserAdminUseCase, actor *Actor, id int64) error {
+		{"Enable", SelfOpDefault, func(uc *UserAdminUseCase, actor *perm.Principal, id int64) error {
 			return uc.Enable(context.Background(), actor, id)
 		}},
-		{"Kick", SelfOpDefault, func(uc *UserAdminUseCase, actor *Actor, id int64) error {
+		{"Kick", SelfOpDefault, func(uc *UserAdminUseCase, actor *perm.Principal, id int64) error {
 			return uc.Kick(context.Background(), actor, id)
 		}},
-		{"ResetPassword", SelfOpDefault, func(uc *UserAdminUseCase, actor *Actor, id int64) error {
+		{"ResetPassword", SelfOpDefault, func(uc *UserAdminUseCase, actor *perm.Principal, id int64) error {
 			return uc.ResetPassword(context.Background(), actor, id, "new-pass")
 		}},
-		{"SetRoot", SelfOpAntiLockout, func(uc *UserAdminUseCase, actor *Actor, id int64) error {
+		{"SetRoot", SelfOpAntiLockout, func(uc *UserAdminUseCase, actor *perm.Principal, id int64) error {
 			return uc.SetRoot(context.Background(), actor, id, true)
 		}},
-		{"ResetOTP", SelfOpDefault, func(uc *UserAdminUseCase, actor *Actor, id int64) error {
+		{"ResetOTP", SelfOpDefault, func(uc *UserAdminUseCase, actor *perm.Principal, id int64) error {
 			return uc.ResetOTP(context.Background(), actor, id)
 		}},
 	}
@@ -55,7 +57,7 @@ func TestSelfManagementMatrix(t *testing.T) {
 				repo := &fakeAdminRepo{fakeUserRepo: fakeUserRepo{user: &User{ID: 1, Status: 1, DeptID: 1}}}
 				arbac := NewARBACUseCase(&fakeARBACRepoDept{deptIDs: []int64{1}}, repo)
 				uc := NewUserAdminUseCase(repo, arbac, &fakeOTPResetter{})
-				actor := &Actor{UserID: 1, IsRoot: false}
+				actor := &perm.Principal{UserID: 1, IsRoot: false}
 				if err := tc.call(uc, actor, 1); !errors.Is(err, ErrSelfManageForbidden) {
 					t.Fatalf("non-root on itself should be rejected with ErrSelfManageForbidden, got %v", err)
 				}
@@ -65,7 +67,7 @@ func TestSelfManagementMatrix(t *testing.T) {
 				repo := &fakeAdminRepo{fakeUserRepo: fakeUserRepo{user: &User{ID: 2, Status: 1, IsRoot: true, DeptID: 1}}}
 				arbac := NewARBACUseCase(&fakeARBACRepoDept{}, repo)
 				uc := NewUserAdminUseCase(repo, arbac, &fakeOTPResetter{})
-				actor := &Actor{UserID: 2, IsRoot: true}
+				actor := &perm.Principal{UserID: 2, IsRoot: true}
 				err := tc.call(uc, actor, 2)
 				if tc.tier == SelfOpAntiLockout {
 					if !errors.Is(err, ErrSelfManageForbidden) {
@@ -82,7 +84,7 @@ func TestSelfManagementMatrix(t *testing.T) {
 				repo := &fakeAdminRepo{fakeUserRepo: fakeUserRepo{user: &User{ID: 30, Status: 1, DeptID: 99}}}
 				arbac := NewARBACUseCase(&fakeARBACRepoDept{deptIDs: []int64{1}}, repo)
 				uc := NewUserAdminUseCase(repo, arbac, &fakeOTPResetter{})
-				actor := &Actor{UserID: 999, IsRoot: false, RoleIDs: []int64{2}}
+				actor := &perm.Principal{UserID: 999, IsRoot: false, RoleIDs: []int64{2}}
 				if err := tc.call(uc, actor, 30); !errors.Is(err, ErrDeptOutOfRange) {
 					t.Fatalf("an unmanageable target should be rejected with ErrDeptOutOfRange, got %v", err)
 				}
@@ -98,7 +100,7 @@ func TestResetOTPCallsResetter(t *testing.T) {
 	arbac := NewARBACUseCase(&fakeARBACRepoDept{deptIDs: []int64{1}}, repo)
 	otp := &fakeOTPResetter{}
 	uc := NewUserAdminUseCase(repo, arbac, otp)
-	actor := &Actor{UserID: 1, IsRoot: false, RoleIDs: []int64{2}}
+	actor := &perm.Principal{UserID: 1, IsRoot: false, RoleIDs: []int64{2}}
 
 	if err := uc.ResetOTP(context.Background(), actor, 5); err != nil {
 		t.Fatalf("ResetOTP: %v", err)

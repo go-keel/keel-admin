@@ -21,14 +21,13 @@ func registerAll() {
 	registerPermissions(nil)
 }
 
-// servedOperations lists what newApp would seal for di.go's own HTTP services. Nil services are safe: only the
-// names are read.
+// servedOperations lists what kernel.NewHTTPServer would seal for the kernel's and di.go's own HTTP services. Nil
+// services are safe: only the names are read.
 func servedOperations(t *testing.T) []string {
 	t.Helper()
-	ops, err := perm.ServedOperations(server.ServiceNames(httpServices(
-		nil, nil, nil, nil, nil, nil,
+	ops, err := server.ServedOperations(httpServices(
 		nil, // Example: delete after forking
-	))...)
+	))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +37,7 @@ func servedOperations(t *testing.T) []string {
 // registerKernel registers only the kernel batch: message completeness is checked only for the kernel; whether
 // business entries are fully translated is the derived repo's own concern.
 func registerKernel() {
-	registerKernelPermissions()
+	server.RegisterKernelPermissions()
 }
 
 // TestKernelAndBusinessRegistrationSeals runs the real kernel and business declarations through perm.Seal

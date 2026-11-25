@@ -4,6 +4,7 @@ import (
 	"context"
 
 	v1 "github.com/go-keel/keel-admin/api/keel_admin/v1"
+	"github.com/go-keel/keel-admin/internal/core/perm"
 	"github.com/go-keel/keel-admin/internal/core/sys/biz"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -18,7 +19,7 @@ type DeptService struct {
 func NewDeptService(uc *biz.DeptUseCase) *DeptService { return &DeptService{uc: uc} }
 
 func (s *DeptService) ListDept(ctx context.Context, _ *v1.ListDeptRequest) (*v1.ListDeptReply, error) {
-	actor, err := actorFrom(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +46,7 @@ func (s *DeptService) ListDept(ctx context.Context, _ *v1.ListDeptRequest) (*v1.
 // dept.proto and perm.go. It reuses List's manageable-range filter (everything for root), the same criterion as the
 // user list.
 func (s *DeptService) ListDeptOptions(ctx context.Context, _ *v1.ListDeptOptionsRequest) (*v1.ListDeptOptionsReply, error) {
-	actor, err := actorFrom(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +63,7 @@ func (s *DeptService) ListDeptOptions(ctx context.Context, _ *v1.ListDeptOptions
 
 // GetDept supplies the initial values of the edit form (bound to sys:dept:view, see perm.go).
 func (s *DeptService) GetDept(ctx context.Context, req *v1.GetDeptRequest) (*v1.DeptInfo, error) {
-	actor, err := actorFrom(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +75,7 @@ func (s *DeptService) GetDept(ctx context.Context, req *v1.GetDeptRequest) (*v1.
 }
 
 func (s *DeptService) CreateDept(ctx context.Context, req *v1.CreateDeptRequest) (*v1.DeptInfo, error) {
-	actor, err := actorFrom(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +87,7 @@ func (s *DeptService) CreateDept(ctx context.Context, req *v1.CreateDeptRequest)
 }
 
 func (s *DeptService) UpdateDept(ctx context.Context, req *v1.UpdateDeptRequest) (*v1.DeptInfo, error) {
-	actor, err := actorFrom(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +101,7 @@ func (s *DeptService) UpdateDept(ctx context.Context, req *v1.UpdateDeptRequest)
 }
 
 func (s *DeptService) DeleteDept(ctx context.Context, req *v1.DeleteDeptRequest) (*emptypb.Empty, error) {
-	actor, err := actorFrom(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}

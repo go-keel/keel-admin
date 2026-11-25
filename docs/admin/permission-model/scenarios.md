@@ -125,8 +125,8 @@ close orders by hand.
   §1).
 - **Division of permissions**: dimension one as usual (`order:view`/`order:close` codes control the entry, step-up and
   audit as usual); **dimension two uses the pass-down mode** (the unified ownership model in `data-scope.md` §5.1):
-  orders are registered as a derived resource (Via merchant), the admin resolves the set of visible merchant IDs and
-  passes it down with the call, and the order service filters by `merchant_id`; the business may also ignore what it
+  orders register no resource of their own; the admin resolves the merchant resource's scope into the set of visible
+  merchant IDs and passes it down with the call, and the order service filters by `merchant_id`; the business may also ignore what it
   receives and decide on its own.
 - **How far data access goes** (`README.md` §1): **writes go through the business API first** (invariants guarded on the
   business side); **read-only queries may connect to the business database directly** (a replica or read-only account,

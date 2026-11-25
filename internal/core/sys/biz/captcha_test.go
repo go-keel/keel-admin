@@ -9,9 +9,7 @@ import (
 )
 
 // fakeIssueProvider is a captcha.Provider test double whose Issue result is
-// controlled per test case (distinct from config_test.go's fakeCaptchaProvider,
-// whose Issue output is fixed — this one needs a nil challenge and a
-// controllable error).
+// controlled per test case (a nil challenge and a controllable error).
 type fakeIssueProvider struct {
 	challenge *captcha.Challenge
 	issueErr  error
@@ -27,19 +25,15 @@ func (p *fakeIssueProvider) Verify(context.Context, string, string, string) (boo
 }
 func (p *fakeIssueProvider) Ready() error { return nil }
 
-// newCaptchaTestUseCase builds an AuthUseCase with only cfg wired — the
+// newCaptchaTestUseCase builds an AuthUseCase with only the provider wired — the
 // other dependencies are untouched by IssueCaptcha.
-func newCaptchaTestUseCase(provider string) *AuthUseCase {
-	return NewAuthUseCase(nil, nil, nil, nil, nil, 0, nil, AuthConfig{CaptchaProvider: provider}, nil)
+func newCaptchaTestUseCase(p captcha.Provider) *AuthUseCase {
+	return NewAuthUseCase(nil, nil, nil, nil, nil, 0, nil, AuthConfig{}, p)
 }
 
 func TestIssueCaptchaReturnsConfiguredProviderChallenge(t *testing.T) {
-	captcha.ResetForTest()
-	defer captcha.ResetForTest()
 	want := &captcha.Challenge{ID: "abc", ImageBase64: "img-data"}
-	captcha.MustRegister("fake", &fakeIssueProvider{challenge: want})
-
-	uc := newCaptchaTestUseCase("fake")
+	uc := newCaptchaTestUseCase(&fakeIssueProvider{challenge: want})
 	got, err := uc.IssueCaptcha(context.Background())
 	if err != nil {
 		t.Fatalf("IssueCaptcha: unexpected error: %v", err)
@@ -50,11 +44,7 @@ func TestIssueCaptchaReturnsConfiguredProviderChallenge(t *testing.T) {
 }
 
 func TestIssueCaptchaProviderNilChallengePassesThrough(t *testing.T) {
-	captcha.ResetForTest()
-	defer captcha.ResetForTest()
-	captcha.MustRegister("widget", &fakeIssueProvider{challenge: nil})
-
-	uc := newCaptchaTestUseCase("widget")
+	uc := newCaptchaTestUseCase(&fakeIssueProvider{challenge: nil})
 	got, err := uc.IssueCaptcha(context.Background())
 	if err != nil {
 		t.Fatalf("IssueCaptcha: unexpected error: %v", err)
@@ -64,29 +54,21 @@ func TestIssueCaptchaProviderNilChallengePassesThrough(t *testing.T) {
 	}
 }
 
-func TestIssueCaptchaUnregisteredProviderReturnsNilNoError(t *testing.T) {
-	captcha.ResetForTest()
-	defer captcha.ResetForTest()
-	// Nothing registered under "base64" (default) — must degrade to "no
-	// captcha" rather than error, so a misconfiguration can't break login.
-
-	uc := newCaptchaTestUseCase("base64")
+// With captcha off there is no provider: the anonymous endpoint issues nothing and writes nothing.
+func TestIssueCaptchaWithoutProviderReturnsNilNoError(t *testing.T) {
+	uc := newCaptchaTestUseCase(nil)
 	got, err := uc.IssueCaptcha(context.Background())
 	if err != nil {
 		t.Fatalf("IssueCaptcha: unexpected error: %v", err)
 	}
 	if got != nil {
-		t.Fatalf("IssueCaptcha: expected nil challenge for unregistered provider, got %v", got)
+		t.Fatalf("IssueCaptcha: expected nil challenge without a provider, got %v", got)
 	}
 }
 
 func TestIssueCaptchaPropagatesProviderError(t *testing.T) {
-	captcha.ResetForTest()
-	defer captcha.ResetForTest()
 	wantErr := errors.New("boom")
-	captcha.MustRegister("fake", &fakeIssueProvider{issueErr: wantErr})
-
-	uc := newCaptchaTestUseCase("fake")
+	uc := newCaptchaTestUseCase(&fakeIssueProvider{issueErr: wantErr})
 	_, err := uc.IssueCaptcha(context.Background())
 	if !errors.Is(err, wantErr) {
 		t.Fatalf("IssueCaptcha: got error %v, want %v", err, wantErr)

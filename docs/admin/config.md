@@ -21,9 +21,10 @@ assume it takes effect because it sits in `app.yaml`. The same holds when it is 
   `Bootstrap` in `internal/conf/app.proto` (the guide's "The service config: app.proto → make config → Dynamic"),
   read with `.Get()` at runtime. Mixing it into `sys` makes "does this need a restart?" impossible to answer.
 - **Some keys are required, and startup fails without them**: `sys.brand.title`, `sys.business_time_zone` (an IANA
-  name; an unknown name also fails), `sys.otp.aes_key` (the repository holds only a development placeholder;
-  production injects it at deploy time); and `sys.captcha.turnstile.secret_key` when captcha is on with
-  `turnstile`.
+  name; an unknown name also fails, as `sys.business-zone-invalid`), `sys.otp.aes_key` (the repository holds only a
+  development placeholder; production injects it at deploy time); and `sys.captcha.turnstile.secret_key` when captcha
+  is on with `turnstile`. The first three are protovalidate rules in `internal/conf/app.proto`, checked when the file
+  loads (`keel/kconfig.invalid`, naming the field); a constraint on a config field of your own goes in `app.proto` the same way.
 - **Keys commonly overridden in local development** (in `app.dev.yaml`): `sys.cookie_secure: false` (local http),
   `sys.lockout.enabled: false` (so repeated login tests do not lock you out), `sys.otp.aes_key`.
 - The `kconfig: dev overlay loaded` warning logged when the local overlay applies is an incident if it shows up in

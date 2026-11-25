@@ -30,8 +30,6 @@ func (c Code) ModuleKey() string // "domain:module", the identity of the module
 type Permission struct {
     Code Code   // three-segment code, "merchant:order:refund"; the sys business domain is reserved for the kernel
     Deps []Code // prerequisite codes; may cross business domains and modules (automatic closure: granting refund includes view)
-
-    RequireOTP bool // derived output of Seal, do not write it by hand (see below)
 }
 
 func (c Code) NameKey() string // i18n message ID of the display name, derived from the code
@@ -39,9 +37,9 @@ func (c Code) NameKey() string // i18n message ID of the display name, derived f
 
 **There are no Domain/Module fields: the structure is derived from the code segments.** Hand-written fields could
 contradict the code (nobody can catch a contradiction like `{Code: "sys:dept:view", Module: "account"}`); derived
-segments cannot drift. Likewise `RequireOTP` is derived by `Seal()` from the bindings (`otp.md` §7.2) and writing it by
-hand is an error: what actually decides step-up is `Requirement.RequireOTP`, the one place authz reads, and two
-declarations would inevitably drift.
+segments cannot drift. Likewise whether a code needs step-up is not a field: `perm.RequiresOTP(code)` derives it at
+`Seal()` from the bindings (`otp.md` §7.2), because what decides step-up is `Requirement.RequireOTP`, the one place
+authz reads.
 
 **There is no display-name field either: the display name is an i18n key, also derived from the code**
 (`"sys:dept:view"` → `perm.sys.dept.view`; kernel code entries are in `internal/i18n/sys.*.toml`, business code entries
@@ -140,7 +138,7 @@ same. The code is in `docs/admin/permission.md`: step 2 (code constants, groups,
 step 7 (registration in di.go). Groups are registered before permissions, because `Seal()` requires full coverage; the
 kernel batch goes through `perm.MustRegisterKernel`, the only call that may use the `sys` business domain; business
 modules use `perm.MustRegister`, one line per domain; `perm.Seal` runs once in
-`newApp` after all registration, on every operation of the mounted HTTP services, and returns an error, after which
+`server.Kernel.NewHTTPServer` after all registration, on every operation of the mounted HTTP services, and returns an error, after which
 the registry is read-only.
 
 Division of labour: **biz = code constants + Permission metadata + group names** (the list of domain capabilities,
@@ -158,11 +156,9 @@ runtime:
 | Code format | Anything other than three segments `<business domain>:<function module>:<function operation>` |
 | Reserved business domain | A business batch (`MustRegister`) registering codes in the `sys` business domain |
 | Group coverage | A code whose business domain or function module has no declared group |
-| Hand-written RequireOTP | `Permission.RequireOTP` set by hand (it is a derived output) |
 | deps existence | Depending on an unregistered code |
 | deps cycles | A dependency cycle |
 | binding references | A binding that references an unregistered code |
-| Resource derivation | A `Via` parent resource that does not exist, or a parent that is itself derived (only one level allowed) |
 | Operation ownership | An operation of a mounted HTTP service with neither a binding nor `allow_anonymous`, or with both |
 
 **Dependencies are not limited by business domain or function module.** The business domain and module of a
@@ -175,7 +171,7 @@ are declared explicitly by the business in code; the kernel does not decide whet
 names.
 
 Seal also performs one **derivation**: it propagates step-up from operations to the codes they reference
-(`Requirement.RequireOTP` → `Permission.RequireOTP`), so the UI can mark high-risk codes.
+(`Requirement.RequireOTP` → `perm.RequiresOTP(code)`), so the UI can mark high-risk codes.
 
 ### 4.3.2 How the grant UI presents the model
 

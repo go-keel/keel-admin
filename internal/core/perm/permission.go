@@ -55,15 +55,6 @@ type Resource string
 type Permission struct {
 	Code Code   // Three-segment code such as "sys:account:create"; domain and module derive from the segments.
 	Deps []Code // Prerequisites; may cross domains and modules, must be registered and acyclic (Seal checks).
-
-	// RequireOTP is an output derived by Seal; do not write it by hand, because Seal rejects a declaration that sets it.
-	//
-	// What actually decides whether a step-up is needed is Requirement.RequireOTP (the only place authz reads). A
-	// second hand-written copy here would drift: a binding marked step-up while this struct is not would hide a
-	// high-risk permission once the field is sent to the frontend. So Seal derives it from the bindings: a code
-	// referenced by any RequireOTP operation contains a step-up operation. It means "this permission includes an
-	// operation that needs a second verification", and the UI uses it as a marker.
-	RequireOTP bool
 }
 
 // Group is the grouping metadata of one business domain or module: it has only an order and no permission semantics.

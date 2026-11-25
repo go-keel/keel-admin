@@ -217,10 +217,6 @@ type ResourceDef struct {
 	// RESOURCE_GRANT needs grantable (a declared ListGrantable callback); ALL is always valid.
 	AnchorSelf bool `protobuf:"varint,2,opt,name=anchor_self,json=anchorSelf,proto3" json:"anchor_self,omitempty"`
 	AnchorDept bool `protobuf:"varint,3,opt,name=anchor_dept,json=anchorDept,proto3" json:"anchor_dept,omitempty"`
-	// Derived resource: ownership derives from the parent resource, with no owner columns of its own. Empty = an
-	// anchored resource.
-	ViaParent string `protobuf:"bytes,4,opt,name=via_parent,json=viaParent,proto3" json:"via_parent,omitempty"`
-	ViaFk     string `protobuf:"bytes,5,opt,name=via_fk,json=viaFk,proto3" json:"via_fk,omitempty"`
 	// Whether the resource supports explicit assignment (RESOURCE_GRANT): true when its registration declares a
 	// ListGrantable callback. When false, the frontend disables RESOURCE_GRANT.
 	Grantable bool `protobuf:"varint,7,opt,name=grantable,proto3" json:"grantable,omitempty"`
@@ -288,20 +284,6 @@ func (x *ResourceDef) GetAnchorDept() bool {
 		return x.AnchorDept
 	}
 	return false
-}
-
-func (x *ResourceDef) GetViaParent() string {
-	if x != nil {
-		return x.ViaParent
-	}
-	return ""
-}
-
-func (x *ResourceDef) GetViaFk() string {
-	if x != nil {
-		return x.ViaFk
-	}
-	return ""
 }
 
 func (x *ResourceDef) GetGrantable() bool {
@@ -730,19 +712,16 @@ const file_keel_admin_v1_meta_proto_rawDesc = "" +
 	"\x06domain\x18\x01 \x01(\tR\x06domain\x12\x16\n" +
 	"\x06module\x18\x02 \x01(\tR\x06module\x12\x12\n" +
 	"\x04name\x18\x03 \x01(\tR\x04name\x12\x12\n" +
-	"\x04sort\x18\x04 \x01(\x05R\x04sort\"\x8e\x02\n" +
+	"\x04sort\x18\x04 \x01(\x05R\x04sort\"\xe4\x01\n" +
 	"\vResourceDef\x12\x10\n" +
 	"\x03res\x18\x01 \x01(\tR\x03res\x12\x12\n" +
 	"\x04name\x18\x06 \x01(\tR\x04name\x12\x1f\n" +
 	"\vanchor_self\x18\x02 \x01(\bR\n" +
 	"anchorSelf\x12\x1f\n" +
 	"\vanchor_dept\x18\x03 \x01(\bR\n" +
-	"anchorDept\x12\x1d\n" +
-	"\n" +
-	"via_parent\x18\x04 \x01(\tR\tviaParent\x12\x15\n" +
-	"\x06via_fk\x18\x05 \x01(\tR\x05viaFk\x12\x1c\n" +
+	"anchorDept\x12\x1c\n" +
 	"\tgrantable\x18\a \x01(\bR\tgrantable\x12C\n" +
-	"\rgrant_options\x18\b \x03(\v2\x1e.api.keel_admin.v1.GrantOptionR\fgrantOptions\"3\n" +
+	"\rgrant_options\x18\b \x03(\v2\x1e.api.keel_admin.v1.GrantOptionR\fgrantOptionsJ\x04\b\x04\x10\x05J\x04\b\x05\x10\x06\"3\n" +
 	"\vGrantOption\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\"\x18\n" +

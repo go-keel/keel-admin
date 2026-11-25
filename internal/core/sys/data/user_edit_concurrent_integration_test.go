@@ -13,6 +13,7 @@ import (
 	"gorm.io/gorm"
 
 	coredata "github.com/go-keel/keel-admin/internal/core/data"
+	"github.com/go-keel/keel-admin/internal/core/perm"
 	"github.com/go-keel/keel-admin/internal/core/sys/biz"
 )
 
@@ -62,7 +63,7 @@ func TestUserEditConcurrentKeepsInvisibleRole(t *testing.T) {
 			t.Fatalf("seed user: %v", err)
 		}
 		userID = target.ID
-		actorA := &biz.Actor{UserID: -1, RoleIDs: []int64{manager}}
+		actorA := &perm.Principal{UserID: -1, RoleIDs: []int64{manager}}
 		addRX := func(current []int64) ([]int64, bool, error) {
 			if slices.Contains(current, rx) {
 				return nil, false, nil

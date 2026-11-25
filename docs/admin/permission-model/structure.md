@@ -12,8 +12,9 @@ Legend: **▣ = kernel, read-only**; **★ = business writes**; **☆ = half-ope
 ```
 <repo>/
 ├── cmd/<app>/
-│   ├── main.go                    # ▣ startup skeleton
-│   ├── di.go                      # ☆ assembly seam: permission registration + data→biz→service wiring
+│   ├── main.go                    # ▣ startup skeleton (time.Local = time.UTC, load app.yaml, wireApp, Run)
+│   ├── di.go                      # ☆ assembly seam: infrastructure → server.NewKernel → business wiring,
+│   │                              #   permission registration, middleware, HTTP registration
 │   └── registration_test.go       # ☆ seals di.go's registration; pass nil per parameter a module adds
 │
 ├── api/keel_admin/v1/             # ▣ kernel contracts, the same package in every repository (never renamed)
@@ -31,7 +32,7 @@ Legend: **▣ = kernel, read-only**; **★ = business writes**; **☆ = half-ope
 │   │   │                          #   proto anonymous set, Principal ctx
 │   │   ├── permdata/              # ApplyScope GORM helper
 │   │   ├── middleware/            # principal / authz / audit
-│   │   ├── captcha/               # Provider interface + registry; built-in providers base64/ and turnstile/
+│   │   ├── captcha/               # Provider interface; built-in providers base64/ and turnstile/
 │   │   ├── audit/                 # audit Entry + Recorder, shared by the audit middleware and sys/biz
 │   │   ├── errs/                  # kernel rule namespace for startup errors (docs/admin/startup-errors.md)
 │   │   ├── timefmt/               # the admin API's time serialization contract
@@ -53,7 +54,8 @@ Legend: **▣ = kernel, read-only**; **★ = business writes**; **☆ = half-ope
 │   │   ├── <domain>_perm.go       #   permission code + endpoint binding declarations (operation constants usable here)
 │   │   └── http.go                #   HTTP registration functions of the business services (di.go appends them)
 │   ├── conf/                      # ☆ half-open: business fields in app.proto/Bootstrap
-│   ├── server/                    # ▣ kernel: HTTP registration, SPA/brand mounting, providers
+│   ├── server/                    # ▣ kernel: NewKernel (kernel assembly), chain links, HTTP server and
+│   │                              #   registration, SPA/brand mounting
 │   ├── testdb/                    # shared from keel-layout: per-test databases for integration and e2e tests
 │   └── i18n/                      # ▣ localed.go, sys.en.toml, sys.zh-CN.toml (kernel copy;
 │                                  #   the overwrite covers only these three files)

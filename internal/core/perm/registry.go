@@ -21,6 +21,7 @@ var (
 	regBinds  = Bindings{}
 	regRes    = map[Resource]ResourceDef{}
 	regGroups = map[string]Group{}
+	regOTP    = map[Code]bool{}
 	sealed    bool
 )
 
@@ -102,7 +103,7 @@ func MustRegisterGroups(groups []Group) {
 }
 
 // Seal validates the full registry (code format, deps, cycles, binding
-// references, every served operation owned) and freezes it. Called once by the entry point's newApp after all domains
+// references, every served operation owned) and freezes it. Called once by server.Kernel.NewHTTPServer after all domains
 // have registered, with ServedOperations of the HTTP services it mounts; a non-nil error should abort startup.
 //
 // contract lists the operations that must each be either bound or annotated allow_anonymous, never both and never
@@ -117,9 +118,6 @@ func Seal(contract []string) error {
 		}
 		if strings.HasPrefix(string(code), "sys:") && !regKernel[code] {
 			return errs.Rules.New("perm.code-reserved-prefix", fmt.Sprintf("business permission code %q uses the kernel prefix sys:", code), "pick a business domain other than sys")
-		}
-		if p.RequireOTP {
-			return errs.Rules.New("perm.require-otp-manual", fmt.Sprintf("permission %q sets RequireOTP itself", code), "remove it from the Permission and set RequireOTP on the Requirement in its bindings; the permission derives it")
 		}
 		if _, ok := regGroups[code.Domain()]; !ok {
 			return errs.Rules.New("perm.domain-group-missing", fmt.Sprintf("permission %q belongs to business domain %q, which has no group", code, code.Domain()), "declare the domain group with perm.MustRegisterGroups")
@@ -143,29 +141,14 @@ func Seal(contract []string) error {
 			}
 		}
 	}
-	// Derive RequireOTP: once the bindings are validated (every Codes reference is known), propagate step-up from
-	// each operation to the codes it references. It runs here rather than in the loop above because it relies on
-	// "every referenced code exists".
+	// Derive RequiresOTP: once the bindings are validated (every Codes reference is known), propagate step-up from
+	// each operation to the codes it references.
 	for _, r := range regBinds {
 		if !r.RequireOTP {
 			continue
 		}
 		for _, c := range r.Codes {
-			p := regPerms[c]
-			p.RequireOTP = true
-			regPerms[c] = p
-		}
-	}
-	for res, d := range regRes {
-		if d.Via == nil {
-			continue
-		}
-		parent, ok := regRes[d.Via.Parent]
-		if !ok {
-			return errs.Rules.New("perm.resource-parent-unknown", fmt.Sprintf("resource %q derives its scope from %q, which is not registered", res, d.Via.Parent), "register the parent resource or fix Via.Parent")
-		}
-		if parent.Via != nil {
-			return errs.Rules.New("perm.resource-nested-derivation", fmt.Sprintf("resource %q derives from %q, which itself derives from another resource", res, d.Via.Parent), "derive from a resource that has its own scope; only one Via level is allowed")
+			regOTP[c] = true
 		}
 	}
 	if err := checkOwnership(contract); err != nil {
@@ -199,6 +182,11 @@ func checkOwnership(contract []string) error {
 
 // All returns the registered permission set (read-only usage expected).
 func All() map[Code]Permission { return regPerms }
+
+// RequiresOTP reports whether the code covers an operation that needs step-up (Requirement.RequireOTP on any binding
+// that references it), so the UI can mark it high-risk. Seal derives it from the bindings, the only place authz reads,
+// so it cannot drift from the real decision; it is false before Seal.
+func RequiresOTP(c Code) bool { return regOTP[c] }
 
 // Groups returns the registered business-domain and module group metadata.
 func Groups() []Group {
@@ -272,6 +260,7 @@ func ResetForTest() {
 	regBinds = Bindings{}
 	regRes = map[Resource]ResourceDef{}
 	regGroups = map[string]Group{}
+	regOTP = map[Code]bool{}
 	sealed = false
 }
 

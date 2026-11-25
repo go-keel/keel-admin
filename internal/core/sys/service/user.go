@@ -9,14 +9,6 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func actorFrom(ctx context.Context) (*biz.Actor, error) {
-	p, ok := perm.FromContext(ctx)
-	if !ok {
-		return nil, biz.ErrInvalidCredential
-	}
-	return &biz.Actor{UserID: p.UserID, IsRoot: p.IsRoot, RoleIDs: p.RoleIDs}, nil
-}
-
 // UserService implements api.keel_admin.v1.UserService.
 type UserService struct {
 	v1.UnsafeUserServiceServer
@@ -33,7 +25,7 @@ func NewUserService(uc *biz.UserAdminUseCase, repo biz.UserAdminRepo, ref biz.Re
 // ResetOTP leaves both the decision and the write to biz.UserAdminUseCase.ResetOTP: the service only converts
 // DTO↔DO and does not chain EnsureManageable + otp.Reset itself.
 func (s *UserService) ResetOTP(ctx context.Context, req *v1.ResetOTPRequest) (*emptypb.Empty, error) {
-	actor, err := actorFrom(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +36,7 @@ func (s *UserService) ResetOTP(ctx context.Context, req *v1.ResetOTPRequest) (*e
 }
 
 func (s *UserService) ListUser(ctx context.Context, req *v1.ListUserRequest) (*v1.ListUserReply, error) {
-	actor, err := actorFrom(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +77,7 @@ func (s *UserService) ListUserOptions(ctx context.Context, req *v1.ListUserOptio
 }
 
 func (s *UserService) CreateUser(ctx context.Context, req *v1.CreateUserRequest) (*v1.UserInfo, error) {
-	actor, err := actorFrom(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +109,7 @@ func (s *UserService) CreateUser(ctx context.Context, req *v1.CreateUserRequest)
 // Whether the user is root is not here: it needs its own step-up and still goes through SetUserRoot (the frontend
 // offers it separately under "Actions").
 func (s *UserService) UpdateUser(ctx context.Context, req *v1.UpdateUserRequest) (*v1.UserInfo, error) {
-	actor, err := actorFrom(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +129,7 @@ func (s *UserService) UpdateUser(ctx context.Context, req *v1.UpdateUserRequest)
 }
 
 func (s *UserService) DisableUser(ctx context.Context, req *v1.DisableUserRequest) (*emptypb.Empty, error) {
-	actor, err := actorFrom(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +140,7 @@ func (s *UserService) DisableUser(ctx context.Context, req *v1.DisableUserReques
 }
 
 func (s *UserService) EnableUser(ctx context.Context, req *v1.EnableUserRequest) (*emptypb.Empty, error) {
-	actor, err := actorFrom(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +151,7 @@ func (s *UserService) EnableUser(ctx context.Context, req *v1.EnableUserRequest)
 }
 
 func (s *UserService) ResetPassword(ctx context.Context, req *v1.ResetPasswordRequest) (*emptypb.Empty, error) {
-	actor, err := actorFrom(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +162,7 @@ func (s *UserService) ResetPassword(ctx context.Context, req *v1.ResetPasswordRe
 }
 
 func (s *UserService) KickUser(ctx context.Context, req *v1.KickUserRequest) (*emptypb.Empty, error) {
-	actor, err := actorFrom(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +174,7 @@ func (s *UserService) KickUser(ctx context.Context, req *v1.KickUserRequest) (*e
 
 // GetUser supplies the initial values of the edit form (bound to sys:account:view, see perm.go).
 func (s *UserService) GetUser(ctx context.Context, req *v1.GetUserRequest) (*v1.UserInfo, error) {
-	actor, err := actorFrom(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +186,7 @@ func (s *UserService) GetUser(ctx context.Context, req *v1.GetUserRequest) (*v1.
 }
 
 func (s *UserService) SetUserRoot(ctx context.Context, req *v1.SetUserRootRequest) (*emptypb.Empty, error) {
-	actor, err := actorFrom(ctx)
+	actor, err := perm.Current(ctx)
 	if err != nil {
 		return nil, err
 	}

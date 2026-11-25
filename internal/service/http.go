@@ -6,8 +6,8 @@ import (
 	"github.com/go-keel/keel/server/api"
 )
 
-// HTTP services of the business area. Each business service gets one here, and `cmd/admin/di.go` appends them after
-// the kernel's list (`server.KernelHTTPServers`), so adding a business module does not touch `internal/server/http.go`.
+// HTTP services of the business area. Each business service gets one here, and `cmd/admin/di.go` lists them in
+// `httpServices`, mounted after the kernel's own, so adding a business module does not touch `internal/server/http.go`.
 //
 // They live in the business area, not in internal/server: that is the kernel, and overwriting it as a whole would
 // erase what the derived repo added.

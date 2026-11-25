@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"testing"
+
+	"github.com/go-keel/keel-admin/internal/core/perm"
 )
 
 // baseEditUser is the fixed current state of the target in Edit tests: department 1 (inside the manageable
@@ -30,7 +32,7 @@ func newEditUC(u *User, roles []int64, arbacRepo *fakeARBACRepoDept) (*fakeAdmin
 // (department out of range, role out of range, malformed IP whitelist), repo.Edit must not be called. Leaving
 // no half-applied change is the core problem this refactor solves.
 func TestEditRejectsOutOfRangeWithoutWriting(t *testing.T) {
-	actor := &Actor{UserID: 1, RoleIDs: []int64{2}}
+	actor := &perm.Principal{UserID: 1, RoleIDs: []int64{2}}
 	cases := []struct {
 		name    string
 		roles   []int64
@@ -78,7 +80,7 @@ func TestEditRejectsOutOfRangeWithoutWriting(t *testing.T) {
 func TestEditWritesOnlyChangedField(t *testing.T) {
 	u := baseEditUser()
 	repo, uc := newEditUC(u, nil, &fakeARBACRepoDept{deptIDs: []int64{1}})
-	actor := &Actor{UserID: 1, RoleIDs: []int64{2}}
+	actor := &perm.Principal{UserID: 1, RoleIDs: []int64{2}}
 
 	in := baseEdit(u)
 	in.Nickname = "new-nickname"
@@ -102,7 +104,7 @@ func TestEditWritesOnlyChangedField(t *testing.T) {
 func TestEditSkipsRoleWriteWhenUnchanged(t *testing.T) {
 	u := baseEditUser()
 	repo, uc := newEditUC(u, []int64{5}, &fakeARBACRepoDept{deptIDs: []int64{1}, assignable: []int64{5}})
-	actor := &Actor{UserID: 1, RoleIDs: []int64{2}}
+	actor := &perm.Principal{UserID: 1, RoleIDs: []int64{2}}
 
 	in := baseEdit(u)
 	in.RoleIDs = []int64{5} // same as current
@@ -121,7 +123,7 @@ func TestEditSkipsRoleWriteWhenUnchanged(t *testing.T) {
 func TestEditRootSelfIPWhitelistRejectedWithoutWriting(t *testing.T) {
 	u := &User{ID: 1, Status: 1, IsRoot: true, DeptID: 1, Nickname: "root"}
 	repo, uc := newEditUC(u, nil, &fakeARBACRepoDept{})
-	actor := &Actor{UserID: 1, IsRoot: true}
+	actor := &perm.Principal{UserID: 1, IsRoot: true}
 
 	in := baseEdit(u)
 	in.IPWhitelist = "10.0.0.0/8"
@@ -142,7 +144,7 @@ func TestEditPinsRoleThatAppearsInsideTransaction(t *testing.T) {
 	u := baseEditUser()
 	repo, uc := newEditUC(u, []int64{5}, &fakeARBACRepoDept{deptIDs: []int64{1}, assignable: []int64{5, 6}})
 	repo.rolesInTx = []int64{5, 9}
-	actor := &Actor{UserID: 1, RoleIDs: []int64{2}}
+	actor := &perm.Principal{UserID: 1, RoleIDs: []int64{2}}
 
 	in := baseEdit(u)
 	in.Nickname = "changed"
@@ -161,7 +163,7 @@ func TestEditPinsRoleThatAppearsInsideTransaction(t *testing.T) {
 // the outcome.
 func TestEditRoleRequiredJudgedInsideTransaction(t *testing.T) {
 	arbac := &fakeARBACRepoDept{deptIDs: []int64{1}, assignable: []int64{5}}
-	actor := &Actor{UserID: 1, RoleIDs: []int64{2}}
+	actor := &perm.Principal{UserID: 1, RoleIDs: []int64{2}}
 
 	u := baseEditUser()
 	repo, uc := newEditUC(u, []int64{5}, arbac)

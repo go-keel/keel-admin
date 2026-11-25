@@ -22,15 +22,17 @@ proto:
 	cd web && pnpm exec openapi-typescript ../openapi.yaml -o src/generated/openapi.ts
 
 # app.proto goes through buf too, not a global protoc: protoc and protoc-gen-go would have to be installed on each
-# machine, and whether and which version is installed would change the output, which is committed. app.proto
-# imports only one WKT (duration), which buf bundles, so no --proto_path.
-# The template is inline rather than a file: internal/conf has a single proto, not worth another config file.
+# machine, and whether and which version is installed would change the output, which is committed. app.proto imports
+# a WKT (duration), which buf bundles, and protovalidate's rules from third_party/protovalidate (copied there by
+# make proto), named as a second module of an inline workspace.
+# The config and template are inline rather than files: internal/conf has a single proto, not worth more config files.
 # Keep the protoc-gen-go version the same as in api/buf.gen.yaml.
-CONF_GEN_TEMPLATE = {"version":"v2","plugins":[{"local":["go","run","google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11"],"out":".","opt":["paths=source_relative"]}]}
+CONF_BUF_CONFIG = {"version":"v2","modules":[{"path":"internal/conf"},{"path":"third_party/protovalidate"}]}
+CONF_GEN_TEMPLATE = {"version":"v2","plugins":[{"local":["go","run","google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11"],"out":"internal/conf","opt":["paths=source_relative"]}]}
 
 .PHONY: config
 config:
-	cd internal/conf && buf generate --template '$(CONF_GEN_TEMPLATE)' .
+	buf generate internal/conf --config '$(CONF_BUF_CONFIG)' --template '$(CONF_GEN_TEMPLATE)'
 
 # The frontend's permission-code union comes from the same registration di.go runs (cmd/admin/di.go,
 # registerPermissions); the generator is a skipped-by-default test in cmd/admin, so it reuses that function as is.

@@ -3,11 +3,13 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	kerrors "github.com/go-kratos/kratos/v3/errors"
 	goi18n "github.com/nicksnyder/go-i18n/v2/i18n"
 
 	v1 "github.com/go-keel/keel-admin/api/keel_admin/v1"
+	"github.com/go-keel/keel-admin/internal/core/perm"
 	"github.com/go-keel/keel-admin/internal/core/sys/biz"
 	"github.com/go-keel/keel-admin/internal/core/timefmt"
 	"github.com/go-keel/keel-admin/internal/i18n"
@@ -31,6 +33,10 @@ func ipNotAllowed(ctx context.Context, l *goi18n.Localizer, _ error) error {
 		}
 	}
 	return v1.ErrorIpNotAllowed("%s", msg)
+}
+
+func unauthenticated(format string, args ...any) *kerrors.Error {
+	return kerrors.Unauthorized("UNAUTHENTICATED", fmt.Sprintf(format, args...))
 }
 
 // internalError is the fallback for errors nothing maps: Keel's InternalWithLog (its log line and its 500 INTERNAL),
@@ -62,6 +68,8 @@ func NewErrorSentinel() *sentinel.Group {
 		OnLocaled(biz.ErrCaptchaInvalid, i18n.Localed("ErrCaptchaInvalid", "Invalid captcha.", v1.ErrorCaptchaInvalid)).
 		OnLocaled(biz.ErrUserDisabled, i18n.Localed("ErrUserDisabled", "This account is disabled.", v1.ErrorUserDisabled)).
 		OnLocaled(biz.ErrIPNotAllowed, ipNotAllowed).
+		// The same 401 UNAUTHENTICATED the authz middleware answers for a call without a principal.
+		OnLocaled(perm.ErrNoPrincipal, i18n.Localed("ErrUnauthenticated", "Please sign in first.", unauthenticated)).
 		OnLocaled(biz.ErrSessionExpired, i18n.Localed("ErrSessionExpired", "Session expired. Please log in again.", v1.ErrorSessionExpired)).
 		OnLocaled(biz.ErrOTPInvalid, i18n.Localed("ErrOTPInvalid", "Invalid OTP code.", v1.ErrorOtpInvalid)).
 		OnLocaled(biz.ErrOTPUsed, i18n.Localed("ErrOTPUsed", "This code has no uses left. Wait for the next one.", v1.ErrorOtpAlreadyUsed)).

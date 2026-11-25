@@ -34,7 +34,7 @@ sys:
   cookie_secure: true        # Secure attribute of the session cookie; must be true in production
   captcha:
     enabled: false           # human verification at login on/off
-    provider: base64         # base64 | turnstile (extension: internal/core/captcha)
+    provider: base64         # base64 | turnstile
     base64_length: 6         # number of characters in the image code
     base64_ttl: 300s         # challenge lifetime
     turnstile:               # read only when provider: turnstile

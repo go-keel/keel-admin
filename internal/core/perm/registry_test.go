@@ -36,39 +36,6 @@ func TestSealRejectsUnknownBindingCode(t *testing.T) {
 	}
 }
 
-func TestSealAcceptsOneLevelDerive(t *testing.T) {
-	resetForTest()
-	MustRegister(nil, nil, []ResourceDef{
-		{Res: "order", Anchors: AnchorSelf},
-		{Res: "order_item", Via: &Derive{Parent: "order", FK: "order_id"}},
-	})
-	if err := Seal(nil); err != nil {
-		t.Fatalf("one level of derivation should pass: %v", err)
-	}
-}
-
-func TestSealRejectsDeriveFromUnknownParent(t *testing.T) {
-	resetForTest()
-	MustRegister(nil, nil, []ResourceDef{
-		{Res: "order_item", Via: &Derive{Parent: "ghost", FK: "order_id"}},
-	})
-	if err := Seal(nil); err == nil {
-		t.Fatal("deriving from an unregistered resource should fail")
-	}
-}
-
-func TestSealRejectsTwoLevelDerive(t *testing.T) {
-	resetForTest()
-	MustRegister(nil, nil, []ResourceDef{
-		{Res: "order", Anchors: AnchorSelf},
-		{Res: "order_item", Via: &Derive{Parent: "order", FK: "order_id"}},
-		{Res: "order_item_note", Via: &Derive{Parent: "order_item", FK: "item_id"}},
-	})
-	if err := Seal(nil); err == nil {
-		t.Fatal("two levels of derivation should be rejected (Via allows one level only)")
-	}
-}
-
 func TestSysPrefixReservedForKernel(t *testing.T) {
 	resetForTest()
 	MustRegisterGroups([]Group{{Domain: "sys"}, {Domain: "sys", Module: "evil"}})
@@ -85,8 +52,7 @@ func TestSysPrefixReservedForKernel(t *testing.T) {
 }
 
 // TestSealDerivesRequireOTPFromBindings locks the derivation: step-up is a fact on Requirement (the only place authz
-// reads), so Permission.RequireOTP must be derived from it rather than written by hand; otherwise the two declarations
-// drift (the binding marks step-up while the Permission does not).
+// reads), and RequiresOTP is derived from it, so the marker the UI shows cannot drift from the real decision.
 func TestSealDerivesRequireOTPFromBindings(t *testing.T) {
 	resetForTest()
 	MustRegisterGroups(demoGroups)
@@ -100,23 +66,10 @@ func TestSealDerivesRequireOTPFromBindings(t *testing.T) {
 	if err := Seal(nil); err != nil {
 		t.Fatalf("Seal: %v", err)
 	}
-	if All()["ops:demo:danger"].RequireOTP != true {
+	if !RequiresOTP("ops:demo:danger") {
 		t.Fatal("a code referenced by a RequireOTP operation should derive RequireOTP")
 	}
-	if All()["ops:demo:view"].RequireOTP != false {
+	if RequiresOTP("ops:demo:view") {
 		t.Fatal("a code referenced by no step-up operation should not carry RequireOTP")
-	}
-}
-
-// TestSealRejectsHandWrittenRequireOTP checks that a hand-written value is rejected. Allowing it would let it disagree
-// with the bindings, and the UI would see only the hand-written one.
-func TestSealRejectsHandWrittenRequireOTP(t *testing.T) {
-	resetForTest()
-	MustRegisterGroups(demoGroups)
-	MustRegister([]Permission{
-		{Code: "ops:demo:view", RequireOTP: true},
-	}, nil, nil)
-	if err := Seal(nil); err == nil {
-		t.Fatal("a hand-written Permission.RequireOTP should be rejected by Seal")
 	}
 }
