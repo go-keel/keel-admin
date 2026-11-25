@@ -6,7 +6,8 @@
  * try/catch lives only here: in private mode localStorage may be entirely unavailable (reading throws); an unreadable
  * value counts as "never stored" and resolution continues, and a failed write must not undo this switch: it takes
  * effect on this page as usual, only another device / the next visit gets the resolved value. With one copy per axis,
- * this convention relied on memory alone.
+ * this convention relied on memory alone. Other localStorage state (the permission preview, lib/preview.ts) goes through
+ * these functions too, for the same reason.
  */
 export const readPreference = (key: string): string | null => {
   try {
@@ -21,5 +22,13 @@ export const writePreference = (key: string, value: string): void => {
     window.localStorage.setItem(key, value);
   } catch {
     // Without persistence, the change still takes effect on this page immediately.
+  }
+};
+
+export const removePreference = (key: string): void => {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // Nothing stored can be removed either; the caller's state change stands.
   }
 };

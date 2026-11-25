@@ -13,8 +13,6 @@ export type TimeZoneDefinition = {
   shortName?: string;
 };
 
-export type TimeOfDay = 'morning' | 'afternoon' | 'evening';
-
 const STORAGE_KEY = 'keel_timezone';
 
 const registry = new Map<TimeZoneId, TimeZoneDefinition>([
@@ -205,24 +203,6 @@ export const formatTimeZoneShortName = (
       .find((part) => part.type === 'timeZoneName')?.value ??
     formatTimeZoneOffset(timeZone, at)
   );
-};
-
-export const getTimeOfDay = (
-  timeZone: TimeZoneId,
-  at: Date = new Date(),
-): TimeOfDay => {
-  const hour = Number(
-    new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      hour: '2-digit',
-      hourCycle: 'h23',
-    })
-      .formatToParts(at)
-      .find((part) => part.type === 'hour')?.value,
-  );
-  if (hour < 12) return 'morning';
-  if (hour < 18) return 'afternoon';
-  return 'evening';
 };
 
 /** Placeholder when there is no time to show. Exported so DateTimeText can recognise it and add no zone label. */

@@ -8,9 +8,9 @@ import { z } from 'zod';
 import {
   ActionDialog,
   FormDialog,
-  PasswordInput,
   ResourceSheet,
 } from '@/components/containers';
+import { PasswordInput } from '@/components/credential-inputs';
 import { DataRegion } from '@/components/data-region';
 import {
   AvatarField,
@@ -41,6 +41,7 @@ import {
 } from '@/components/ui/select';
 import { usePerm, useProfile } from '@/hooks/use-profile';
 import { loginLogList } from '@/lib/audit';
+import { deptOptionsQueryOptions } from '@/lib/depts';
 import {
   ipWhitelist,
   optionalEmail,
@@ -50,7 +51,6 @@ import {
 import { flattenTree, indentLabel } from '@/lib/tree';
 import {
   assignableRolesQueryOptions,
-  deptOptionsQueryOptions,
   resetPassword,
   saveUser,
   setUserRoot,

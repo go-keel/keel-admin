@@ -39,7 +39,7 @@ On top of the guide's order, the kernel and permission registration sit between 
 kconfig.NewConfig → kotel.Setup → keel.SetupLogger → keel.NewAppFactory
   → infrastructure: kdb.NewNamedDB(config, "admin") + kdb.NewDB(config) + kredis.NewRedis
   → kernel data (internal/core/data, internal/core/sys/data)
-  → kernel config: server.ProvideSysConf / ProvideBrand / ProvideOTPCipher … (sys.* in app.yaml, read once at startup)
+  → kernel config: bootstrap.Get().Sys → server.ProvideBrand / ProvideOTPCipher … (sys.* in app.yaml, read once at startup)
   → kernel biz → kernel service
   → business area data → biz → service (internal/data|biz|service)
   → permission registration: perm.MustRegisterGroups → MustRegisterKernel / MustRegister

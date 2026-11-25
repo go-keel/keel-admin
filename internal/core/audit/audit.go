@@ -20,8 +20,8 @@
 //
 // The cost is real: the audit of a delete keeps only target_id and cannot tell which codes the deleted role had.
 //
-// ponytail: no data snapshots, so the audit of deletes is incomplete. Introduce a ctx sink (WithSink/SetBefore) the
-// day it is really needed, and make redaction explicitly the caller's job: whoever has the schema is responsible.
+// Limit: no data snapshots, so the audit of deletes is incomplete. Introduce a ctx sink (WithSink/SetBefore) the day
+// it is really needed, and make redaction explicitly the caller's job: whoever has the schema is responsible.
 package audit
 
 import (

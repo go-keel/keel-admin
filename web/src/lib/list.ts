@@ -142,14 +142,6 @@ export function toFilterValues<F extends ListFields>(
   ) as Record<keyof F & string, string>;
 }
 
-/** Raw URL object (unvalidated) → filter bar string map in one step, for tests and occasional manual conversion. */
-export function urlToFilterValues(
-  fields: ListFields,
-  raw: Record<string, unknown>,
-): ListFilterValues {
-  return toFilterValues(fields, buildSearchSchema(fields).parse(raw));
-}
-
 /**
  * The draft FilterBar submits → a URL patch. An empty string means "no value" and removes the key from the URL
  * (the value is set to `undefined`, which the router's stringifySearch skips); number fields become real numbers,

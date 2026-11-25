@@ -6,8 +6,8 @@ import "strings"
 // PostgreSQL both use a backslash as the default LIKE escape character.
 var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
-// containsPattern is the LIKE pattern for "contains keyword", with the keyword taken literally: searching "u_" finds
-// "u_mgr", not every name with a "u" followed by any character.
-func containsPattern(keyword string) string {
+// ContainsPattern is the LIKE pattern for "contains keyword", with the keyword taken literally: searching "u_" finds
+// "u_mgr", not every name with a "u" followed by any character. Kernel and business repositories both use it.
+func ContainsPattern(keyword string) string {
 	return "%" + likeEscaper.Replace(keyword) + "%"
 }

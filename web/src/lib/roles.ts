@@ -70,9 +70,17 @@ export const resourcesQueryOptions = queryOptions({
 });
 
 /**
+ * Role options, the full set (unpaged): the user list's role filter and the reduced-permission preview's role picker.
+ */
+export const roleOptionsQueryOptions = queryOptions({
+  queryKey: ['sys', 'role-options'],
+  queryFn: async () => unwrap(await api.GET('/v1/sys/roles/options')),
+});
+
+/**
  * Options of "assignable roles": **sensitive roles are excluded** (`excludeSensitive`).
  *
- * This and the filter's set (`roleOptionsQueryOptions`, the full set) are two uses of the same data, hence two
+ * This and `roleOptionsQueryOptions` (the full set, for the filter) are two uses of the same data, hence two
  * queries: the filter must keep false, otherwise users with sensitive roles could not be filtered (see role.proto).
  * A sensitive role has a single meaning: non-root cannot assign it to others. Since putting it on the
  * assignable allow-list would not let it be sent either, it must not appear among the options.
@@ -85,12 +93,6 @@ export const assignableCandidatesQueryOptions = queryOptions({
         params: { query: { excludeSensitive: true } },
       }),
     ),
-});
-
-/** Department options (for the multi-select of manageable departments). */
-export const deptTreeQueryOptions = queryOptions({
-  queryKey: ['sys', 'dept-options'],
-  queryFn: async () => unwrap(await api.GET('/v1/sys/depts/options')),
 });
 
 export const invalidateRoles = () =>

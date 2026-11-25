@@ -1,14 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  DataTable,
-  type DataTableColumn,
-  RowActions,
-} from '@/components/data-table';
+import { DataTable, type DataTableColumn } from '@/components/data-table';
 import { DateTimeText, StatusBadge } from '@/components/fields';
 import { FilterBar } from '@/components/filter-bar';
 import { PageHeader } from '@/components/page-header';
+import { RowActions } from '@/components/row-actions';
 import { Button } from '@/components/ui/button';
 import { useList } from '@/hooks/use-list';
 import { type RoleListItem, roleList } from '@/lib/roles';

@@ -153,13 +153,6 @@ describe('time formatting', () => {
     expect(formatDateTime('', 'UTC')).toBe('-');
   });
 
-  it('morning, afternoon and evening follow the chosen time zone and differ across zones', async () => {
-    const { getTimeOfDay } = await fresh();
-    const at = new Date('2026-01-02T23:00:00Z');
-    expect(getTimeOfDay('UTC', at)).toBe('evening');
-    expect(getTimeOfDay('Asia/Shanghai', at)).toBe('morning');
-  });
-
   // The short name is on the render path of every time row (DateTimeText's zone label): getting it wrong raises
   // no error, every row just carries a wrong zone label, which is exactly the ambiguity the label is meant to remove.
   it('uses the configured value when shortName is registered', async () => {

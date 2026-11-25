@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useProfile } from '@/hooks/use-profile';
 import { clearPreview, getPreview, setPreview } from '@/lib/preview';
-import { roleOptionsQueryOptions } from '@/lib/query';
+import { roleOptionsQueryOptions } from '@/lib/roles';
 
 /**
  * Reduced-permission preview (root): after selecting some roles the page fully reloads, and every request then carries

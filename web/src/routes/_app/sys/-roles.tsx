@@ -34,6 +34,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { deptOptionsQueryOptions } from '@/lib/depts';
 import { asSet, useDetailForm } from '@/lib/form';
 import { tDynamic } from '@/lib/i18n';
 import {
@@ -49,7 +50,6 @@ import {
   assignableCandidatesQueryOptions,
   type DataScopeItem,
   deleteRole,
-  deptTreeQueryOptions,
   type PermGroup,
   type PermissionDef,
   permissionsQueryOptions,
@@ -130,7 +130,7 @@ export function RoleForm({
   // Not sent while the dialog is closed: the whole permission catalogue should not be fetched to render a list page.
   const permsQuery = useQuery({ ...permissionsQueryOptions, enabled: open });
   const resourcesQuery = useQuery({ ...resourcesQueryOptions, enabled: open });
-  const deptsQuery = useQuery({ ...deptTreeQueryOptions, enabled: open });
+  const deptsQuery = useQuery({ ...deptOptionsQueryOptions, enabled: open });
   const rolesQuery = useQuery({
     ...assignableCandidatesQueryOptions,
     enabled: open,

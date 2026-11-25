@@ -4,13 +4,10 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ResourceSheet } from '@/components/containers';
 import { DataRegion } from '@/components/data-region';
-import {
-  DataTable,
-  type DataTableColumn,
-  RowActions,
-} from '@/components/data-table';
+import { DataTable, type DataTableColumn } from '@/components/data-table';
 import { DateTimeText } from '@/components/fields';
 import { FilterBar, type FilterOption } from '@/components/filter-bar';
+import { RowActions } from '@/components/row-actions';
 import {
   Tooltip,
   TooltipContent,

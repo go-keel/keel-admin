@@ -3,14 +3,22 @@ import {
   buildSearchSchema,
   defineList,
   type ListFields,
+  type ListFilterValues,
   resetUrlPatch,
   toFilterValues,
   toRequestParams,
   toUrlPatch,
-  urlToFilterValues,
 } from './list';
 import { DEFAULT_PAGE_SIZE, intersectSelection } from './table';
 import { registerTimeZones, setTimeZone } from './timezone';
+
+/** Raw URL object (unvalidated) → filter bar string map in one step, as the list page does it. */
+function urlToFilterValues(
+  fields: ListFields,
+  raw: Record<string, unknown>,
+): ListFilterValues {
+  return toFilterValues(fields, buildSearchSchema(fields).parse(raw));
+}
 
 describe('URL → filter bar values', () => {
   const fields: ListFields = {

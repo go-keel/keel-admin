@@ -28,13 +28,13 @@ rules" below).
 ```go
 // internal/service/errors.go (a fictional ErrArticleNotFound)
 func RegisterErrors(g *sentinel.Group) *sentinel.Group {
-    g.OnLocaled(biz.ErrArticleNotFound, localed("ErrArticleNotFound", "Article not found.", v1.ErrorArticleNotFound))
+    g.OnLocaled(biz.ErrArticleNotFound, i18n.Localed("ErrArticleNotFound", "Article not found.", v1.ErrorArticleNotFound))
     return g
 }
 ```
 
-`localed` is a **deliberate copy** of the helper of the same name in the kernel's `internal/core/sys/service`: the
-business area as a whole does not import `core/sys`, its unexported helpers included.
+`i18n.Localed` (`internal/i18n/localed.go`) is the one helper the kernel and the business area share: it looks the
+message up in the current language, falls back to English, and hands it to the reason's constructor.
 
 ## The reason is the contract, the HTTP status is derived
 

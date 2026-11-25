@@ -4,6 +4,12 @@
  * for the button label. Entering and exiting both reload the page fully, so the profile is fetched again with the new
  * identity and the menu and permission checks follow.
  */
+import {
+  readPreference,
+  removePreference,
+  writePreference,
+} from './preference';
+
 const KEY = 'keel:preview';
 
 export type PreviewState = {
@@ -14,9 +20,9 @@ export type PreviewState = {
 };
 
 export function getPreview(): PreviewState | undefined {
+  const raw = readPreference(KEY);
+  if (!raw) return undefined;
   try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return undefined;
     const v = JSON.parse(raw) as Partial<PreviewState> | null;
     return v?.ids ? { ids: v.ids, names: v.names ?? [] } : undefined;
   } catch {
@@ -25,9 +31,9 @@ export function getPreview(): PreviewState | undefined {
 }
 
 export function setPreview(state: PreviewState): void {
-  localStorage.setItem(KEY, JSON.stringify(state));
+  writePreference(KEY, JSON.stringify(state));
 }
 
 export function clearPreview(): void {
-  localStorage.removeItem(KEY);
+  removePreference(KEY);
 }

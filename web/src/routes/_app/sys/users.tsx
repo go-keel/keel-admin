@@ -12,28 +12,21 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  DataTable,
-  type DataTableColumn,
-  type RowAction,
-  RowActions,
-} from '@/components/data-table';
+import { DataTable, type DataTableColumn } from '@/components/data-table';
 import { DateTimeText, StatusBadge } from '@/components/fields';
 import { FilterBar, type FilterOption } from '@/components/filter-bar';
 import { PageHeader } from '@/components/page-header';
+import { type RowAction, RowActions } from '@/components/row-actions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { PermCode } from '@/generated/perm-code';
 import { type FilterFieldsOf, useList } from '@/hooks/use-list';
 import { usePerm, useProfile } from '@/hooks/use-profile';
-import { roleOptionsQueryOptions } from '@/lib/query';
+import { deptOptionsQueryOptions } from '@/lib/depts';
+import { roleOptionsQueryOptions } from '@/lib/roles';
 import { widthFor } from '@/lib/table';
 import { flattenTree, indentLabel } from '@/lib/tree';
-import {
-  deptOptionsQueryOptions,
-  type UserListItem,
-  userList,
-} from '@/lib/users';
+import { type UserListItem, userList } from '@/lib/users';
 import {
   type PendingAction,
   UserActionDialog,

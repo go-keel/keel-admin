@@ -3,6 +3,52 @@
 This file holds entries only, one per change that actually happened; how to write entries and how to follow
 upstream: `docs/upgrading-protocol.md`.
 
+## 2026-11-25 · 5
+
+**What changed.** Five pass-through constructors are gone: `server.ProvideSysConf`, `server.ProvideOTPGate`,
+`server.ProvideAuditRecorder`, `data.NewUserRepo` and `data.NewCacheInvalidator` (kernel `internal/core/sys/data`);
+`biz.AuthUseCase.Resolve` is gone too (`ResolveWithVersion` stays). The LIKE keyword escaper is now
+`coredata.ContainsPattern` in `internal/core/data`, and the sentinel helper `localed` is now `i18n.Localed` in the new
+kernel file `internal/i18n/localed.go`: one copy shared by the kernel and the business area. On the frontend,
+`RowActions` and its types moved from `components/data-table.tsx` to `components/row-actions.tsx`; `PasswordInput`,
+`OtpInput`, `OtpField` and `OTP_LENGTH` from `components/containers.tsx` to `components/credential-inputs.tsx`;
+`deptOptionsQueryOptions` to `lib/depts.ts` (the duplicate `deptTreeQueryOptions` in `lib/roles.ts` is gone);
+`roleOptionsQueryOptions` from `lib/query.ts` to `lib/roles.ts`; `getTimeOfDay` and `urlToFilterValues` are gone.
+
+**Why.** Each removed constructor only returned its argument; passing the value directly says the same in di.go.
+The escaper and `localed` were copied between the kernel and the business area.
+
+**How to apply.**
+
+1. Take the kernel (`internal/core/`, `internal/server/`, `internal/i18n/localed.go`, the frontend kernel).
+2. In `cmd/<app>/di.go`: `sysConf := bootstrap.Get().Sys`; pass `userAdminRepo` where `userRepo` went, `otpUseCase`
+   where `otpGate` went, `permCache` where `cacheInvalidator` went and `auditUseCase` where `auditRecorder` went, and
+   delete those four variables.
+3. In your business code: replace a local LIKE escaper with `coredata.ContainsPattern(keyword)` (import
+   `coredata "<module>/internal/core/data"`) and your copy of `localed` in `internal/service/errors.go` with
+   `i18n.Localed`; keep `var _ = actorFromContext` if nothing else calls it yet. Fix frontend imports of the moved
+   names as `pnpm lint` reports them.
+
+## 2026-11-25 · 4
+
+> Follows keel-layout 679fd27
+
+**What changed.** The `Makefile` no longer sets `VERSION` or passes `-X main.Version=...` to the linker (no `main.go`
+declares that variable; the version a service reports is `app.version` in `configs/app.yaml`), and `make generate`
+runs only `go mod tidy` (the repository has no `//go:generate` directives). `internal/testdb` exports
+`Root(t testing.TB)`, the repository root; `e2e/harness/harness.go` uses it instead of its own `harness.Root`, which
+is gone, and so imports `internal/testdb` under this repository's module path: its line in
+`scripts/cross-repo-sync.list` becomes a `norm` entry. `internal/i18n/bundle.go` uses `errors.AsType`.
+
+**Why.** The linker flag and `go generate` did nothing; the root lookup was written twice in two shared files.
+
+**How to apply.**
+
+1. In your `Makefile`, delete the `VERSION?=` line, ` -X main.Version=$(VERSION)` from `GO_BUILD` and
+   `go generate ./...` from `generate`, unless you added a `Version` variable or `//go:generate` directives yourself.
+2. Change `keel-admin e2e/harness/harness.go` in `scripts/cross-repo-sync.list` to end in ` norm`, then take both
+   shared files with `make sync-upstream`; replace any `harness.Root(t)` of your own with `testdb.Root(t)`.
+
 ## 2026-11-25 · 3
 
 **What changed.** `make e2e` arrives: `e2e/` (build tag `e2e`) builds `cmd/admin`, runs it as a process against the

@@ -3,13 +3,10 @@ import { createFileRoute } from '@tanstack/react-router';
 import { ChevronDownIcon, ChevronRightIcon } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  DataTable,
-  type DataTableColumn,
-  RowActions,
-} from '@/components/data-table';
+import { DataTable, type DataTableColumn } from '@/components/data-table';
 import { StatusBadge } from '@/components/fields';
 import { PageHeader } from '@/components/page-header';
+import { RowActions } from '@/components/row-actions';
 import { Button } from '@/components/ui/button';
 import { usePerm, useProfile } from '@/hooks/use-profile';
 import { type DeptListItem, deptListQueryOptions } from '@/lib/depts';

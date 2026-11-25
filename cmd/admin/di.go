@@ -78,13 +78,12 @@ func wireApp(bootstrap *kconfig.Dynamic[conf.Bootstrap]) (*keel.App, func(), err
 	// data
 	dataData := coredata.NewData(db)
 	userAdminRepo := data.NewUserAdminRepo(dataData)
-	userRepo := data.NewUserRepo(userAdminRepo)
 	loginLogger := data.NewLoginLogger(dataData)
 	permCache := data.NewPermCache(redis)
 	otpRepo := data.NewOTPRepo(dataData)
 
 	// Framework config: the sys.* node of app.yaml, read once at startup (restart after a change).
-	sysConf := server.ProvideSysConf(bootstrap)
+	sysConf := bootstrap.Get().Sys
 	brand, err := server.ProvideBrand(sysConf)
 	if err != nil {
 		return nil, cleanup, err
@@ -133,11 +132,10 @@ func wireApp(bootstrap *kconfig.Dynamic[conf.Bootstrap]) (*keel.App, func(), err
 	}
 	otpReplayGuard := data.NewOTPReplayGuard(redis, sysConf.GetOtp().GetMaxUses())
 	otpUseCase := server.ProvideOTPUseCase(otpRepo, cipher, brand, otpReplayGuard)
-	otpGate := server.ProvideOTPGate(otpUseCase)
 
 	// biz → service
 	captchaGate := biz.NewCaptchaGate(cap.GetEnabled(), cap.GetProvider())
-	authUseCase, err := server.ProvideAuthUseCase(userRepo, loginLogger, permCache, otpGate, sysConf, config, lockoutGuard, captchaGate)
+	authUseCase, err := server.ProvideAuthUseCase(userAdminRepo, loginLogger, permCache, otpUseCase, sysConf, config, lockoutGuard, captchaGate)
 	if err != nil {
 		return nil, cleanup, err
 	}
@@ -151,11 +149,10 @@ func wireApp(bootstrap *kconfig.Dynamic[conf.Bootstrap]) (*keel.App, func(), err
 
 	roleRepo := data.NewRoleRepo(dataData)
 	arbacRepo := data.NewARBACRepo(dataData)
-	cacheInvalidator := data.NewCacheInvalidator(permCache)
-	roleUseCase := biz.NewRoleUseCase(roleRepo, arbacRepo, cacheInvalidator)
+	roleUseCase := biz.NewRoleUseCase(roleRepo, arbacRepo, permCache)
 	roleService := service.NewRoleService(roleUseCase, refRepo)
 
-	arbacUseCase := biz.NewARBACUseCase(arbacRepo, userRepo)
+	arbacUseCase := biz.NewARBACUseCase(arbacRepo, userAdminRepo)
 
 	deptRepo := data.NewDeptRepo(dataData)
 	deptUseCase := biz.NewDeptUseCase(deptRepo, arbacUseCase)
@@ -192,10 +189,9 @@ func wireApp(bootstrap *kconfig.Dynamic[conf.Bootstrap]) (*keel.App, func(), err
 		authService, deptService, roleService, userService, metaService, auditService,
 		noticeService, // Example: delete after forking
 	)
-	auditRecorder := server.ProvideAuditRecorder(auditUseCase)
 	sentinelGroup := nsvc.RegisterErrors(service.NewErrorSentinel())
 
-	app, err := newApp(appFactory, services, authUseCase, otpUseCase, auditRecorder, sentinelGroup, brand)
+	app, err := newApp(appFactory, services, authUseCase, otpUseCase, auditUseCase, sentinelGroup, brand)
 	if err != nil {
 		return nil, cleanup, err
 	}

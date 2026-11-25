@@ -11,8 +11,8 @@ func TestContainsPatternEscapesWildcards(t *testing.T) {
 		`a\b`:   `%a\\b%`,
 	}
 	for in, want := range cases {
-		if got := containsPattern(in); got != want {
-			t.Errorf("containsPattern(%q) = %q, want %q", in, got, want)
+		if got := ContainsPattern(in); got != want {
+			t.Errorf("ContainsPattern(%q) = %q, want %q", in, got, want)
 		}
 	}
 }

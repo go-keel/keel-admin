@@ -14,7 +14,7 @@ zones, languages, appearance) is in `docs/admin/shell.md`.
 
 The `sys` branch of `configs/app.yaml` holds the kernel's runtime parameters: session length, the cookie security
 flag, login protection, the OTP secret key, brand, business time zone and captcha. di.go reads it once with
-`server.ProvideSysConf(bootstrap)` and hands the values to the constructors, so **a change needs a restart**; do not
+`bootstrap.Get().Sys` and hands the values to the constructors, so **a change needs a restart**; do not
 assume it takes effect because it sits in `app.yaml`. The same holds when it is written in `app.dev.yaml`.
 
 - **Business config does not go into `sys`.** Business config that should reload gets its own field and message on

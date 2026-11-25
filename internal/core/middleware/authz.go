@@ -51,8 +51,8 @@ var (
 // sits deeper than authz), so they must be localized where they are raised; WithLocale is fixed right after metadata
 // (before auth), so the localizer is already in ctx. Code and reason are kept as they are, so errors.Is is
 // unchanged. A missing entry falls back to English through internal/i18n.MustLocalizeMessage (the same behaviour as
-// localed in core/sys/service and the business area), instead of falling back to the English hard-coded in the
-// proto, so the two English wordings need not be kept in step by hand.
+// internal/i18n.Localed), instead of falling back to the English hard-coded in the proto, so the two English wordings
+// need not be kept in step by hand.
 func localized(ctx context.Context, proto *errors.Error, msgID string) *errors.Error {
 	l, ok := locale.FromContext(ctx)
 	if !ok {

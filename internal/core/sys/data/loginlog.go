@@ -45,7 +45,7 @@ func (l *loginLogger) List(ctx context.Context, f biz.LoginFilter, offset, limit
 	if f.Username != "" {
 		// Prefix / substring match: someone checking "did this person fail to log in" often remembers half a name,
 		// and the username in a failure record is exactly what was typed (the account may not exist at all).
-		q = q.Where("username LIKE ?", containsPattern(f.Username))
+		q = q.Where("username LIKE ?", coredata.ContainsPattern(f.Username))
 	}
 	switch f.Status {
 	case 1:

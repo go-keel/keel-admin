@@ -7,6 +7,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	coredata "github.com/go-keel/keel-admin/internal/core/data"
 	"github.com/go-keel/keel-admin/internal/core/sys/biz"
 	"github.com/go-keel/keel-admin/internal/core/timefmt"
 )
@@ -20,7 +21,7 @@ func (r *userRepo) List(ctx context.Context, inDeptIDs []int64, f biz.UserFilter
 		q = q.Where("dept_id = ?", f.DeptID)
 	}
 	if f.Keyword != "" {
-		like := containsPattern(f.Keyword)
+		like := coredata.ContainsPattern(f.Keyword)
 		q = q.Where("username LIKE ? OR nickname LIKE ? OR email LIKE ? OR phone LIKE ?", like, like, like, like)
 	}
 	if len(f.IDs) > 0 {

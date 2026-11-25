@@ -231,7 +231,7 @@ imports the compiler now reports as unused. Three steps, in this order:
    What is left empty stays as the place for your first module: `internal/biz/errors.go`, `internal/data/model.go`
    and `internal/service/http.go` with only their package clause and comments, `migrations/business/mysql/0_schema.sql`
    with only `SET NAMES` and `migrations/business/postgres/0_schema.sql` with only the `ci` collation, the empty `nav: {}` in `web/src/locales/app/` and the `registerTimeZones()` call with no
-   entries. Delete the emptied directory `web/src/routes/_app/notices/`. Finally run `make check test`.
+   entries. Delete the emptied `notices/` directory under `web/src/routes/_app/`. Finally run `make check test`.
 
 Both greps exclude `*.pb.go`: the marker comments are carried into generated artifacts, and the hits there vanish
 on regeneration; do not edit generated artifacts by hand.

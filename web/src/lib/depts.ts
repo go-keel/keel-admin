@@ -22,6 +22,15 @@ export const deptDetailQueryOptions = (id: string) =>
       unwrap(await api.GET('/v1/sys/depts/{id}', { params: { path: { id } } })),
   });
 
+/**
+ * Department options (a tree, already sorted by level): the user page's department filter and picker, and the role
+ * page's manageable-department multi-select. Bound to sys:account:view, since they serve the account page.
+ */
+export const deptOptionsQueryOptions = queryOptions({
+  queryKey: ['sys', 'dept-options'],
+  queryFn: async () => unwrap(await api.GET('/v1/sys/depts/options')),
+});
+
 export const invalidateDepts = () =>
   queryClient.invalidateQueries({ queryKey: ['sys', 'depts'] });
 

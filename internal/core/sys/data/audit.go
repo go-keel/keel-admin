@@ -46,7 +46,7 @@ func applyAuditFilter(q *gorm.DB, f biz.AuditFilter) *gorm.DB {
 		// The subquery wraps the whole "username or nickname" OR, so it cannot collapse with the other filters into
 		// a AND b OR c. It uses sysUser's default scope: soft-deleted accounts do not take part in the match, and
 		// the list shows only their ID anyway.
-		like := containsPattern(f.OperatorKeyword)
+		like := coredata.ContainsPattern(f.OperatorKeyword)
 		q = q.Where("operator_id IN (?)", q.Session(&gorm.Session{NewDB: true}).
 			Model(&sysUser{}).Select("id").
 			Where("username LIKE ? OR nickname LIKE ?", like, like))

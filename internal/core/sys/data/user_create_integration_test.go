@@ -49,7 +49,7 @@ func TestUsernameIgnoresCase(t *testing.T) {
 		if err := admin.Create(ctx, &biz.User{Username: "alice", Password: "h", Status: 1}, nil); err != nil {
 			t.Fatalf("Create: %v", err)
 		}
-		u, err := NewUserRepo(admin).FindByUsername(ctx, "ALICE")
+		u, err := admin.FindByUsername(ctx, "ALICE")
 		if err != nil || u.Username != "alice" {
 			t.Fatalf("FindByUsername(ALICE) = %+v, %v; want the alice row", u, err)
 		}

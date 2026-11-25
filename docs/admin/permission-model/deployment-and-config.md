@@ -37,7 +37,7 @@ Read this before deploying an admin, or changing the `sys:` section of app.yaml.
 ## 13. Kernel configuration (the `sys:` section of app.yaml): read once at startup, restart after changes
 
 app.yaml supports hot reload as a mechanism, but the kernel's `sys:` section is taken as one snapshot at assembly
-(`server.ProvideSysConf`) and never read back, so a change takes effect only after a restart; business configuration
+(`bootstrap.Get().Sys` in di.go) and never read back, so a change takes effect only after a restart; business configuration
 gets its own section on `Bootstrap` and decides for itself. The rules are in `docs/admin/config.md` "`sys.*`"; this
 section keeps the reasons.
 

@@ -1,7 +1,7 @@
 import { QRCodeSVG } from 'qrcode.react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { OTP_LENGTH, OtpInput } from '@/components/containers';
+import { OTP_LENGTH, OtpInput } from '@/components/credential-inputs';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';

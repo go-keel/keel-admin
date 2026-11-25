@@ -69,12 +69,6 @@ export const userDetailQueryOptions = (id: string) =>
     enabled: id !== '' && id !== 'new',
   });
 
-/** Department options (a tree, already sorted by level). Bound to sys:account:view, since they serve the account page. */
-export const deptOptionsQueryOptions = queryOptions({
-  queryKey: ['sys', 'dept-options'],
-  queryFn: async () => unwrap(await api.GET('/v1/sys/depts/options')),
-});
-
 /** Roles I can assign: the role dropdown when editing a user, not the same set as the full options used for filtering. */
 export const assignableRolesQueryOptions = queryOptions({
   queryKey: ['sys', 'roles-assignable'],
@@ -198,18 +192,21 @@ export async function userAction(
   action: 'reset_otp' | 'disable' | 'enable' | 'kick',
   otpCode: string,
 ): Promise<void> {
-  const path = {
-    reset_otp: '/v1/sys/users/{id}/reset_otp',
-    disable: '/v1/sys/users/{id}/disable',
-    enable: '/v1/sys/users/{id}/enable',
-    kick: '/v1/sys/users/{id}/kick',
-  }[action] as '/v1/sys/users/{id}/reset_otp';
-  unwrap(
-    await api.POST(path, {
-      params: { path: { id } },
-      body: { id },
-      ...stepUp(otpCode),
-    }),
-  );
+  // One call per endpoint, so each request body is checked against its own generated type.
+  const init = { params: { path: { id } }, body: { id }, ...stepUp(otpCode) };
+  switch (action) {
+    case 'reset_otp':
+      unwrap(await api.POST('/v1/sys/users/{id}/reset_otp', init));
+      break;
+    case 'disable':
+      unwrap(await api.POST('/v1/sys/users/{id}/disable', init));
+      break;
+    case 'enable':
+      unwrap(await api.POST('/v1/sys/users/{id}/enable', init));
+      break;
+    case 'kick':
+      unwrap(await api.POST('/v1/sys/users/{id}/kick', init));
+      break;
+  }
   await invalidateUsers();
 }

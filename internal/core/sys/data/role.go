@@ -25,7 +25,7 @@ func NewRoleRepo(data *coredata.Data) biz.RoleRepo { return &roleRepo{data: data
 func (r *roleRepo) List(ctx context.Context, f biz.RoleFilter, offset, limit int) ([]*biz.RoleListRow, int64, error) {
 	q := r.data.DB.WithContext(ctx).Model(&sysRole{})
 	if f.Keyword != "" {
-		like := containsPattern(f.Keyword)
+		like := coredata.ContainsPattern(f.Keyword)
 		q = q.Where("code LIKE ? OR name LIKE ?", like, like)
 	}
 	q = whereTriState(q, "status", f.Status)

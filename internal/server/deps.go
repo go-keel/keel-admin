@@ -8,19 +8,12 @@ import (
 	"github.com/go-keel/keel-admin/internal/core/errs"
 
 	"github.com/go-keel/keel-admin/internal/conf"
-	"github.com/go-keel/keel-admin/internal/core/audit"
 	"github.com/go-keel/keel-admin/internal/core/captcha/turnstile"
 	"github.com/go-keel/keel-admin/internal/core/sys/biz"
 	"github.com/go-keel/keel-admin/internal/core/sys/totp"
 	"github.com/go-keel/keel/core/kconfig"
 	"github.com/go-keel/keel/pkg/jwt"
 )
-
-// ProvideSysConf extracts the Sys (framework) config section from the dynamic
-// bootstrap (app.yaml). Read once at startup — changes require a restart.
-func ProvideSysConf(b *kconfig.Dynamic[conf.Bootstrap]) *conf.Sys {
-	return b.Get().Sys
-}
 
 // ProvideBrand validates and extracts the deploy-time brand (sys.brand).
 // title is required: the template's default brand must not slip into production silently, so empty fails startup
@@ -105,12 +98,3 @@ func ProvideOTPCipher(s *conf.Sys) (*totp.Cipher, error) {
 func ProvideOTPUseCase(repo biz.OTPRepo, cipher *totp.Cipher, brand *conf.Brand, guard biz.ReplayGuard) *biz.OTPUseCase {
 	return biz.NewOTPUseCase(repo, cipher, brand.GetTitle(), guard)
 }
-
-// ProvideOTPGate exposes the OTP use case as the login OTP gate.
-func ProvideOTPGate(uc *biz.OTPUseCase) biz.OTPGate { return uc }
-
-// ProvideAuditRecorder exposes the audit recorder for the middleware chain.
-//
-// The middleware and biz share core/audit.Entry, so AuditUseCase satisfies audit.Recorder directly with no adapter
-// (why there are not two definitions copied by hand: see the package comment of core/audit).
-func ProvideAuditRecorder(uc *biz.AuditUseCase) audit.Recorder { return uc }

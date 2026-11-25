@@ -65,12 +65,6 @@ export const systemInfoQueryOptions = queryOptions({
   gcTime: Number.POSITIVE_INFINITY,
 });
 
-/** Role options (unpaged). Shared by the reduced-permission preview's role picker and future filters. */
-export const roleOptionsQueryOptions = queryOptions({
-  queryKey: ['sys', 'role-options'],
-  queryFn: async () => unwrap(await api.GET('/v1/sys/roles/options')),
-});
-
 /** Explicit logout. The cookie is httpOnly, so only the server can clear it. */
 export async function logout(): Promise<void> {
   await api.POST('/v1/sys/auth/logout', { body: {} });

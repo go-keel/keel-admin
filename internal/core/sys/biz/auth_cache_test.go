@@ -109,7 +109,7 @@ func TestResolveAggregatesRoleCodes(t *testing.T) {
 	repo := &fakeUserRepo{user: &User{ID: 7, Status: 1}, roles: []int64{1, 2}, roleCodes: map[int64][]string{1: {"sys:dept:view"}, 2: {"sys:account:view"}}}
 	cache := &fakePermCache{}
 	uc := NewAuthUseCase(repo, noopLoginLog{}, cache, nil, nil, time.Hour, nil, AuthConfig{}, nil)
-	p, err := uc.Resolve(context.Background(), 7)
+	p, err := uc.ResolveWithVersion(context.Background(), 7, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,8 +121,8 @@ func TestResolveAggregatesRoleCodes(t *testing.T) {
 func TestResolveRejectsDisabledUser(t *testing.T) {
 	repo := &fakeUserRepo{user: &User{ID: 7, Status: 0}}
 	uc := NewAuthUseCase(repo, noopLoginLog{}, &fakePermCache{}, nil, nil, time.Hour, nil, AuthConfig{}, nil)
-	if _, err := uc.Resolve(context.Background(), 7); err == nil {
-		t.Fatal("Resolve should reject a disabled user")
+	if _, err := uc.ResolveWithVersion(context.Background(), 7, 0); err == nil {
+		t.Fatal("ResolveWithVersion should reject a disabled user")
 	}
 }
 

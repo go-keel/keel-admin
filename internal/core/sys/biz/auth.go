@@ -494,17 +494,6 @@ func (uc *AuthUseCase) IssueCaptcha(ctx context.Context) (*captcha.Challenge, er
 	return p.Issue(ctx)
 }
 
-// Resolve builds the principal without a session-version check — kept for
-// internal/test reuse. It re-resolves via ResolveWithVersion against the
-// user's *current* token_version, so it never rejects on staleness.
-func (uc *AuthUseCase) Resolve(ctx context.Context, userID int64) (*perm.Principal, error) {
-	u, err := uc.users.FindByID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-	return uc.ResolveWithVersion(ctx, userID, u.TokenVersion)
-}
-
 // ResolveWithVersion builds the principal (effective perms) after verifying the
 // token's ver claim still matches the persisted token_version — implements
 // middleware.PrincipalResolver. A mismatch means the session was invalidated

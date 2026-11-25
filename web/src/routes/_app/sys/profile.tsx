@@ -9,8 +9,8 @@ import {
   ActionDialog,
   FormDialog,
   KeepLastOpen,
-  PasswordInput,
 } from '@/components/containers';
+import { PasswordInput } from '@/components/credential-inputs';
 import { DataRegion } from '@/components/data-region';
 import {
   AvatarField,

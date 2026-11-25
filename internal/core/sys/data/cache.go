@@ -26,11 +26,6 @@ type permCache struct {
 // NewPermCache builds the Redis-backed permission cache.
 func NewPermCache(rdb *kredis.Redis) biz.PermCache { return &permCache{rdb: rdb} }
 
-// NewCacheInvalidator exposes the same cache as the invalidator port.
-func NewCacheInvalidator(c biz.PermCache) biz.CacheInvalidator {
-	return c.(biz.CacheInvalidator)
-}
-
 func permRoleKey(roleID int64) string { return "perm:role:" + strconv.FormatInt(roleID, 10) }
 
 func (c *permCache) GetRoleCodes(ctx context.Context, roleID int64) ([]string, bool) {

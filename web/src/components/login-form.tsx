@@ -10,7 +10,7 @@ import {
   type CaptchaValue,
   EMPTY_CAPTCHA,
 } from '@/components/captcha-field';
-import { OtpInput, PasswordInput } from '@/components/containers';
+import { OtpInput, PasswordInput } from '@/components/credential-inputs';
 import { LoadFailed } from '@/components/data-region';
 import { OtpBindPanel } from '@/components/otp-bind';
 import { Button } from '@/components/ui/button';

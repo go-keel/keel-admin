@@ -6,13 +6,10 @@ import { Controller } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 import { FormDialog } from '@/components/containers';
-import {
-  DataTable,
-  type DataTableColumn,
-  RowActions,
-} from '@/components/data-table';
+import { DataTable, type DataTableColumn } from '@/components/data-table';
 import { DateTimeText } from '@/components/fields';
 import { PageHeader } from '@/components/page-header';
+import { RowActions } from '@/components/row-actions';
 import { Button } from '@/components/ui/button';
 import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';

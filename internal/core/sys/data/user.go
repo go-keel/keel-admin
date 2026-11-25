@@ -24,11 +24,6 @@ func NewUserAdminRepo(data *coredata.Data) biz.UserAdminRepo {
 	return &userRepo{data: data}
 }
 
-// NewUserRepo exposes the same instance as the base UserRepo for auth.
-func NewUserRepo(r biz.UserAdminRepo) biz.UserRepo {
-	return r
-}
-
 func (r *userRepo) FindByUsername(ctx context.Context, username string) (*biz.User, error) {
 	var m sysUser
 	err := r.data.DB.WithContext(ctx).Where("username = ?", username).First(&m).Error
