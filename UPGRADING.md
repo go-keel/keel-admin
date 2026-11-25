@@ -3,6 +3,45 @@
 This file holds entries only, one per change that actually happened; how to write entries and how to follow
 upstream: `docs/upgrading-protocol.md`.
 
+## 2026-11-25 · 3
+
+**What changed.** `make e2e` arrives: `e2e/` (build tag `e2e`) builds `cmd/admin`, runs it as a process against the
+test servers and tests it over HTTP, once per row of the table `rounds` in `e2e/main_test.go` (template: both
+databases on MySQL, both on PostgreSQL). `configs/config.yaml` gains placeholders, each defaulting to its old value:
+`${LOGGER_FORMAT}`, `${HTTP_ADDR}`, `${DB_DEFAULT_DRIVER}`, `${DB_DEFAULT_SOURCE}`, `${DB_ADMIN_DRIVER}`,
+`${DB_ADMIN_SOURCE}`, `${REDIS_ADDR}`. `docs/admin/testing.md` gains "End-to-end tests".
+
+**Why.** The end-to-end layer runs the binary that ships on every database round, replacing the interface part of the
+manual test run.
+
+**How to apply.**
+
+1. Add the placeholders to your `configs/config.yaml`, keeping your values as the defaults; `make e2e` fills them
+   through `KEEL_` variables.
+2. Take `e2e/` and the `e2e` target of the `Makefile`; edit `rounds` to the drivers you deploy (the admin and business
+   databases may differ), and run one round with `make e2e ARGS='-run /<name>'`.
+3. The kernel cases use only kernel codes and read the cookie name, brand title and business time zone from your
+   config. The cases about notices, data scope (the kernel registers no resource) and the Japanese UI carry example
+   markers; if you deleted the examples, leave the marked parts out. Then run `make e2e`.
+
+## 2026-11-25 · 2
+
+> Follows keel-layout 3e227cf
+
+**What changed.** The shared end-to-end harness arrives: `e2e/harness/harness.go` (a shared file) builds `cmd/*`, runs
+the binaries as processes with only the committed configs and `KEEL_` variables, collects their JSON log and stops
+them with SIGTERM; `internal/testdb` gains `Create(t, database, dialect, name)`, which builds one named database and
+returns its DSN; `docs/guides/testing.md` describes the end-to-end layer in full. This repository's own `e2e/` cases,
+round table and `make e2e` are still to come.
+
+**Why.** The end-to-end layer runs the binary that ships, on every database round, instead of a manual test run.
+
+**How to apply.**
+
+1. Add `keel-admin e2e/harness/harness.go` to `scripts/cross-repo-sync.list` (with your direct upstream in the first
+   field) and take it and the new `internal/testdb/testdb.go` with `make sync-upstream`.
+2. Nothing else until this repository's `make e2e` lands.
+
 ## 2026-11-25 · 1
 
 > Follows keel-layout 3d9374f

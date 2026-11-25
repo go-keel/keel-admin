@@ -9,3 +9,4 @@ web/src/languages.ts                          # language names are written in th
 web/src/styles/index.css                      # Japanese menu label in a width example. Example: delete after forking
 web/src/routes/_app/notices/-logic.test.ts    # test data: full-width comma handling. Example: delete after forking
 scripts/check-english.sh                      # listed so its own pattern can never trip it
+e2e/*_test.go                                 # test data and the zh translations asserted end to end

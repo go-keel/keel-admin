@@ -50,6 +50,7 @@ keel-layout docs/guides/raw-http.md
 keel-layout docs/guides/task.md
 keel-layout docs/guides/testing.md
 keel-layout internal/testdb/testdb.go
+keel-layout e2e/harness/harness.go
 keel-layout docs/guides/deploy-nginx.md
 keel-layout deploy/nginx/conf.d/client-ip.conf
 keel-layout deploy/nginx/snippets/client-ip-headers.conf

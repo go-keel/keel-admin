@@ -3,6 +3,9 @@
 # are never committed.
 # Local overrides during development go in config.dev.yaml (ignored by .gitignore; development only, never used in
 # production).
+# The ${KEY:default} placeholders are the fields that differ per environment: the default is the local value, and a
+# KEEL_KEY variable replaces it (KEEL_HTTP_ADDR fills ${HTTP_ADDR}). make e2e starts the binary through them; see
+# docs/guides/testing.md, "End-to-end tests".
 app:
   domain: keel
   name: keel-admin
@@ -14,7 +17,7 @@ logger:
   level: info
   stacktrace_level: error    # attach stack traces at this level and above
   console: true
-  format: text               # console encoding: text | json
+  format: "${LOGGER_FORMAT:text}" # console encoding: text | json
 
 otel:
   enabled: false
@@ -24,7 +27,7 @@ otel:
 server:
   http:
     default:
-      addr: "0.0.0.0:8080"
+      addr: "${HTTP_ADDR:0.0.0.0:8080}"
       timeout: 10s
       auth:
         enabled: true
@@ -50,17 +53,17 @@ database:
   # default = business database: the business area's own tables. default belongs to the derived repo's own code.
   # The scripts in migrations/business/ run against this database.
   default:
-    driver: mysql
-    source: root:123456a!@tcp(localhost:3306)/keel-biz?charset=utf8mb4&parseTime=True&loc=UTC&time_zone=%27%2B00%3A00%27
+    driver: "${DB_DEFAULT_DRIVER:mysql}"
+    source: "${DB_DEFAULT_SOURCE:root:123456a!@tcp(localhost:3306)/keel-biz?charset=utf8mb4&parseTime=True&loc=UTC&time_zone=%27%2B00%3A00%27}"
   # admin = admin database: all sys_* tables (the kernel's system-domain data).
   # The scripts in migrations/admin/ run against this database.
   # Data scope filtering uses no cross-database JOIN, so two databases and one behave the same.
   admin:
-    driver: mysql
-    source: root:123456a!@tcp(localhost:3306)/keel-admin?charset=utf8mb4&parseTime=True&loc=UTC&time_zone=%27%2B00%3A00%27
+    driver: "${DB_ADMIN_DRIVER:mysql}"
+    source: "${DB_ADMIN_SOURCE:root:123456a!@tcp(localhost:3306)/keel-admin?charset=utf8mb4&parseTime=True&loc=UTC&time_zone=%27%2B00%3A00%27}"
 
 redis:
   default:
     addr:
-      - 127.0.0.1:6379
+      - "${REDIS_ADDR:127.0.0.1:6379}"
 

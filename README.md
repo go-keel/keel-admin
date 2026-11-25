@@ -82,12 +82,13 @@ make build         # build bin/admin
 ./bin/admin        # :8080
 ```
 
-The unit tests (Go and frontend) run without any server or environment variable; the other test command needs real
+The unit tests (Go and frontend) run without any server or environment variable; the other test commands need real
 servers (`docs/guides/testing.md`):
 
 ```bash
 make check test   # static checks, then unit tests: a change is done when this passes
 make integration  # narrow integration tests; needs the four TEST_* variables
+make e2e          # end-to-end tests: the binary against the same servers, once per database round
 ```
 
 ## Fork into your own repo
@@ -152,7 +153,8 @@ parent directory) and run `make check-sync` once; it should pass.
 YAML, HTML or JSON: `app.name`, `app.domain` and the database names in the two `database` sources in
 `configs/config.yaml`, the database names in `configs/config.dev.example.yaml`, `sys.brand.title` in `configs/app.yaml`,
 the session cookie name `cookie_name` (`keel_session`) in `configs/config.yaml`, the `<title>` in `web/index.html`, and
-`name` and `description` in `web/package.json` still carry keel-admin's own name; also replace `web/public/logo.svg` (Keel's icon),
+`name` and `description` in `web/package.json` still carry keel-admin's own name; also replace `web/public/logo.svg` (Keel's icon; the new SVG needs a `<title>` or `role="img"` with an `aria-label`, or
+`pnpm lint` reports `lint/a11y/noSvgWithoutTitle`),
 and set `sys.business_time_zone` in `configs/app.yaml` to the IANA time zone your business counts days in. Database
 names go into database connections and the application name into logs and traces; left unchanged, your service still
 calls itself keel-admin at runtime; miss the dev example, and a local override copied from it changes the database names
@@ -184,7 +186,7 @@ imports the compiler now reports as unused. Three steps, in this order:
    leaves no orphans):
 
    ```bash
-   grep -rl "Example file: delete the whole file after forking" api internal migrations web/src --exclude='*.pb.go' | xargs rm
+   grep -rl "Example file: delete the whole file after forking" api internal migrations web/src e2e --exclude='*.pb.go' | xargs rm
    make proto
    ```
 
@@ -193,7 +195,8 @@ imports the compiler now reports as unused. Three steps, in this order:
    - Backend: `go vet ./...` (which compiles test files too) points at the broken references in
      `internal/data/model.go`, `internal/service/http.go`, `cmd/admin/di.go` and `cmd/admin/registration_test.go`;
      delete them one by one (`model.go` stays as the home of your POs). For `cmd/admin` it reports one error per run,
-     so expect several rounds.
+     so expect several rounds. Then run `go vet -tags e2e ./...` the same way: the end-to-end tests under `e2e/`
+     compile only with their build tag.
    - Frontend: `(cd web && pnpm build)`; the build's router plugin first rewrites `web/src/routeTree.gen.ts` for the
      remaining pages, then reports the broken imports in `web/src/languages.ts`; once that passes, run `(cd web && pnpm format)` and then `(cd web && pnpm lint)`,
      whose formatting check runs before the type check; the type check then points at the menu items in
@@ -210,11 +213,11 @@ imports the compiler now reports as unused. Three steps, in this order:
    "Example: delete after forking" (where a range is given in parentheses, delete up to there):
 
    ```bash
-   grep -rn "Example: delete after forking" api internal migrations cmd scripts web/src --exclude='*.pb.go'
+   grep -rn "Example: delete after forking" api internal migrations cmd scripts web/src e2e --exclude='*.pb.go'
    ```
 
-   Once there are no hits, run `go vet ./...` again and delete the imports it reports as unused, run
-   `gofmt -w internal cmd`, then regenerate with `make proto` and `make perms` (the frontend's permission codes come
+   Once there are no hits, run `go vet ./...` and `go vet -tags e2e ./...` again and delete the imports they report as unused, run
+   `gofmt -w internal cmd e2e`, then regenerate with `make proto` and `make perms` (the frontend's permission codes come
    from the backend registration), and run `(cd web && pnpm format)` so Biome reorders the remaining imports (`pnpm
    lint` reports the unused ones for you to delete). The shared convention docs do not reference the examples and need
    no change; the only places pointing at them are the "Example code" section outside the segments of `AGENTS.md` and

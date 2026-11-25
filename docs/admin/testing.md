@@ -70,6 +70,33 @@ Concurrency tests (locks, unique keys) use the same helper and so run under both
 PostgreSQL's read committed; kernel examples: the concurrent role save and user edit tests in
 `internal/core/sys/data/`. Seed rows give every `NOT NULL` column without a default, as the real tables require.
 
+## End-to-end tests
+
+The layer itself (the harness, rounds, cases, waiting on the log) is in `docs/guides/testing.md`, "End-to-end tests";
+the three layers are defined there too. What the admin adds:
+
+- **Two databases per round.** A row of `rounds` names the driver of `database.admin` and of `database.default`
+  separately; each round builds both with `testdb.Create` (`migrations/admin/...` and `migrations/business/...`) and
+  hands them to the process with `harness.DBEnv("admin", ...)` and `harness.DBEnv("default", ...)`, which fill the
+  `${DB_ADMIN_*}` and `${DB_DEFAULT_*}` placeholders of `configs/config.yaml`.
+- **A fixture built through the API.** Each round logs root in with the seeded password, binds its authenticator
+  through the restricted bind token, then creates departments, roles and accounts as an operator would; cases start
+  from it and make their own accounts or roles when they change one.
+- **Authenticator codes are computed by the test.** The secret comes from the `otpauth://` URI that `BindOTP` returns;
+  the code is the standard TOTP (SHA1, 30 seconds, 6 digits, `internal/core/sys/totp`). A code may be used
+  `sys.otp.max_uses` times, so before using one the test deletes that code's replay counter
+  (`otp:used:<user id>:<code hash>`, `internal/core/sys/data/otp_replay.go`); only the cases about the quota leave it.
+- **Captcha answers are read from Redis**, key `captcha:ans:<captchaId>` (`internal/core/captcha/base64`). Turnstile
+  needs Cloudflare and stays out of the tests, except `login-meta`.
+- **Client IPs are set with `X-Forwarded-For`**: the committed config trusts only localhost, so the header is the
+  client IP for the lockout, IP allow list and audit cases.
+- **The session cookie is held by the test**, not a cookie jar: the committed `sys.cookie_secure` is true and the
+  tests talk plain HTTP.
+- **`sys.*` is read once at startup**, so a case about another setting starts a process of its own whose `Workdir` has
+  a `configs/app.dev.yaml` with that setting, on the round's databases and Redis.
+- The login lockout and the replay guard as Redis code are narrow integration tests (above); the end-to-end cases
+  check what a user sees, and stand in for time passing with `PEXPIRE` too.
+
 ## Frontend tests
 
 `web/` tests are vitest (`pnpm test`, jsdom environment, no watch), unit tests run by `make test`; `make check` runs
