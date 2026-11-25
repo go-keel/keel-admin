@@ -2,6 +2,7 @@ import { skipToken } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {
+  asSet,
   detailFormQuery,
   freshDetailQuery,
   ipWhitelist,
@@ -162,5 +163,19 @@ describe('detailFormQuery', () => {
         queryFn: skipToken,
       });
     }
+  });
+});
+
+describe('asSet', () => {
+  it('ticking an item off and on again gives back the original array', () => {
+    const initial = asSet(['b', 'a', 'c']);
+    const off = asSet(initial.filter((x) => x !== 'a'));
+    expect(asSet([...off, 'a'])).toEqual(initial);
+  });
+
+  it('orders objects by the given key and leaves the input untouched', () => {
+    const input = [{ k: 'y' }, { k: 'x' }];
+    expect(asSet(input, (o) => o.k)).toEqual([{ k: 'x' }, { k: 'y' }]);
+    expect(input).toEqual([{ k: 'y' }, { k: 'x' }]);
   });
 });

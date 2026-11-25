@@ -126,6 +126,21 @@ export const optionalPhone = () =>
     });
 
 /**
+ * A field whose value is a set (ticked IDs, one entry per key) in one fixed order. "Edited" compares arrays element by
+ * element, so without it ticking an item off and on again moves it to the end and still asks to discard changes.
+ * Apply it both to the initial values and to every write.
+ */
+export function asSet<T>(
+  items: readonly T[],
+  key: (item: T) => string = String,
+): T[] {
+  return [...items].sort((a, b) => {
+    const [x, y] = [key(a), key(b)];
+    return x < y ? -1 : x > y ? 1 : 0;
+  });
+}
+
+/**
  * Form instance: wires up zod and fixes the validation timing, then handles two lifecycle concerns.
  *
  * - **Return to the initial values on every open**: creation uses `defaultValues`; editing passes the detail endpoint's

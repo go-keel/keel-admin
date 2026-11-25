@@ -5,6 +5,7 @@ package data
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -16,6 +17,10 @@ import (
 )
 
 var _ biz.NoticeRepo = (*noticeRepo)(nil)
+
+// likeEscaper makes a title keyword match literally, as the kernel's keywords do (internal/core/sys/data/like.go): MySQL
+// and PostgreSQL both use a backslash as the default LIKE escape character.
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
 
 type noticeRepo struct {
 	data *Data
@@ -41,7 +46,7 @@ func (r *noticeRepo) List(ctx context.Context, spec, catSpec perm.ScopeSpec, f b
 		q = q.Where("category_id = ?", f.CategoryID)
 	}
 	if f.Keyword != "" {
-		q = q.Where("title LIKE ?", "%"+f.Keyword+"%")
+		q = q.Where("title LIKE ?", "%"+likeEscaper.Replace(f.Keyword)+"%")
 	}
 	if !f.CreatedFrom.IsZero() {
 		q = q.Where("created_at >= ?", f.CreatedFrom)

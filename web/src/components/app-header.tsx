@@ -28,7 +28,7 @@ export function AppHeader() {
   // Subscribe to language changes: the page name goes through tDynamic with dynamic keys, which t cannot track
   // statically; without subscribing, after a language switch the header would stay in the old language (as with the
   // sidebar).
-  useTranslation();
+  const { t } = useTranslation();
   const page = useRouterState({ select: (s) => currentPageOf(s.matches) });
 
   return (
@@ -44,7 +44,8 @@ export function AppHeader() {
     >
       {/* The left edge of the collapse button icon aligns with the content area below: the button has its own padding,
           so pull it back a little. */}
-      <SidebarTrigger className="-ml-1" />
+      {/* aria-label overrides the English screen-reader text inside the CLI-generated component. */}
+      <SidebarTrigger className="-ml-1" aria-label={t('nav.toggleSidebar')} />
       {/* The page name is shown only here (the header layout of shadcn dashboard-01); the page header in the content
           area does not repeat it. On a sub-view it shows the page the sub-view belongs to, which is also what the star
           favorites; the tab bar shows the sub-view. */}

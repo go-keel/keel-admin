@@ -20,6 +20,7 @@ const zhCN: Translations<typeof sysEnUS> = {
     favorites: '我的收藏',
     favorite: '收藏',
     unfavorite: '取消收藏',
+    toggleSidebar: '展开或收起侧栏',
   },
   filter: {
     search: '查询',
@@ -287,6 +288,7 @@ const zhCN: Translations<typeof sysEnUS> = {
   },
   network: {
     offline: '网络已断开，请检查网络连接。',
+    requestFailed: '无法连接服务器，请检查网络连接。',
   },
   error: {
     home: '返回首页',

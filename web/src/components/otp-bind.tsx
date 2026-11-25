@@ -119,19 +119,28 @@ export function OtpBindPanel({
           </Button>
         </div>
       </Field>
-      <Field>
-        <FieldLabel htmlFor="firstCode">{t('otp.firstCode')}</FieldLabel>
-        <OtpInput id="firstCode" value={code} onChange={setCode} />
-      </Field>
-      <Button
-        type="button"
-        className="w-full"
-        // Not clickable until all six digits are in: the code has a fixed length, one digit short is always wrong.
-        disabled={busy || code.length < OTP_LENGTH}
-        onClick={() => void confirm()}
+      {/* A form so Enter in the code input confirms; a disabled submit button blocks Enter as well. */}
+      <form
+        noValidate
+        className="flex flex-col gap-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void confirm();
+        }}
       >
-        {t('otp.confirm')}
-      </Button>
+        <Field>
+          <FieldLabel htmlFor="firstCode">{t('otp.firstCode')}</FieldLabel>
+          <OtpInput id="firstCode" value={code} onChange={setCode} />
+        </Field>
+        <Button
+          type="submit"
+          className="w-full"
+          // Not clickable until all six digits are in: the code has a fixed length, one digit short is always wrong.
+          disabled={busy || code.length < OTP_LENGTH}
+        >
+          {t('otp.confirm')}
+        </Button>
+      </form>
     </div>
   );
 }

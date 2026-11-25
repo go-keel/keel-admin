@@ -129,9 +129,7 @@ func testNoticeBatchAndFilters(t *testing.T, e *env) {
 }
 
 // Basis: notice.proto ListNoticeRequest.keyword ("fuzzy match on the title"); internal/data/notice.go List. The
-// keyword goes into LIKE unescaped, so % and _ act as wildcards, unlike the kernel's keywords
-// (internal/core/sys/data/like.go); no document states which is intended, and this test pins the current behaviour on
-// both databases.
+// keyword matches literally, as the kernel's keywords do (internal/core/sys/data/like.go): % and _ are not wildcards.
 func testNoticeKeyword(t *testing.T, e *env) {
 	root := e.root()
 	tag := uniq("kw")
@@ -142,8 +140,8 @@ func testNoticeKeyword(t *testing.T, e *env) {
 	mustHave(t, "plain keyword", plain, wild)
 	mustHave(t, "Chinese keyword", noticeIDs(t, root, q("keyword", "off 公", "limit", 200)), lit)
 	got := noticeIDs(t, root, q("keyword", tag+" 50%_off", "limit", 200))
-	mustHave(t, "wildcard keyword", got, lit)
-	mustHave(t, "wildcard keyword (unescaped)", got, wild)
+	mustHave(t, "literal keyword", got, lit)
+	mustLack(t, "literal keyword", got, wild)
 	upper := noticeIDs(t, root, q("keyword", "KW", "limit", 200))
 	mustHave(t, "case-insensitive keyword", upper, lit)
 }

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  api,
   applyRequestHeaders,
   dispatchError,
   performErrorAction,
@@ -100,5 +101,24 @@ describe('performErrorAction: the same message does not stack', () => {
     for (const call of toastError.mock.calls) {
       expect(call).toEqual(['Invalid request', { id: 'Invalid request' }]);
     }
+  });
+});
+
+describe('network failure: one localized toast, not the browser wording', () => {
+  it('several requests failing at once give one toast ID, never "Failed to fetch"', async () => {
+    // An absolute baseUrl only because Node's Request rejects the relative one the browser resolves.
+    const init = {
+      baseUrl: 'http://localhost',
+      fetch: () => Promise.reject(new TypeError('Failed to fetch')),
+    };
+    await Promise.allSettled([
+      api.GET('/v1/sys/auth/login-meta', init),
+      api.GET('/v1/sys/auth/login-meta', init),
+    ]);
+    expect(toastError).toHaveBeenCalledTimes(2);
+    const [first, second] = toastError.mock.calls;
+    expect(first).toEqual(second);
+    expect(first?.[0]).not.toContain('Failed to fetch');
+    expect(first?.[1]).toEqual({ id: first?.[0] });
   });
 });

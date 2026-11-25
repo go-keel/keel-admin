@@ -33,7 +33,7 @@ const shortcuts: { path: NavLeaf['path']; icon: LucideIcon }[] = [
   { path: '/sys/audit', icon: ScrollTextIcon },
 ];
 
-/** Landing page (`/`): the page title and the shortcuts the current account may open. */
+/** Landing page (`/`): the shortcuts the current account may open; the page name shows in the header only. */
 function HomePage() {
   const { t } = useTranslation('app');
   const profile = useProfile();
@@ -47,8 +47,6 @@ function HomePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-3xl">{t('workbench.title')}</h1>
-
       {entries.length > 0 && (
         <section className="flex flex-col gap-3">
           <h2 className="font-medium text-muted-foreground text-sm">

@@ -6,6 +6,8 @@ import { api, unwrap } from '@/lib/api';
 import { defineList, type ListSearch } from '@/lib/list';
 import { queryClient } from '@/lib/query';
 import { PAGE_SIZES } from '@/lib/table';
+import { todayIn } from '@/lib/time-range';
+import { getBusinessTimeZone } from '@/lib/timezone';
 import { toCsv } from './-logic';
 
 /**
@@ -122,11 +124,9 @@ export async function exportNotices(
     ...rows.map((r) => columns.map((c) => c.value(r))),
   ]);
 
-  // BOM: without it Excel reads UTF-8 in the local code page and all non-ASCII text turns into mojibake.
-  download(
-    `notices-${new Date().toISOString().slice(0, 10)}.csv`,
-    `\uFEFF${csv}`,
-  );
+  // BOM: without it Excel reads UTF-8 in the local code page and all non-ASCII text turns into mojibake. The date in
+  // the name is today's business day, not the UTC date, which is still yesterday for hours east of UTC.
+  download(`notices-${todayIn(getBusinessTimeZone())}.csv`, `\uFEFF${csv}`);
 }
 
 function download(filename: string, text: string): void {

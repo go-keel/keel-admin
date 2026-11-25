@@ -34,7 +34,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useDetailForm } from '@/lib/form';
+import { asSet, useDetailForm } from '@/lib/form';
 import { tDynamic } from '@/lib/i18n';
 import {
   catalogOf,
@@ -73,6 +73,9 @@ const EMPTY: RoleFormValues = {
   manageDeptIds: [],
   scopes: [],
 };
+
+/** Data scope entries are one per resource: their set key for `asSet`. */
+const byResource = (s: DataScopeItem) => s.resourceType ?? '';
 
 /**
  * Matches the constraints of the server's CreateRoleRequest / UpdateRoleRequest; the server is still the last gate. The
@@ -151,17 +154,20 @@ export function RoleForm({
             status: r.status ?? 1,
             sensitive: r.sensitive ?? 0,
             forceOtp: r.forceOtp ?? 0,
-            perms: r.perms ?? [],
-            assignableRoleIds: (r.assignableRoles ?? []).map((x) => x.id ?? ''),
-            manageDeptIds: (r.manageDepts ?? []).map((x) => x.id ?? ''),
-            scopes: r.scopes ?? [],
+            perms: asSet(r.perms ?? []),
+            assignableRoleIds: asSet(
+              (r.assignableRoles ?? []).map((x) => x.id ?? ''),
+            ),
+            manageDeptIds: asSet((r.manageDepts ?? []).map((x) => x.id ?? '')),
+            scopes: asSet(r.scopes ?? [], byResource),
           }),
         }
       : undefined,
   });
 
   // The permission tree, assignable roles, manageable departments and data scope are custom composite controls: they
-  // read with watch, write with setValue and mark themselves dirty, so "Discard unsaved changes" recognises them.
+  // read with watch, write with setValue and mark themselves dirty, so "Discard unsaved changes" recognises them. Every
+  // write goes through asSet, so restoring the original selection counts as unchanged.
   const [selectedPerms, assignable, manageDepts, scopes] = form.watch([
     'perms',
     'assignableRoleIds',
@@ -178,7 +184,11 @@ export function RoleForm({
     const next = { ...cur, ...patch };
     // No scope type selected = this resource has no scope, so remove the entry entirely rather than keeping an empty
     // one.
-    form.setValue('scopes', next.scopeType ? [...rest, next] : rest, dirty);
+    form.setValue(
+      'scopes',
+      asSet(next.scopeType ? [...rest, next] : rest, byResource),
+      dirty,
+    );
   };
 
   return (
@@ -281,7 +291,7 @@ export function RoleForm({
           defs={perms?.items ?? []}
           groups={perms?.groups ?? []}
           selected={selectedPerms}
-          onChange={(next) => form.setValue('perms', next, dirty)}
+          onChange={(next) => form.setValue('perms', asSet(next), dirty)}
         />
       </Section>
 
@@ -299,9 +309,11 @@ export function RoleForm({
                 onChange={(c) =>
                   form.setValue(
                     'assignableRoleIds',
-                    c
-                      ? [...assignable, x.id ?? '']
-                      : assignable.filter((y) => y !== x.id),
+                    asSet(
+                      c
+                        ? [...assignable, x.id ?? '']
+                        : assignable.filter((y) => y !== x.id),
+                    ),
                     dirty,
                   )
                 }
@@ -322,9 +334,11 @@ export function RoleForm({
               onChange={(c) =>
                 form.setValue(
                   'manageDeptIds',
-                  c
-                    ? [...manageDepts, d.id ?? '']
-                    : manageDepts.filter((y) => y !== d.id),
+                  asSet(
+                    c
+                      ? [...manageDepts, d.id ?? '']
+                      : manageDepts.filter((y) => y !== d.id),
+                  ),
                   dirty,
                 )
               }

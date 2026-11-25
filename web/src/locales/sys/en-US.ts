@@ -24,6 +24,7 @@ export default {
     favorites: 'My Favorites',
     favorite: 'Add to favorites',
     unfavorite: 'Remove from favorites',
+    toggleSidebar: 'Toggle sidebar',
   },
   filter: {
     search: 'Search',
@@ -301,6 +302,7 @@ export default {
   },
   network: {
     offline: 'You are offline. Check your network connection.',
+    requestFailed: 'Could not reach the server. Check your network connection.',
   },
   error: {
     home: 'Back to home',

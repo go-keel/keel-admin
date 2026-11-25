@@ -1,3 +1,4 @@
+import i18n from 'i18next';
 import createClient, { type Middleware } from 'openapi-fetch';
 import { toast } from 'sonner';
 import type { ErrorReason } from '@/generated/error-reason';
@@ -167,9 +168,13 @@ const errorMiddleware: Middleware = {
       dispatchError(await readErrorBody(response), response.statusText),
     );
   },
-  onError({ error }) {
-    // Network down / timeout: the server never answered, fall back to the browser's wording.
-    toast.error(error instanceof Error ? error.message : String(error));
+  onError() {
+    // Network down / timeout: the server never answered. The browser's wording ("Failed to fetch") is neither
+    // localized nor useful, and every request in flight fails at once, so one fixed text deduplicated by its ID.
+    performErrorAction({
+      kind: 'toast',
+      text: i18n.t('network.requestFailed'),
+    });
   },
 };
 
