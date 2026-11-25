@@ -1,5 +1,6 @@
 # Both databases are required (config.yaml already configures each). This file is an overlay merged key by key: write
-# only the entry you change on this machine; the other one keeps the value from config.yaml.
+# only the entry you change on this machine; the other one keeps the value from config.yaml. For PostgreSQL see the
+# database section of config.yaml.
 database:
   default: # business database
     driver: mysql

@@ -4,15 +4,15 @@
 # Testing: permissions, data scope and the frontend
 
 Read this when writing tests in an admin built on keel-admin, after `docs/guides/testing.md`: the guide covers fakes,
-table-driven tests, service tests and data tests on MySQL at the storage boundary; this page covers only what the admin
-adds. `<app>` is the entry directory name.
+table-driven tests, service tests and data tests on real databases at the storage boundary; this page covers only what
+the admin adds. `<app>` is the entry directory name.
 
 ## Backend seams the admin adds
 
 | Under test | Seam | Dependencies |
 |---|---|---|
 | Data scope branches in biz | A fake `perm.ScopeResolver` injecting a fixed `ScopeSpec` | No infrastructure |
-| Data scope filtering in data | The WHERE built by `permdata.ApplyScope`, run on MySQL (`make integration`) | MySQL |
+| Data scope filtering in data | The WHERE built by `permdata.ApplyScope`, run on every dialect kept (`make integration`) | MySQL, PostgreSQL |
 | Permission registration | Kernel and business batches registered together, then `perm.Seal` on di.go's HTTP services (`cmd/<app>/registration_test.go`) | None |
 | Middleware order (authentication before principal / authz / audit) | `cmd/<app>/chain_order_test.go`, already written upstream | None |
 
@@ -47,13 +47,22 @@ and audit actions is tested here too.
 
 ## Real-database tests
 
-Business data tests are `*_integration_test.go` files with `//go:build integration`, run by `make integration` with
-`TEST_MYSQL_DSN`. Each package's `openTestDB` creates a fresh database, applies complete schemas and drops it
-afterwards; a missing variable fails the test. The kernel's copy (`internal/core/sys/data/`) applies only
-`migrations/admin/0_schema.sql`, since kernel tests touch only `sys_*` tables. The business area's copy
-(`internal/data/`) applies every `migrations/*/0_schema.sql`; it is this repository's own, so when a directory holds
-another engine's DDL (Doris, say), narrow its list to the MySQL databases.
-Concurrency tests (locks, unique keys) use the same helper; kernel examples: the concurrent role save and user edit tests in `internal/core/sys/data/`.
+Data tests are `*_integration_test.go` files with `//go:build integration`, run by `make integration` with
+`TEST_MYSQL_DSN` and `TEST_POSTGRES_DSN`; a missing variable for a dialect the repository runs on fails the test. The
+helper is the kernel's `internal/core/testdb` (`testdb.ForEachDB`): once per dialect the repository runs on (those every
+`migrations/<database>/` has; `migrations/admin/` keeps both, so the business directories decide), it creates a fresh
+database, applies the complete schemas of the databases it is given and drops it afterwards. Each package wraps it in
+a `forEachDB` whose callback receives a `*gorm.DB`, the handle `Data` holds:
+
+- the kernel's (`internal/core/sys/data/`) applies only `migrations/admin/<dialect>/0_schema.sql`, since kernel tests
+  touch only `sys_*` tables, and deletes the root seed so each test inserts exactly the rows it asserts on;
+- the business area's (`internal/data/testdb_integration_test.go`) applies every `migrations/*/<dialect>/0_schema.sql`;
+  it is this repository's own, so a database that is not MySQL or PostgreSQL (Doris, say) stays out of `migrations/`
+  or out of its list.
+
+Concurrency tests (locks, unique keys) use the same helper and so run under both MySQL's repeatable read and
+PostgreSQL's read committed; kernel examples: the concurrent role save and user edit tests in
+`internal/core/sys/data/`. Seed rows give every `NOT NULL` column without a default, as the real tables require.
 
 ## Frontend tests
 

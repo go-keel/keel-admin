@@ -1,3 +1,5 @@
+//go:build integration
+
 package data
 
 import (
@@ -9,37 +11,14 @@ import (
 	coredata "github.com/go-keel/keel-admin/internal/core/data"
 )
 
-// roleSoftDeleteTestDB creates the minimal role/association schema. The main
-// row is soft-deleted; associations deliberately remain as historical
-// configuration and every runtime query must anchor itself to active sys_role.
-func roleSoftDeleteTestDB(t *testing.T) *gorm.DB {
+// seedRoleSoftDelete inserts roles with a row in every association table. The main row is soft-deleted later;
+// associations deliberately remain as historical configuration and every runtime query must anchor itself to active
+// sys_role.
+func seedRoleSoftDelete(t *testing.T, db *gorm.DB) {
 	t.Helper()
-	db := openMemoryDB(t, &gorm.Config{})
-	ddl := []string{
-		`CREATE TABLE sys_role (
-			id INTEGER PRIMARY KEY, code TEXT, name TEXT, sensitive INTEGER,
-			force_otp INTEGER, status INTEGER, created_at DATETIME,
-			updated_at DATETIME, deleted_at DATETIME
-		)`,
-		`CREATE TABLE sys_user_role (user_id INTEGER, role_id INTEGER)`,
-		`CREATE TABLE sys_role_permission (role_id INTEGER, perm_code TEXT)`,
-		`CREATE TABLE sys_role_data_scope (
-			id INTEGER PRIMARY KEY, role_id INTEGER, resource_type TEXT, scope_type TEXT,
-			created_at DATETIME
-		)`,
-		`CREATE TABLE sys_role_resource_grant (role_id INTEGER, resource_type TEXT, resource_id INTEGER)`,
-		`CREATE TABLE sys_role_manage_dept (role_id INTEGER, dept_id INTEGER)`,
-		`CREATE TABLE sys_role_assignable (role_id INTEGER, assignable_role_id INTEGER)`,
-	}
-	for _, stmt := range ddl {
-		if err := db.Exec(stmt).Error; err != nil {
-			t.Fatalf("create table: %v", err)
-		}
-	}
-
 	// Role 5: one row in every association table. Soft delete must retain them.
 	seed := []string{
-		`INSERT INTO sys_role (id, code, name, sensitive, force_otp, status) VALUES (5, 'r5', 'R5', 0, 1, 1)`,
+		`INSERT INTO sys_role (id, code, name, force_otp, status) VALUES (5, 'r5', 'R5', 1, 1)`,
 		`INSERT INTO sys_user_role (user_id, role_id) VALUES (1, 5)`,
 		`INSERT INTO sys_role_permission (role_id, perm_code) VALUES (5, 'p:read')`,
 		`INSERT INTO sys_role_data_scope (id, role_id, resource_type, scope_type) VALUES (1, 5, 'order', 'ALL')`,
@@ -48,7 +27,7 @@ func roleSoftDeleteTestDB(t *testing.T) *gorm.DB {
 		`INSERT INTO sys_role_assignable (role_id, assignable_role_id) VALUES (5, 6)`,
 		// Role 9 references role 5 as assignable. The row remains for history,
 		// but active ARBAC queries must not expose deleted target 5.
-		`INSERT INTO sys_role (id, code, name, sensitive, force_otp, status) VALUES (9, 'r9', 'R9', 0, 0, 1)`,
+		`INSERT INTO sys_role (id, code, name, force_otp, status) VALUES (9, 'r9', 'R9', 0, 1)`,
 		`INSERT INTO sys_role_assignable (role_id, assignable_role_id) VALUES (9, 5)`,
 		`INSERT INTO sys_user_role (user_id, role_id) VALUES (2, 9)`,
 		`INSERT INTO sys_role_permission (role_id, perm_code) VALUES (9, 'p:write')`,
@@ -58,11 +37,14 @@ func roleSoftDeleteTestDB(t *testing.T) *gorm.DB {
 			t.Fatalf("seed: %v", err)
 		}
 	}
-	return db
 }
 
 func TestRoleDeleteSoftDeletesAndRevokesAtReadBoundary(t *testing.T) {
-	db := roleSoftDeleteTestDB(t)
+	forEachDB(t, testRoleDeleteSoftDeletesAndRevokesAtReadBoundary)
+}
+
+func testRoleDeleteSoftDeletesAndRevokesAtReadBoundary(t *testing.T, db *gorm.DB) {
+	seedRoleSoftDelete(t, db)
 	repo := NewRoleRepo(&coredata.Data{DB: db})
 
 	if err := repo.Delete(context.Background(), 5); err != nil {

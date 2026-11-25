@@ -57,19 +57,22 @@ make init          # install buf (the other plugins are pinned)
 (cd web && pnpm install)   # make proto uses the frontend's openapi-typescript
 make all           # proto + config + generate
 
-# Create tables (a new database runs the complete schema in migrations/<database>/0_schema.sql by hand; a local
+# Create tables (a new database runs the complete schema in migrations/<database>/<dialect>/0_schema.sql by hand; a local
 # example; the root seed is built into the end of the script and is idempotent). Two databases: the business
 # database keel-biz (database.default) and the admin database keel-admin (database.admin); config.yaml requires both.
 # root's initial password is admin888. root must bind an authenticator app (TOTP) at its first sign-in: the login
 # returns only a binding step, and the session starts once a code from the app confirms it. Then change the password
 # in the personal center right away, on every new deployment. Do not edit the script: it is kernel, and the next upgrade overwrites it.
 mysql -h127.0.0.1 -uroot -p -e 'CREATE DATABASE IF NOT EXISTS `keel-admin`; CREATE DATABASE IF NOT EXISTS `keel-biz`;'
-mysql -h127.0.0.1 -uroot -p keel-admin < migrations/admin/0_schema.sql
-mysql -h127.0.0.1 -uroot -p keel-biz   < migrations/business/0_schema.sql
+mysql -h127.0.0.1 -uroot -p keel-admin < migrations/admin/mysql/0_schema.sql
+mysql -h127.0.0.1 -uroot -p keel-biz   < migrations/business/mysql/0_schema.sql
+# On PostgreSQL: create the two databases, run migrations/admin/postgres/0_schema.sql and
+# migrations/business/postgres/0_schema.sql with psql -v ON_ERROR_STOP=1 -f, and switch driver, source and the
+# driver import as the database section of configs/config.yaml says.
 
 make build-web     # build the frontend (web/dist)
 make build         # build bin/admin
-# Needs MySQL and Redis (127.0.0.1:6379). Put your own connection strings in configs/config.dev.yaml
+# Needs MySQL or PostgreSQL, and Redis (127.0.0.1:6379). Put your own connection strings in configs/config.dev.yaml
 # (copy configs/config.dev.example.yaml); it is not committed.
 ./bin/admin        # :8080
 ```
@@ -216,8 +219,8 @@ imports the compiler now reports as unused. Three steps, in this order:
    `make rename` points at it.
 
    What is left empty stays as the place for your first module: `internal/biz/errors.go`, `internal/data/model.go`
-   and `internal/service/http.go` with only their package clause and comments, `migrations/business/0_schema.sql`
-   with only `SET NAMES`, the empty `nav: {}` in `web/src/locales/app/` and the `registerTimeZones()` call with no
+   and `internal/service/http.go` with only their package clause and comments, `migrations/business/mysql/0_schema.sql`
+   with only `SET NAMES` and `migrations/business/postgres/0_schema.sql` with only the `ci` collation, the empty `nav: {}` in `web/src/locales/app/` and the `registerTimeZones()` call with no
    entries. Delete the emptied directory `web/src/routes/_app/notices/`. Finally run `make check`.
 
 Both greps exclude `*.pb.go`: the marker comments are carried into generated artifacts, and the hits there vanish

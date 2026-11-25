@@ -21,8 +21,8 @@ Read this before deploying an admin, or changing the `sys:` section of app.yaml.
 - The session token travels in an httpOnly cookie (`SameSite=Strict` against CSRF; `Secure` requires
   `sys.cookie_secure=true` in production, with no TLS sniffing, since `r.TLS` is always nil behind a reverse proxy), see
   `sessions-and-audit.md` §8;
-- Upstream ships only complete schemas, `migrations/admin/0_schema.sql` and `migrations/business/0_schema.sql`,
-  updated in place, with no incremental migrations; no AutoMigrate. Which directory belongs to whom and how this
+- Upstream ships only complete schemas, `migrations/admin/<dialect>/0_schema.sql` and
+  `migrations/business/<dialect>/0_schema.sql` for MySQL and PostgreSQL, updated in place, with no incremental migrations; no AutoMigrate. Which directory belongs to whom and how this
   repository's own tables are scripted: `docs/admin/domain-model.md`, "Schema";
 - When a new business resource joins scope, code review must check (`data-scope.md` §5.5): the table has the
   `owner_user_id`/ `owner_dept_id` ownership columns (matching the declared anchors), **every path

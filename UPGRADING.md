@@ -3,6 +3,34 @@
 This file holds entries only, one per change that actually happened; how to write entries and how to follow
 upstream: `docs/upgrading-protocol.md`.
 
+## 2026-11-24 · 1
+
+> Follows keel-layout 6ae3cd9
+
+**What changed.** The admin runs on MySQL or PostgreSQL. Schema scripts moved into one directory per dialect:
+`migrations/admin/{mysql,postgres}/0_schema.sql` (kernel) and `migrations/business/{mysql,postgres}/0_schema.sql`. Data
+tests no longer use in-memory sqlite: every data-layer test is a `*_integration_test.go` on real databases, through the
+kernel's new `internal/core/testdb` (`testdb.ForEachDB`), once per dialect every `migrations/<database>/` has; the
+`github.com/glebarez/sqlite` dependency is gone. Each package's `openTestDB(t)` became `forEachDB(t, fn)`.
+
+**Why.** Keel's database component supports both databases, but the admin only ever ran on MySQL, and sqlite hid
+MySQL behaviour from the data tests (reserved words, locking, case-insensitive usernames). Testing on the dialects a
+repository actually runs catches it.
+
+**How to apply.**
+
+1. `make sync-upstream`: it writes the kernel (`internal/core/`, including `internal/core/testdb/`), both dialect
+   directories of `migrations/admin/`, and the shared docs.
+2. Move `migrations/business/*.sql` (and any other business database's scripts) into `migrations/<database>/mysql/`,
+   or `postgres/` if you run on PostgreSQL. Tests run on the dialects every database directory has, so keep the other
+   dialect only if you mean to support it.
+3. Replace `internal/data/testdb_integration_test.go` with upstream's (a `forEachDB` wrapping `testdb.ForEachDB`), and
+   in each business `*_integration_test.go` wrap the body as
+   `forEachDB(t, func(t *testing.T, db *gorm.DB) { … })` instead of `db := openTestDB(t)`. Business tests that ran on
+   sqlite move the same way, renamed to `*_integration_test.go` with `//go:build integration`; seed rows then need
+   every `NOT NULL` column without a default.
+4. `go mod tidy`, set `TEST_POSTGRES_DSN` if you kept PostgreSQL, and run `make integration`.
+
 ## 2026-11-19 · 3
 
 **What changed.** `UserSettings` (`api/keel_admin/v1/auth.proto`) belongs to the kernel alone; field numbers from 100

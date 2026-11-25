@@ -1,7 +1,8 @@
 -- Complete schema of the business database, separate from the sys_* tables of the admin database (see
 -- migrations/admin/): this file runs against the business database that database.default in config.yaml points to;
--- both databases are required. Directories, baseline and incremental scripts: docs/guides/domain-model.md, "Schema".
---   mysql -h127.0.0.1 -uroot -p <business database> < migrations/business/0_schema.sql
+-- both databases are required. The PostgreSQL version is ../postgres/0_schema.sql; a change goes into both.
+-- Directories, baseline and incremental scripts: docs/guides/domain-model.md, "Schema".
+--   mysql -h127.0.0.1 -uroot -p <business database> < migrations/business/mysql/0_schema.sql
 -- Data scope filtering (permdata.ApplyScope) applies only to the business tables' own owner columns, with no
 -- cross-database JOIN, so two databases and one (both sources set to the same DSN) behave the same.
 

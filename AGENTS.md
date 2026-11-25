@@ -175,8 +175,8 @@ them (`README.md`, "Delete the examples"; files are marked `Example file: delete
   (categories are an explicitly assigned resource; notices are gated by `category_id`), audit and frontend pages.
   Backend `api/admin_app/v1/notice.proto` → `internal/service/notice.go`, `internal/service/notice_perm.go` →
   `internal/biz/notice.go` → `internal/data/notice.go`, `internal/data/model.go`; tests `internal/biz/notice_test.go`,
-  `internal/data/notice_integration_test.go` (MySQL, under `make integration`); table script
-  `migrations/business/0_schema.sql`; frontend `web/src/routes/_app/notices/` and the two notice
+  `internal/data/notice_integration_test.go` (MySQL and PostgreSQL, under `make integration`); table scripts
+  `migrations/business/{mysql,postgres}/0_schema.sql`; frontend `web/src/routes/_app/notices/` and the two notice
   shortcuts on the workbench (`web/src/routes/_app/index.tsx`).
 - **Japanese (`ja-JP`)**: the five steps of adding a UI language (`docs/admin/shell.md`, "Adding a UI language"):
   `web/src/languages.ts`, `web/src/locales/app/ja-JP.ts`, `web/src/locales/sys/ja-JP.ts`, `internal/i18n/app.ja.toml`

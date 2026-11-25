@@ -263,8 +263,8 @@ func (r *noticeRepo) DeleteCategory(ctx context.Context, id int64) error {
 // cannot drift apart.
 //
 // When the category does not exist, MySQL locks a gap on the primary key; the caller rolls back at once without
-// inserting into that gap, so it waits on nobody. sqlite ignores FOR UPDATE (it has no row locks), but "not found in
-// the transaction means it does not exist" still holds.
+// inserting into that gap, so it waits on nobody. PostgreSQL has no gap locks and locks nothing then, but "not found
+// in the transaction means it does not exist" still holds: the concurrent create-versus-delete test runs on both.
 func lockCategory(tx *gorm.DB, id int64) error {
 	err := tx.Clauses(clause.Locking{Strength: clause.LockingStrengthUpdate}).
 		Select("id").Where("id = ?", id).First(&noticeCategory{}).Error

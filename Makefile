@@ -201,9 +201,10 @@ root-hash: ## Generate the root password hash: make root-hash PASS=yourpass
 check-mod:
 	GOWORK=off go build ./...
 
-# Real-database tests (build tag integration): the same data-layer cases as make check, on a fresh MySQL database
-# built from the complete schemas under migrations/ (which ones: docs/admin/testing.md). Needs TEST_MYSQL_DSN, e.g.
-# 'root:keel@tcp(127.0.0.1:53306)/?parseTime=true'; a missing variable fails. Not part of make check.
+# Real-database tests (build tag integration): the data-layer cases, once per dialect kept under migrations/, each on a
+# fresh database built from the complete schemas of that dialect (which ones: docs/admin/testing.md). Needs
+# TEST_MYSQL_DSN, e.g. 'root:pass@tcp(127.0.0.1:3306)/?parseTime=true', and TEST_POSTGRES_DSN, e.g.
+# 'postgres://postgres:pass@127.0.0.1:5432/postgres?sslmode=disable'; a missing variable fails. Not part of make check.
 .PHONY: integration
 integration:
 	GOWORK=off go test -race -tags integration -count=1 -p 1 ./...

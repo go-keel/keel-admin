@@ -39,20 +39,22 @@ cross-database order works the same way (`internal/core/sys/data/scope.go`). How
 ## Schema: one directory per database
 
 The scripts follow the guide's "Schema: hand-run .sql scripts only" (complete schema, baseline, incremental scripts),
-one directory per database:
+one directory per database, and in it one per dialect (`mysql/`, `postgres/`):
 
 | Directory | Tables | Run against | Who owns it |
 |---|---|---|---|
 | `migrations/admin/` | kernel tables (`sys_*`) | admin database (`database.admin`) | the kernel: fixed name, overwritten whole when following upstream |
 | `migrations/business/` | business tables | business database (`database.default`) | this repository: the default directory, renamed or joined by more as it likes |
 
-- **`migrations/admin/` holds only `0_schema.sql`**, the upstream complete schema; this repository never edits it and
-  never adds a baseline or incremental scripts there. The `ALTER` an existing admin database needs is in the matching
+- **`migrations/admin/` holds only `<dialect>/0_schema.sql`**, the upstream complete schema per dialect; this
+  repository never edits it and never adds a baseline or incremental scripts there. Upstream keeps both dialects;
+  `make integration` runs the kernel tests on every dialect left there. The `ALTER` an existing admin database needs is in the matching
   `UPGRADING.md` entry.
-- **The business directories are this repository's own**: upstream ships `migrations/business/0_schema.sql` with the
-  example tables only, and this repository manages its business databases by the guide's rules from there on. One
+- **The business directories are this repository's own**: upstream ships `migrations/business/<dialect>/0_schema.sql`
+  with the example tables only, and this repository manages its business databases by the guide's rules from there on. One
   more business database means one more directory under `migrations/`.
-- Only the MySQL dialect is shipped; another dialect needs the DDL ported.
+- **Both databases run the same dialect** (`database.admin.driver` and `database.default.driver` match), and `cmd/<app>`
+  blank-imports that dialect's `kdb` package.
 
 ## Table design choices each repository makes
 
@@ -63,7 +65,7 @@ follows. Some kernel columns predate these choices; follow this list, not the ke
   reserved words (`sensitive` is a MySQL reserved word). The kernel's existing columns mix `is_root`, `otp_bound`,
   `force_otp` and `sensitive`.
 - **Two-state columns use `bool` in Go.** The kernel's existing two-state columns are `int8` in the PO, with column
-  type `TINYINT(1)`.
+  type `TINYINT(1)` (`SMALLINT` on PostgreSQL).
 - **An ID column meaning "none" uses `0`**, not NULL (`sys_dept.parent_id = 0` is a top-level department).
 
 ## Soft deletes and time

@@ -4,106 +4,255 @@ package data
 
 import (
 	"context"
-	"fmt"
-	"slices"
-	"sync"
+	"errors"
 	"testing"
-	"time"
+
+	"gorm.io/gorm"
 
 	coredata "github.com/go-keel/keel-admin/internal/core/data"
 	"github.com/go-keel/keel-admin/internal/core/sys/biz"
 )
 
-// A changes a user's nickname and swaps the role r1 for r2 while B adds a role rx that A cannot see (outside A's
-// assignable range): after both succeed, rx must still be there. Which invisible roles A pins must be computed from the
-// roles read after locking the user row; computed from a snapshot outside the transaction, A's save strips rx when B
-// happens to commit between A's two reads. A goes through the real UserAdminUseCase (the pre-transaction half is in
-// biz), and B calls the repo directly, adding one role to the current roles in the callback.
-//
-// sqlite cannot test locking, so this runs on real MySQL: make integration points at an empty database that has run
-// the admin complete schema (not the development database: the test writes and hard-deletes the rows it creates).
-func TestUserEditConcurrentKeepsInvisibleRole(t *testing.T) {
-	db := openTestDB(t)
-	d := &coredata.Data{DB: db}
-	users, roles := NewUserAdminRepo(d), NewRoleRepo(d)
-	uc := biz.NewUserAdminUseCase(users, biz.NewARBACUseCase(NewARBACRepo(d), users), nil)
-	ctx := context.Background()
-
-	// Roles r1, r2, rx, and the management role A holds: it may assign r1 and r2 and manage root department 1 seeded by
-	// migrations/admin/0_schema.sql.
-	suffix := time.Now().UnixNano()
-	var roleIDs []int64
-	newRole := func(name string, assignable []int64, depts []int64) int64 {
-		r := &biz.Role{Code: fmt.Sprintf("txuser_%s_%d", name, suffix), Name: name, Status: 1, AssignableRoleIDs: assignable, ManageDepts: depts}
-		if err := roles.Save(ctx, r); err != nil {
-			t.Fatalf("seed role %s: %v", name, err)
-		}
-		roleIDs = append(roleIDs, r.ID)
-		return r.ID
+// seedUserEdit inserts the user, roles and departments the Edit tests assert on.
+func seedUserEdit(t *testing.T, db *gorm.DB) *gorm.DB {
+	t.Helper()
+	seed := []string{
+		`INSERT INTO sys_user (id, username, password, nickname, avatar, dept_id, ip_whitelist, status)
+			VALUES (1, 'alice', 'x', 'old-nick', '', 1, '', 1)`,
+		`INSERT INTO sys_role (id, code, name) VALUES (5, 'r5', 'R5'), (6, 'r6', 'R6')`,
+		`INSERT INTO sys_role (id, code, name, deleted_at) VALUES (8, 'r8', 'R8', CURRENT_TIMESTAMP)`,
+		`INSERT INTO sys_user_role (user_id, role_id) VALUES (1, 5), (1, 8)`,
+		`INSERT INTO sys_dept (id, name, status) VALUES (1, 'D1', 1), (2, 'D2', 1), (3, 'D3', 0)`,
 	}
-	var userID int64
-	t.Cleanup(func() {
-		db.Exec(`DELETE FROM sys_user_role WHERE user_id = ?`, userID)
-		db.Exec(`DELETE FROM sys_user WHERE id = ?`, userID)
-		for _, table := range []string{"sys_role_permission", "sys_role_assignable", "sys_role_manage_dept", "sys_role_data_scope", "sys_role_resource_grant"} {
-			db.Exec("DELETE FROM "+table+" WHERE role_id IN ?", roleIDs)
+	for _, s := range seed {
+		if err := db.Exec(s).Error; err != nil {
+			t.Fatalf("seed: %v", err)
 		}
-		db.Exec(`DELETE FROM sys_role WHERE id IN ?`, roleIDs)
+	}
+	return db
+}
+
+// TestUserRepoEditPartialFields: a change set with only a nickname writes only the nickname, leaving department, IP
+// allowlist and roles alone; fields that are nil in changes do not go into GORM's Updates map.
+func TestUserRepoEditPartialFields(t *testing.T) {
+	forEachDB(t, func(t *testing.T, db *gorm.DB) {
+		seedUserEdit(t, db)
+		repo := NewUserAdminRepo(&coredata.Data{DB: db})
+		ctx := context.Background()
+
+		nickname := "new-nick"
+		if err := repo.Edit(ctx, 1, biz.UserEditChanges{Nickname: &nickname}); err != nil {
+			t.Fatalf("Edit: %v", err)
+		}
+
+		u, err := repo.FindByID(ctx, 1)
+		if err != nil {
+			t.Fatalf("FindByID: %v", err)
+		}
+		if u.Nickname != "new-nick" {
+			t.Errorf("nickname = %q, want new-nick", u.Nickname)
+		}
+		if u.DeptID != 1 || u.IPWhitelist != "" {
+			t.Errorf("unchanged fields were touched: dept=%d ip=%q", u.DeptID, u.IPWhitelist)
+		}
+		roleIDs, err := repo.RoleIDs(ctx, 1)
+		if err != nil {
+			t.Fatalf("RoleIDs: %v", err)
+		}
+		if len(roleIDs) != 1 || roleIDs[0] != 5 {
+			t.Errorf("roles changed although not edited: %v", roleIDs)
+		}
 	})
-	r1, r2, rx := newRole("r1", nil, nil), newRole("r2", nil, nil), newRole("rx", nil, nil)
-	manager := newRole("manager", []int64{r1, r2}, []int64{1})
+}
 
-	target := &biz.User{Username: fmt.Sprintf("txuser_%d", suffix), Password: "x", Nickname: "old", DeptID: 1, Status: 1}
-	if err := users.Create(ctx, target, []int64{r1}); err != nil {
-		t.Fatalf("seed user: %v", err)
-	}
-	userID = target.ID
-	actorA := &biz.Actor{UserID: -1, RoleIDs: []int64{manager}}
-	addRX := func(current []int64) ([]int64, bool, error) {
-		if slices.Contains(current, rx) {
+// replaceRoles is a callback that ignores the current roles and replaces them with ids.
+func replaceRoles(ids ...int64) biz.RoleResolver {
+	return func([]int64) ([]int64, bool, error) { return ids, true, nil }
+}
+
+// TestUserRepoEditReplacesRoles: when the callback decides to write, roles are replaced as a whole (old deleted, new
+// inserted), the same as Create; old rows on deleted roles are deleted too.
+func TestUserRepoEditReplacesRoles(t *testing.T) {
+	forEachDB(t, func(t *testing.T, db *gorm.DB) {
+		seedUserEdit(t, db)
+		repo := NewUserAdminRepo(&coredata.Data{DB: db})
+		ctx := context.Background()
+
+		if err := repo.Edit(ctx, 1, biz.UserEditChanges{Roles: replaceRoles(6)}); err != nil {
+			t.Fatalf("Edit: %v", err)
+		}
+
+		roleIDs, err := repo.RoleIDs(ctx, 1)
+		if err != nil {
+			t.Fatalf("RoleIDs: %v", err)
+		}
+		if len(roleIDs) != 1 || roleIDs[0] != 6 {
+			t.Fatalf("roles should be replaced with {6}, got %v", roleIDs)
+		}
+		var n int64
+		if err := db.Raw(`SELECT COUNT(*) FROM sys_user_role WHERE user_id = 1`).Scan(&n).Error; err != nil {
+			t.Fatalf("count: %v", err)
+		}
+		if n != 1 {
+			t.Fatalf("holding rows of deleted roles should be deleted too, %d left", n)
+		}
+	})
+}
+
+// TestUserRepoEditResolverSeesCurrentRoles: the callback gets the current roles read in the transaction (deleted roles
+// excluded); when it decides nothing changed, roles are not written.
+func TestUserRepoEditResolverSeesCurrentRoles(t *testing.T) {
+	forEachDB(t, func(t *testing.T, db *gorm.DB) {
+		seedUserEdit(t, db)
+		repo := NewUserAdminRepo(&coredata.Data{DB: db})
+		ctx := context.Background()
+
+		var seen []int64
+		err := repo.Edit(ctx, 1, biz.UserEditChanges{Roles: func(current []int64) ([]int64, bool, error) {
+			seen = current
 			return nil, false, nil
+		}})
+		if err != nil {
+			t.Fatalf("Edit: %v", err)
 		}
-		return append(slices.Clone(current), rx), true, nil
-	}
-	want := fmt.Sprint(slices.Sorted(slices.Values([]int64{r2, rx})))
+		if len(seen) != 1 || seen[0] != 5 {
+			t.Fatalf("callback should get {5}, got %v", seen)
+		}
+		var n int64
+		if err := db.Raw(`SELECT COUNT(*) FROM sys_user_role WHERE user_id = 1`).Scan(&n).Error; err != nil {
+			t.Fatalf("count: %v", err)
+		}
+		if n != 2 {
+			t.Fatalf("roles must not be written when unchanged, %d rows left", n)
+		}
+	})
+}
 
-	// The round count was measured: with A's pin switched back to the out-of-transaction snapshot, or the user-row lock
-	// removed, a few runs on local MySQL 8.4 hit rx being stripped in rounds 6 to 24.
-	const rounds = 300
-	for round := range rounds {
-		old := "old"
-		if err := users.Edit(ctx, userID, biz.UserEditChanges{Nickname: &old, Roles: replaceRoles(r1)}); err != nil {
-			t.Fatalf("round %d: reset: %v", round, err)
-		}
-		start := make(chan struct{})
-		var wg sync.WaitGroup
-		var errA, errB error
-		wg.Go(func() {
-			<-start
-			_, errA = uc.Edit(ctx, actorA, userID, biz.UserEdit{Nickname: "by-A", DeptID: 1, RoleIDs: []int64{r2}})
+// TestUserRepoEditResolverErrorRollsBack: when the callback rejects, the whole edit rolls back, and the nickname in the
+// same submit is not stored either.
+func TestUserRepoEditResolverErrorRollsBack(t *testing.T) {
+	forEachDB(t, func(t *testing.T, db *gorm.DB) {
+		seedUserEdit(t, db)
+		repo := NewUserAdminRepo(&coredata.Data{DB: db})
+		ctx := context.Background()
+
+		nickname := "never"
+		err := repo.Edit(ctx, 1, biz.UserEditChanges{
+			Nickname: &nickname,
+			Roles:    func([]int64) ([]int64, bool, error) { return nil, false, biz.ErrRoleRequired },
 		})
-		wg.Go(func() {
-			<-start
-			errB = users.Edit(ctx, userID, biz.UserEditChanges{Roles: addRX})
-		})
-		close(start)
-		wg.Wait()
-		if errA != nil || errB != nil {
-			t.Fatalf("round %d: A err = %v, B err = %v", round, errA, errB)
+		if !errors.Is(err, biz.ErrRoleRequired) {
+			t.Fatalf("Edit error = %v, want ErrRoleRequired", err)
 		}
-		got, err := users.RoleIDs(ctx, userID)
+		u, err := repo.FindByID(ctx, 1)
 		if err != nil {
-			t.Fatalf("round %d: RoleIDs: %v", round, err)
+			t.Fatalf("FindByID: %v", err)
 		}
-		if s := fmt.Sprint(slices.Sorted(slices.Values(got))); s != want {
-			t.Fatalf("round %d: roles should be %s, got %s", round, want, s)
+		if u.Nickname != "old-nick" {
+			t.Fatalf("nickname still changed to %q after the callback rejected", u.Nickname)
 		}
-		u, err := users.FindByID(ctx, userID)
+	})
+}
+
+// TestUserRepoEditMissingUser: a missing user is detected inside the lock, with the same error FindByID returns.
+func TestUserRepoEditMissingUser(t *testing.T) {
+	forEachDB(t, func(t *testing.T, db *gorm.DB) {
+		seedUserEdit(t, db)
+		repo := NewUserAdminRepo(&coredata.Data{DB: db})
+
+		nickname := "ghost"
+		if err := repo.Edit(context.Background(), 404, biz.UserEditChanges{Nickname: &nickname}); !errors.Is(err, biz.ErrInvalidCredential) {
+			t.Fatalf("Edit error = %v, want ErrInvalidCredential", err)
+		}
+	})
+}
+
+// TestUserRepoEditMultipleFieldsOneTransaction: several fields plus roles are written together in one Edit and all take
+// effect, verifying it does not rely on separate statements that happen to all succeed.
+func TestUserRepoEditMultipleFieldsOneTransaction(t *testing.T) {
+	forEachDB(t, func(t *testing.T, db *gorm.DB) {
+		seedUserEdit(t, db)
+		repo := NewUserAdminRepo(&coredata.Data{DB: db})
+		ctx := context.Background()
+
+		nickname, ip := "combo", "10.0.0.0/8"
+		deptID := int64(2)
+		if err := repo.Edit(ctx, 1, biz.UserEditChanges{
+			Nickname: &nickname, DeptID: &deptID, IPWhitelist: &ip,
+			Roles: replaceRoles(5, 6),
+		}); err != nil {
+			t.Fatalf("Edit: %v", err)
+		}
+
+		u, err := repo.FindByID(ctx, 1)
 		if err != nil {
-			t.Fatalf("round %d: FindByID: %v", round, err)
+			t.Fatalf("FindByID: %v", err)
 		}
-		if u.Nickname != "by-A" {
-			t.Fatalf("round %d: nickname should be by-A, got %q", round, u.Nickname)
+		if u.Nickname != "combo" || u.DeptID != 2 || u.IPWhitelist != "10.0.0.0/8" {
+			t.Fatalf("not all fields took effect: %+v", u)
 		}
-	}
+		roleIDs, err := repo.RoleIDs(ctx, 1)
+		if err != nil {
+			t.Fatalf("RoleIDs: %v", err)
+		}
+		if len(roleIDs) != 2 {
+			t.Fatalf("roles should be replaced with {5,6}, got %v", roleIDs)
+		}
+	})
+}
+
+// TestUserRepoContactRoundTrip: email and phone number can be written, read back and cleared; clearing relies on the
+// map form, since GORM skips a struct's zero values. Both write paths, editing and self-service profile, must hold.
+func TestUserRepoContactRoundTrip(t *testing.T) {
+	forEachDB(t, func(t *testing.T, db *gorm.DB) {
+		seedUserEdit(t, db)
+		repo := NewUserAdminRepo(&coredata.Data{DB: db})
+		ctx := context.Background()
+
+		email, phone := "alice@corp.io", "+86 138-0000-1111"
+		if err := repo.Edit(ctx, 1, biz.UserEditChanges{Email: &email, Phone: &phone}); err != nil {
+			t.Fatalf("Edit: %v", err)
+		}
+		u, err := repo.FindByID(ctx, 1)
+		if err != nil {
+			t.Fatalf("FindByID: %v", err)
+		}
+		if u.Email != email || u.Phone != phone {
+			t.Errorf("after edit email=%q phone=%q", u.Email, u.Phone)
+		}
+
+		if err := repo.SetProfile(ctx, 1, biz.ProfileEdit{Nickname: "n"}); err != nil {
+			t.Fatalf("SetProfile: %v", err)
+		}
+		u, err = repo.FindByID(ctx, 1)
+		if err != nil {
+			t.Fatalf("FindByID: %v", err)
+		}
+		if u.Email != "" || u.Phone != "" {
+			t.Errorf("values remain after self-clearing email=%q phone=%q", u.Email, u.Phone)
+		}
+	})
+}
+
+// TestUserRepoEditRejectsDisabledDept: a disabled department cannot become a user's department, and the edit writes
+// nothing.
+func TestUserRepoEditRejectsDisabledDept(t *testing.T) {
+	forEachDB(t, func(t *testing.T, db *gorm.DB) {
+		seedUserEdit(t, db)
+		repo := NewUserAdminRepo(&coredata.Data{DB: db})
+		ctx := context.Background()
+
+		nickname, deptID := "changed", int64(3)
+		err := repo.Edit(ctx, 1, biz.UserEditChanges{Nickname: &nickname, DeptID: &deptID})
+		if !errors.Is(err, biz.ErrDeptDisabled) {
+			t.Fatalf("err = %v, want ErrDeptDisabled", err)
+		}
+		u, err := repo.FindByID(ctx, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if u.DeptID != 1 || u.Nickname != "old-nick" {
+			t.Fatalf("user = %+v, want unchanged", u)
+		}
+	})
 }

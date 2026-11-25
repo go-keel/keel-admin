@@ -43,11 +43,15 @@ server:
 # (trade-off: ADR admin-0002).
 # Connections are always UTC, and both parameters are required: loc decides how Go interprets the DATETIMEs it reads
 # and writes, time_zone decides which time zone CURRENT_TIMESTAMP reads in the database (ADR admin-0003).
+# On PostgreSQL instead: driver: postgres and source: postgres://user:pass@localhost:5432/keel-biz?sslmode=disable for
+# both entries (timestamptz stores the instant, so no time-zone parameters; both entries use the same dialect), and the
+# blank import in cmd/admin/main.go becomes github.com/go-keel/keel/core/kdb/postgres, added to go.mod at the version
+# core/kdb/mysql has there.
 database:
   # default = business database: the business area's own tables. default belongs to the derived repo's own code.
   # The scripts in migrations/business/ run against this database.
   default:
-    driver: mysql # the table scripts are MySQL only; another dialect needs ported DDL and a blank import of its kdb dialect package
+    driver: mysql
     source: root:123456a!@tcp(localhost:3306)/keel-biz?charset=utf8mb4&parseTime=True&loc=UTC&time_zone=%27%2B00%3A00%27
   # admin = admin database: all sys_* tables (the kernel's system-domain data).
   # The scripts in migrations/admin/ run against this database.

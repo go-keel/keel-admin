@@ -17,11 +17,11 @@ import (
 
 // Under the MySQL dialect, reserved-word column names in queries must be quoted.
 //
-// The rest of the data layer's tests run on in-memory sqlite, and sqlite does not reserve SENSITIVE: a column name
-// spliced bare into SQL passes there and is a 1064 syntax error only on MySQL. Filtering the role list by "sensitive"
-// and non-root role assignment both once returned 500 because of this. This test uses the MySQL dialect only to
-// generate SQL without connecting (DryRun) and checks that the column name is quoted. A new query touching sensitive
-// (or another reserved-word column) adds a case here.
+// PostgreSQL does not reserve SENSITIVE: a column name spliced bare into SQL passes there and is a 1064 syntax error
+// only on MySQL. Filtering the role list by "sensitive" and non-root role assignment both once returned 500 because of
+// this. make integration runs those queries on MySQL too; this test keeps the check in make check, with no database:
+// it uses the MySQL dialect only to generate SQL without connecting (DryRun) and checks that the column name is
+// quoted. A new query touching sensitive (or another reserved-word column) adds a case here.
 
 // sqlRecorder records every SQL statement DryRun generates.
 type sqlRecorder struct {

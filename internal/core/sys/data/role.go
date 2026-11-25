@@ -78,8 +78,8 @@ func (r *roleRepo) permCodesOf(ctx context.Context, roleIDs []int64) (map[int64]
 // user list have exactly the same tri-state filter shape; a switch in each would only copy the same 1↔2 offset around.
 //
 // The column name goes through clause.Column so GORM quotes it per dialect instead of splicing it bare into the SQL
-// string: sensitive is a reserved word in MySQL 8, and written bare it is a 1064 syntax error. The rest of the data
-// layer's tests run on sqlite, which does not reserve it and cannot catch this; mysql_quote_test.go guards it.
+// string: sensitive is a reserved word in MySQL 8, and written bare it is a 1064 syntax error (PostgreSQL does not
+// reserve it); mysql_quote_test.go guards it without a database.
 func whereTriState(q *gorm.DB, col string, v int32) *gorm.DB {
 	switch v {
 	case 1:

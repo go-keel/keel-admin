@@ -9,7 +9,7 @@ import (
 
 // This file holds the POs (GORM structs private to the data layer) of the audit and login logs: each is named after
 // its table in lowerCamelCase, with its TableName and toBiz right after the definition. Both tables are append-only
-// logs with no delete. The structs match the DDL one to one; the DDL is in migrations/admin/0_schema.sql (AutoMigrate
+// logs with no delete. The structs match the DDL one to one; the DDL is in migrations/admin/<dialect>/0_schema.sql (AutoMigrate
 // is not used).
 
 type sysAuditLog struct {

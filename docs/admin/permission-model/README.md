@@ -140,7 +140,7 @@ The anonymous annotation and the JWT configuration are Keel's: `keel:docs/auth.m
 manage it (TargetProtected).
 
 **root is created only in the table creation script; code does no automatic seeding**: the end of
-`migrations/admin/0_schema.sql` idempotently INSERTs the root department and the root user, the password column holds
+`migrations/admin/<dialect>/0_schema.sql` idempotently INSERTs the root department and the root user, the password column holds
 the argon2id hash of the initial password admin888, and a comment states it; on every new deployment root signs in and
 changes it in the personal center right away. A database without root is a deployment error, and startup does not
 cover it up.

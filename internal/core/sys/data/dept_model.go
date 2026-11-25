@@ -10,7 +10,7 @@ import (
 
 // This file holds the department domain's POs (GORM structs private to the data layer): each is named after its
 // table in lowerCamelCase, with its TableName and toBiz right after the definition. The structs match the DDL one to
-// one; the DDL is in migrations/admin/0_schema.sql (AutoMigrate is not used).
+// one; the DDL is in migrations/admin/<dialect>/0_schema.sql (AutoMigrate is not used).
 
 type sysDept struct {
 	ID        int64  `gorm:"primaryKey;autoIncrement"`

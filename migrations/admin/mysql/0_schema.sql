@@ -1,9 +1,10 @@
 -- Complete schema of the admin database (MySQL dialect): every sys_* table at its latest shape, matching
--- internal/core/sys/data/*_model.go. Part of the kernel: following upstream overwrites this directory whole, and the
+-- internal/core/sys/data/*_model.go. The PostgreSQL version is ../postgres/0_schema.sql; a change goes into both,
+-- table by table in the same order. Part of the kernel: following upstream overwrites this directory whole, and the
 -- ALTER an existing admin database needs is in the matching UPGRADING.md entry (docs/admin/domain-model.md, "Schema").
 -- No AutoMigrate in code. Run it against the database database.admin in config.yaml points to (business tables are in
 -- migrations/business/, run against the business database; both are required):
---   mysql -h127.0.0.1 -uroot -p <admin database> < migrations/admin/0_schema.sql
+--   mysql -h127.0.0.1 -uroot -p <admin database> < migrations/admin/mysql/0_schema.sql
 
 -- The mysql client's default character set is not always utf8mb4 (often latin1); without this, non-ASCII text in the
 -- script would be stored garbled.

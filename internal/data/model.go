@@ -10,7 +10,7 @@ import (
 // The business area's POs (GORM structs private to the data layer), unrelated to the kernel's
 // core/sys/data/*_model.go. A PO is named after its table in lower camel case, without a Model suffix; its TableName,
 // toBiz and new<Resource> follow right after the definition; beyond 5 POs, split into {domain}_model.go per domain.
-// The tables match migrations/business/0_schema.sql one to one (no AutoMigrate, see docs/practices/database.md).
+// The tables match migrations/business/<dialect>/0_schema.sql one to one (no AutoMigrate, see docs/practices/database.md).
 
 // Example: delete after forking (to the end of the file)
 

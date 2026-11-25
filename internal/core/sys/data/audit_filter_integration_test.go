@@ -1,3 +1,5 @@
+//go:build integration
+
 package data
 
 import (
@@ -12,36 +14,25 @@ import (
 	"github.com/go-keel/keel-admin/internal/core/sys/biz"
 )
 
-// auditFilterTestDB holds the minimal column set for the audit list filters (the DDL source of truth is
-// migrations/admin/0_schema.sql).
-func auditFilterTestDB(t *testing.T) *gorm.DB {
+// seedAudit inserts the operators and audit rows the audit list filters are asserted on.
+func seedAudit(t *testing.T, db *gorm.DB) {
 	t.Helper()
-	db := openMemoryDB(t, &gorm.Config{})
 	stmts := []string{
-		`CREATE TABLE sys_user (
-			id INTEGER PRIMARY KEY, username TEXT, nickname TEXT, deleted_at DATETIME
-		)`,
-		`CREATE TABLE sys_audit_log (
-			id INTEGER PRIMARY KEY, operator_id INTEGER, action TEXT, target_type TEXT,
-			target_id TEXT, request_payload TEXT, reason TEXT, ip TEXT, created_at DATETIME
-		)`,
-		`INSERT INTO sys_user (id,username,nickname) VALUES (1,'alice','Alice'),(2,'bob','Bobby')`,
+		`INSERT INTO sys_user (id,username,password,nickname,dept_id) VALUES (1,'alice','x','Alice',1),(2,'bob','x','Bobby',1)`,
 		// 3 is soft-deleted: the UI falls back to showing its ID in the operator column, and the keyword must not find it.
-		`INSERT INTO sys_user (id,username,nickname,deleted_at) VALUES (3,'zoe','Zoe',CURRENT_TIMESTAMP)`,
-		`INSERT INTO sys_audit_log (id,operator_id,action) VALUES
-			(1,1,'user.update'),(2,2,'user.update'),(3,2,'role.update'),(4,3,'user.update')`,
+		`INSERT INTO sys_user (id,username,password,nickname,dept_id,deleted_at) VALUES (3,'zoe','x','Zoe',1,CURRENT_TIMESTAMP)`,
+		`INSERT INTO sys_audit_log (id,operator_id,action,target_type,target_id) VALUES
+			(1,1,'user.update','user','1'),(2,2,'user.update','user','1'),(3,2,'role.update','role','1'),(4,3,'user.update','user','1')`,
 	}
 	for _, s := range stmts {
 		if err := db.Exec(s).Error; err != nil {
 			t.Fatalf("setup: %v", err)
 		}
 	}
-	return db
 }
 
-func auditIDs(t *testing.T, f biz.AuditFilter) []int64 {
+func auditIDs(t *testing.T, repo biz.AuditRepo, f biz.AuditFilter) []int64 {
 	t.Helper()
-	repo := NewAuditRepo(&coredata.Data{DB: auditFilterTestDB(t)})
 	logs, total, err := repo.List(context.Background(), f, 0, 50)
 	if err != nil {
 		t.Fatalf("List: %v", err)
@@ -72,19 +63,27 @@ func TestAuditListOperatorKeyword(t *testing.T) {
 		// otherwise it collapses into "action AND a OR b" and the second half escapes the other filters.
 		{"applies together with other filters", biz.AuditFilter{OperatorKeyword: "b", Action: "role.update"}, []int64{3}},
 	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			if got := auditIDs(t, c.f); !slices.Equal(got, c.want) {
-				t.Errorf("got %v, want %v", got, c.want)
-			}
-		})
-	}
+	forEachDB(t, func(t *testing.T, db *gorm.DB) {
+		seedAudit(t, db)
+		repo := NewAuditRepo(&coredata.Data{DB: db})
+		for _, c := range cases {
+			t.Run(c.name, func(t *testing.T) {
+				if got := auditIDs(t, repo, c.f); !slices.Equal(got, c.want) {
+					t.Errorf("got %v, want %v", got, c.want)
+				}
+			})
+		}
+	})
 }
 
 // The list does not read the request body or the reason (the list does not show them, and the body is large text);
 // the detail view gets every field by ID, with the operator name, and reports ErrAuditLogNotFound when missing.
 func TestAuditListOmitsPayloadAndGetReturnsIt(t *testing.T) {
-	db := auditFilterTestDB(t)
+	forEachDB(t, testAuditListOmitsPayloadAndGetReturnsIt)
+}
+
+func testAuditListOmitsPayloadAndGetReturnsIt(t *testing.T, db *gorm.DB) {
+	seedAudit(t, db)
 	if err := db.Exec(`UPDATE sys_audit_log SET request_payload = '{"name":"x"}', reason = 'fix' WHERE id = 1`).Error; err != nil {
 		t.Fatalf("seed: %v", err)
 	}
