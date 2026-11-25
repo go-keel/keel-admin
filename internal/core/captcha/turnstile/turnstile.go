@@ -15,8 +15,8 @@ import (
 	"github.com/go-keel/keel/core/khttpclient"
 )
 
-// Name is this provider's name in the registry and the value to set in sys.captcha.provider. It is exported so
-// di.go and the config reading do not each write the literal: if the two drift apart, login silently fails closed.
+// Name is the value of sys.captcha.provider that selects this provider. It is exported so the kernel assembly and
+// the config reading do not each write the literal: if the two drift apart, login silently fails closed.
 const Name = "turnstile"
 
 const (

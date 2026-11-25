@@ -9,7 +9,7 @@
 #
 # Paths checked: rules and scripts (AGENTS.md / GLOSSARY.md / docs/ / scripts/ / Makefile / this directory), the
 # read-only kernel trees (internal/core/, internal/server/, migrations/admin/ and the kernel copy
-# internal/i18n/sys.{en,zh-CN}.toml and localed.go), the config schema (internal/conf/), and the
+# internal/i18n/sys.{en,zh-CN}.toml), the config schema (internal/conf/), and the
 # frontend kernel and assembly seams (web/src/ except the business area and generated files). When they change,
 # every derived repository's copy is out of date at once.
 #
@@ -42,7 +42,7 @@ if [ "${SKIP_UPGRADING:-}" != "1" ]; then
 	# The ledger itself is in this change: let it through; whether the entry is right is not for the machine to judge
 	if ! printf '%s\n' "${staged}" | grep -qx 'UPGRADING\.md'; then
 		surface=$(printf '%s\n' "${staged}" |
-			grep -E '^(AGENTS\.md|GLOSSARY\.md|Makefile|docs/|scripts/|\.githooks/|internal/core/|internal/server/|internal/conf/|migrations/admin/|internal/i18n/(sys\.(en|zh-CN)\.toml|localed\.go)$|web/src/)' || true)
+			grep -E '^(AGENTS\.md|GLOSSARY\.md|Makefile|docs/|scripts/|\.githooks/|internal/core/|internal/server/|internal/conf/|migrations/admin/|internal/i18n/sys\.(en|zh-CN)\.toml$|web/src/)' || true)
 		# ERE has no negative lookahead: drop the whole business route tree, then add back its kernel subtree sys/.
 		hits=$(printf '%s\n' "${surface}" |
 			grep -vE '^web/src/(routes/_app/|locales/app/|nav\.ts|routeTree\.gen\.ts|generated/)' || true)

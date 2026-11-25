@@ -159,7 +159,12 @@ export function RoleForm({
               (r.assignableRoles ?? []).map((x) => x.id ?? ''),
             ),
             manageDeptIds: asSet((r.manageDepts ?? []).map((x) => x.id ?? '')),
-            scopes: asSet(r.scopes ?? [], byResource),
+            scopes: asSet(
+              (r.scopes ?? []).map((s) =>
+                s.resourceIds ? { ...s, resourceIds: asSet(s.resourceIds) } : s,
+              ),
+              byResource,
+            ),
           }),
         }
       : undefined,
@@ -393,9 +398,13 @@ export function RoleForm({
                       checked={(cur.resourceIds ?? []).includes(o.id ?? '')}
                       onChange={(c) =>
                         setScope(res.res ?? '', {
-                          resourceIds: c
-                            ? [...(cur.resourceIds ?? []), o.id ?? '']
-                            : (cur.resourceIds ?? []).filter((x) => x !== o.id),
+                          resourceIds: asSet(
+                            c
+                              ? [...(cur.resourceIds ?? []), o.id ?? '']
+                              : (cur.resourceIds ?? []).filter(
+                                  (x) => x !== o.id,
+                                ),
+                          ),
                         })
                       }
                     />

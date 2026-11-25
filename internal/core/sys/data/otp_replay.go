@@ -42,7 +42,7 @@ type replayGuard struct {
 // per (userID, code) capped at maxUses (sys.otp.max_uses), so attempts past the
 // cap are rejected regardless of which time step they're checked against.
 //
-// Normalising happens in the constructor, not at the caller: di.go is the only caller, but a missed normalisation means
+// Normalising happens in the constructor, not at the caller: server.NewKernel is the only caller, but a missed normalisation means
 // "not configured = limit 0 = nobody can log in", and making that impossible at the type boundary beats relying on the
 // caller to remember.
 func NewOTPReplayGuard(rdb *kredis.Redis, maxUses int64) biz.ReplayGuard {

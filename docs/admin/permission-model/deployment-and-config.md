@@ -10,8 +10,8 @@ Read this before deploying an admin, or changing the `sys:` section of app.yaml.
 - Secrets such as `jwt_secret` and `sys.otp.aes_key` never go into git and **are split by environment**: local
   development writes them into `config.dev.yaml` and `app.dev.yaml` (both gitignored, development only; the two main
   config files in the repository hold only development placeholders), and production injects the real values into
-  `config.yaml` / `app.yaml` on the deployment side (a mounted Secret and the like; secrets of an added captcha provider
-  likewise); loading a `*.dev.yaml` logs the Warn `kconfig: dev overlay loaded`: **seeing it in production logs is an
+  `config.yaml` / `app.yaml` on the deployment side (a mounted Secret and the like; the captcha provider's
+  secret likewise); loading a `*.dev.yaml` logs the Warn `kconfig: dev overlay loaded`: **seeing it in production logs is an
   incident signal** that the build carried the development config into the image (Keel's dev overlay:
   `keel:docs/config.md#dev-overlay-configdevyaml`);
 - root's initial password is admin888, seeded by the table creation script, not set through a config file;

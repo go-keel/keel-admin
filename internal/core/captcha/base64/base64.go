@@ -23,10 +23,10 @@ const (
 	dotCount  = 80
 )
 
-// ansKeyPrefix namespaces answers in Redis: "captcha:ans:<id>".
 // Name is the value of sys.captcha.provider that selects this provider.
 const Name = "base64"
 
+// ansKeyPrefix namespaces answers in Redis: "captcha:ans:<id>".
 const ansKeyPrefix = "captcha:ans:"
 
 func ansKey(id string) string { return ansKeyPrefix + id }

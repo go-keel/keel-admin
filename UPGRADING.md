@@ -5,7 +5,6 @@ upstream: `docs/upgrading-protocol.md`.
 
 ## 2026-11-25 · 13
 
-> Follows keel-layout ef4608d
 > Follows keel-layout 6fa085f
 
 **What changed.** The template follows Keel's one way of doing i18n (Keel's `UPGRADING.md`, "`locale.Bundle` is gone")
@@ -26,7 +25,10 @@ helpers were a second way to do it.
    `scripts/cross-repo-sync.list`, dropping the `internal/i18n/localed.go` line.
 2. In your own code, replace `OnLocaled(err, i18n.Localed("ErrX", "English.", v1.ErrorX))` with
    `OnMessage(err, &goi18n.Message{ID: "ErrX", Other: "English."}, v1.ErrorX)`, and
-   `i18n.MustLocalizeMessage(l, msg)` with `locale.Localize(ctx, msg)`.
+   `i18n.MustLocalizeMessage(l, msg)` with `locale.Localize(ctx, msg)`. Delete
+   `TestMustLocalizeMessage_FallsBackToEnglish` from `internal/i18n/bundle_test.go`, and in
+   `cmd/<app>/registration_test.go` change `goi18n.NewLocalizer(bundle.Bundle, lang)` to
+   `goi18n.NewLocalizer(bundle, lang)`: `i18n.NewBundle()` returns go-i18n's bundle itself.
 3. Business forms whose zod schema misses a constraint of the proto now let users see that English text: align the
    schemas with the proto (`docs/admin/forms.md`).
 
@@ -52,8 +54,8 @@ lock and worker APIs.
 1. Set the Keel versions in `go.mod` to the ones above, run `go mod tidy`, and apply Keel's own `UPGRADING.md`
    entries between your version and that one; `go build ./...` and `go vet -tags e2e ./...` list the call sites.
 2. Take the kernel (`internal/core/`) and the shared guides with `make sync-upstream`.
-3. In `cmd/<app>/di.go`: delete `appFactory := keel.NewAppFactory(...)`, change `mw.Default(config.Config)` to
-   `mw.Default(config)` and `appFactory.New(httpSrv)` to `keel.NewApp(config, httpSrv)`.
+3. In `cmd/<app>/di.go`: delete `appFactory := keel.NewAppFactory(...)`; the chain and the app are built from
+   `config`, as the code in `2026-11-25 · 11`, step 4 shows.
 4. Multiply every `TryAcquireLock` TTL in your own code by `time.Second` (a bare integer still compiles and means
    nanoseconds).
 
@@ -80,7 +82,7 @@ change had to be copied there by hand.
 2. `cmd/<app>/main.go`: delete `newApp` and the imports only it used. Keep `time.Local = time.UTC` as the first line
    of `main`, the driver blank imports, loading `configs/app.yaml`, `wireApp` and `app.Run()`.
 3. `cmd/<app>/di.go`, in `wireApp`: keep everything up to and including `kredis.NewRedis` (config, otel, logger,
-   `appFactory`, both databases, Redis, and any infrastructure of your own). Replace everything from the kernel data
+   both databases, Redis, and any infrastructure of your own). Replace everything from the kernel data
    (`coredata.NewData(db)`) through the kernel services, `refRepo`, `scopeUseCase`, `brand` and `businessZone` with:
 
    ```go
@@ -96,7 +98,7 @@ change had to be copied there by hand.
 4. Replace `services := httpServices(...)`, the sentinel group and the `newApp(...)` call at the end of `wireApp` with:
 
    ```go
-   chain := mw.Default(config.Config)
+   chain := mw.Default(config)
    kernel.Middleware(chain, nsvc.RegisterErrors(service.NewErrorSentinel()))
    // your own chain.InsertBefore / InsertAfter calls, if newApp had any, go here
    httpSrv, err := kernel.NewHTTPServer(chain, httpServices(
@@ -105,7 +107,7 @@ change had to be copied there by hand.
    if err != nil {
        return nil, cleanup, err
    }
-   app, err := appFactory.New(httpSrv)
+   app, err := keel.NewApp(config, httpSrv)
    if err != nil {
        return nil, cleanup, err
    }
@@ -154,8 +156,8 @@ strings. A missing one now fails at config load as `keel/kconfig.invalid` naming
 2. Copy the three `required` rules, the `buf/validate/validate.proto` import and the field comments into your
    `internal/conf/app.proto`; replace the `config` target and its two variables `CONF_BUF_CONFIG` /
    `CONF_GEN_TEMPLATE` in your `Makefile` with upstream's; run `make config`.
-3. In `cmd/<app>/di.go`, replace `brand, err := server.ProvideBrand(sysConf)` and its error check with
-   `brand := sysConf.GetBrand()`.
+3. In `cmd/<app>/di.go`, delete `brand, err := server.ProvideBrand(sysConf)` and its error check; the brand comes
+   from the kernel as `kernel.Brand` (`2026-11-25 · 11`, step 3).
 4. Anything matching the three removed IDs (tests, alerts) matches `keel/kconfig.invalid` instead.
 
 ## 2026-11-25 · 8
@@ -205,8 +207,8 @@ bindings.
 **What changed.** Five pass-through constructors are gone: `server.ProvideSysConf`, `server.ProvideOTPGate`,
 `server.ProvideAuditRecorder`, `data.NewUserRepo` and `data.NewCacheInvalidator` (kernel `internal/core/sys/data`);
 `biz.AuthUseCase.Resolve` is gone too (`ResolveWithVersion` stays). The LIKE keyword escaper is now
-`coredata.ContainsPattern` in `internal/core/data`, and the sentinel helper `localed` is now `i18n.Localed` in the new
-kernel file `internal/i18n/localed.go`: one copy shared by the kernel and the business area. On the frontend,
+`coredata.ContainsPattern` in `internal/core/data`, and the sentinel helper `localed` is gone from both the kernel and
+the business area (`2026-11-25 · 13` replaces it with Keel's `OnMessage`). On the frontend,
 `RowActions` and its types moved from `components/data-table.tsx` to `components/row-actions.tsx`; `PasswordInput`,
 `OtpInput`, `OtpField` and `OTP_LENGTH` from `components/containers.tsx` to `components/credential-inputs.tsx`;
 `deptOptionsQueryOptions` to `lib/depts.ts` (the duplicate `deptTreeQueryOptions` in `lib/roles.ts` is gone);
@@ -217,14 +219,11 @@ The escaper and `localed` were copied between the kernel and the business area.
 
 **How to apply.**
 
-1. Take the kernel (`internal/core/`, `internal/server/`, `internal/i18n/localed.go`, the frontend kernel).
-2. In `cmd/<app>/di.go`: `sysConf := bootstrap.Get().Sys`; pass `userAdminRepo` where `userRepo` went, `otpUseCase`
-   where `otpGate` went, `permCache` where `cacheInvalidator` went and `auditUseCase` where `auditRecorder` went, and
-   delete those four variables.
+1. Take the kernel (`internal/core/`, `internal/server/`, the frontend kernel).
+2. `cmd/<app>/di.go` no longer wires these: the kernel assembles itself (`2026-11-25 · 11`, step 3).
 3. In your business code: replace a local LIKE escaper with `coredata.ContainsPattern(keyword)` (import
-   `coredata "<module>/internal/core/data"`) and your copy of `localed` in `internal/service/errors.go` with
-   `i18n.Localed`; keep `var _ = actorFromContext` if nothing else calls it yet. Fix frontend imports of the moved
-   names as `pnpm lint` reports them.
+   `coredata "<module>/internal/core/data"`), and delete your copy of `localed` in `internal/service/errors.go` when
+   you apply `2026-11-25 · 13`, step 2. Fix frontend imports of the moved names as `pnpm lint` reports them.
 
 ## 2026-11-25 · 4
 
@@ -243,8 +242,9 @@ is gone, and so imports `internal/testdb` under this repository's module path: i
 
 1. In your `Makefile`, delete the `VERSION?=` line, ` -X main.Version=$(VERSION)` from `GO_BUILD` and
    `go generate ./...` from `generate`, unless you added a `Version` variable or `//go:generate` directives yourself.
-2. Change `keel-admin e2e/harness/harness.go` in `scripts/cross-repo-sync.list` to end in ` norm`, then take both
-   shared files with `make sync-upstream`; replace any `harness.Root(t)` of your own with `testdb.Root(t)`.
+2. Take both shared files with `make sync-upstream` (the `e2e/harness/harness.go` line in
+   `scripts/cross-repo-sync.list` ends in ` norm`, as `2026-11-25 · 2` registers it); replace any `harness.Root(t)`
+   of your own with `testdb.Root(t)`.
 
 ## 2026-11-25 · 3
 
@@ -281,8 +281,8 @@ round table and `make e2e` are still to come.
 
 **How to apply.**
 
-1. Add `keel-admin e2e/harness/harness.go` to `scripts/cross-repo-sync.list` (with your direct upstream in the first
-   field) and take it and the new `internal/testdb/testdb.go` with `make sync-upstream`.
+1. Add `keel-admin e2e/harness/harness.go norm` to `scripts/cross-repo-sync.list` (with your direct upstream in the
+   first field) and take it and the new `internal/testdb/testdb.go` with `make sync-upstream`.
 2. Nothing else until this repository's `make e2e` lands.
 
 ## 2026-11-25 · 1
@@ -308,7 +308,10 @@ server in details. Nothing joins across the two databases, so they need not shar
 
 **How to apply.**
 
-1. Wherever only `make check` ran (before commits, in CI), run `make check test`.
+1. From upstream's `Makefile` take the `GO_TEST` variable and the `test` and `integration` targets; in `check`,
+   delete the `go test` line, take `pnpm test` out of the frontend line and add
+   `GOWORK=off go vet -tags integration ./...` and `GOWORK=off go vet -tags e2e ./...`. Wherever only `make check` ran
+   (before commits, in CI), run `make check test`.
 2. Set `TEST_REDIS_ADDR` and `TEST_NATS_URL` next to the two DSNs for `make integration`, all on servers for tests only.
 3. `make sync-upstream`: it writes the kernel and `internal/testdb/testdb.go` (add
    `keel-layout internal/testdb/testdb.go` to `scripts/cross-repo-sync.list` first, with your direct upstream in the
@@ -334,8 +337,9 @@ repository actually runs catches it.
 
 **How to apply.**
 
-1. `make sync-upstream`: it writes the kernel (`internal/core/`, including `internal/core/testdb/`), both dialect
-   directories of `migrations/admin/`, and the shared docs.
+1. `make sync-upstream`: it writes the kernel (`internal/core/`), both dialect directories of `migrations/admin/`,
+   and the shared docs. The `testdb` helper named above is the shared `internal/testdb` by now; `2026-11-25 · 1`,
+   step 3 takes it.
 2. Move `migrations/business/*.sql` (and any other business database's scripts) into `migrations/<database>/mysql/`,
    or `postgres/` if you run on PostgreSQL. Tests run on the dialects every database directory has, so keep the other
    dialect only if you mean to support it.

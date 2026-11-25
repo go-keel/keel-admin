@@ -59,7 +59,7 @@ type CacheInvalidator interface {
 
 // OTPResetter is the OTP capability ResetOTP needs: one method rather than the whole *OTPUseCase, so a biz test
 // covers it with a one-line fake instead of a full cipher and replay guard setup. *OTPUseCase satisfies the
-// interface as is, so di.go passes it in directly with no adapter.
+// interface as is, so server.NewKernel passes it in directly with no adapter.
 type OTPResetter interface {
 	Reset(ctx context.Context, userID int64) error
 }

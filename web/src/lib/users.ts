@@ -12,8 +12,6 @@ import { toTotal } from './table';
  */
 export type UserListItem =
   components['schemas']['api.keel_admin.v1.UserListItem'];
-export type DeptOption = components['schemas']['api.keel_admin.v1.DeptOption'];
-export type RoleOption = components['schemas']['api.keel_admin.v1.RoleOption'];
 
 /**
  * User options (fetched in batches, for the user filter of login logs): spread into a `searchSelect` field of the

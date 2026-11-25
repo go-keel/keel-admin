@@ -11,10 +11,10 @@ not listed.
 
 ## perm.registered-after-seal
 
-A permission, binding, resource or group was registered after `perm.Seal` ran. Sealing validates the whole registry
-once; anything added later would never be checked.
+A permission, binding, resource or group was registered after `kernel.NewHTTPServer`, which seals the registry
+(`perm.Seal`). Sealing validates the whole registry once; anything added later would never be checked.
 
-Fix: call every `perm.MustRegister*` in `di.go` before `perm.Seal` (docs/admin/permission.md, step 7).
+Fix: call every `perm.MustRegister*` in `di.go` before `kernel.NewHTTPServer` (docs/admin/permission.md, step 7).
 
 ## perm.code-duplicate
 

@@ -71,9 +71,6 @@ other = "An authenticator is already bound. Unbind it, then bind the new one."
 
 # ============ System administration domain (core/sys accounts/depts/roles) ============
 
-[ErrUserNotFound]
-other = "User not found."
-
 [ErrUserExists]
 other = "Username already exists."
 

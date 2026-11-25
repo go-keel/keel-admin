@@ -86,7 +86,8 @@ func newCaptchaProvider(c *conf.Captcha, rdb *kredis.Redis) (captcha.Provider, f
 }
 
 // captchaSiteKey returns a value only when a widget provider is selected: the site key is provider-specific, and
-// sending an unused key for the image code or when captcha is off would only make the login page guess what to render.
+// sending an unused key for the image code would only make the login page guess what to render. The page looks at
+// captchaEnabled first, so the key is not gated on it here.
 func captchaSiteKey(c *conf.Captcha) string {
 	if c.GetProvider() != turnstile.Name {
 		return ""

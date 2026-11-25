@@ -56,7 +56,7 @@ func mustRegister(perms []Permission, b Bindings, res []ResourceDef, kernel bool
 	regMu.Lock()
 	defer regMu.Unlock()
 	if sealed {
-		panic(errs.Rules.New("perm.registered-after-seal", "a permission was registered after perm.Seal", "register every permission, binding and resource in di.go before calling perm.Seal"))
+		panic(errs.Rules.New("perm.registered-after-seal", "a permission was registered after perm.Seal", "register every permission, binding and resource in di.go before kernel.NewHTTPServer, which seals the registry"))
 	}
 	for _, p := range perms {
 		if _, dup := regPerms[p.Code]; dup {
@@ -89,7 +89,7 @@ func MustRegisterGroups(groups []Group) {
 	regMu.Lock()
 	defer regMu.Unlock()
 	if sealed {
-		panic(errs.Rules.New("perm.registered-after-seal", "a permission group was registered after perm.Seal", "register every permission, binding and resource in di.go before calling perm.Seal"))
+		panic(errs.Rules.New("perm.registered-after-seal", "a permission group was registered after perm.Seal", "register every permission, binding and resource in di.go before kernel.NewHTTPServer, which seals the registry"))
 	}
 	for _, g := range groups {
 		if g.Domain == "" {

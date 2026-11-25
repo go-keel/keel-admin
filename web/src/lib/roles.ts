@@ -10,7 +10,6 @@ import { queryClient } from './query';
  */
 export type RoleListItem =
   components['schemas']['api.keel_admin.v1.RoleListItem'];
-export type RoleInfo = components['schemas']['api.keel_admin.v1.RoleInfo'];
 export type PermissionDef =
   components['schemas']['api.keel_admin.v1.PermissionDef'];
 export type PermGroup = components['schemas']['api.keel_admin.v1.PermGroup'];

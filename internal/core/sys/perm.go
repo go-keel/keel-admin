@@ -21,7 +21,7 @@ var Groups = []perm.Group{
 
 // Perms declares the sys domain's code-fixed permissions (dept/account/audit/login_log),
 // registered into the perm kernel at boot via perm.MustRegisterKernel (see
-// the entry cmd's di.go).
+// server.RegisterKernelPermissions).
 //
 // A code always has three segments, `<business domain>:<module>:<action>`, and the segments are the organisation
 // (see perm.Code).
@@ -60,5 +60,5 @@ var Perms = []perm.Permission{
 
 // Resources declares the sys domain's data-scope resources (anchors/derive),
 // registered into the perm kernel at boot via perm.MustRegisterKernel (see
-// the entry cmd's di.go).
+// server.RegisterKernelPermissions).
 var Resources = []perm.ResourceDef{}

@@ -43,6 +43,7 @@ import { usePerm, useProfile } from '@/hooks/use-profile';
 import { loginLogList } from '@/lib/audit';
 import { deptOptionsQueryOptions } from '@/lib/depts';
 import {
+  asSet,
   ipWhitelist,
   optionalEmail,
   optionalPhone,
@@ -150,7 +151,7 @@ export function UserForm({
             email: u.email ?? '',
             phone: u.phone ?? '',
             deptId: u.deptId ?? '0',
-            roleIds: (u.roles ?? []).map((r) => r.id ?? ''),
+            roleIds: asSet((u.roles ?? []).map((r) => r.id ?? '')),
             ipWhitelist: u.ipWhitelist ?? '',
           }),
         }
@@ -332,9 +333,11 @@ export function UserForm({
                     checked={field.value.includes(r.id ?? '')}
                     onCheckedChange={(checked) =>
                       field.onChange(
-                        checked
-                          ? [...field.value, r.id ?? '']
-                          : field.value.filter((x) => x !== r.id),
+                        asSet(
+                          checked
+                            ? [...field.value, r.id ?? '']
+                            : field.value.filter((x) => x !== r.id),
+                        ),
                       )
                     }
                   />

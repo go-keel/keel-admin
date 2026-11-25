@@ -34,7 +34,7 @@ export type FilterFieldsOf<L extends { fields: ListFields }> = FilterField<
  * The standard wiring of a list page: given a list definition (the output of `defineList` in `lib/list.ts`) and its
  * route, builds all the props `FilterBar` and `DataTable` need. What the definition does not cover (what the filter
  * controls look like, columns, row actions, dialogs) is still written by the page, see docs/admin/forms.md
- * "URLs and paging on list pages".
+ * "List page URL and pagination".
  *
  * **The query follows the page's own state; the URL is only kept in sync**: the applied filter conditions are local
  * state here, and the query, paging and result set derive from it. Only "Search" and "Reset" change it, and they write

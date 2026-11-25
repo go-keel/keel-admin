@@ -7,7 +7,7 @@ import (
 
 // Bindings declares the sys domain's endpoint -> access requirement map,
 // registered into the perm kernel at boot via perm.MustRegisterKernel (see
-// the entry cmd's di.go). Un-listed operations are denied by default.
+// server.RegisterKernelPermissions). Un-listed operations are denied by default.
 var Bindings = perm.Bindings{
 	// auth (Login is anonymous via proto allow_anonymous annotation, no binding needed)
 	v1.OperationAuthServiceProfile: {}, // authenticated only

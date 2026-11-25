@@ -71,9 +71,6 @@ other = "已绑定认证器，请先解绑后再重新绑定。"
 
 # ============ System administration domain (core/sys accounts/depts/roles) ============
 
-[ErrUserNotFound]
-other = "用户不存在。"
-
 [ErrUserExists]
 other = "用户名已存在。"
 

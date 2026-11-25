@@ -32,7 +32,8 @@ Built in:
 ├── configs/              # config.yaml (infrastructure) + app.yaml (the kernel's sys: node): the real production
 │                         #   config; the repo commits development placeholders, the deployment layer injects real
 │                         #   values; *.dev.yaml are local overrides only
-├── migrations/           # .sql table scripts run by hand, one directory per database: admin/, business/
+├── migrations/           # .sql table scripts run by hand, one directory per database (admin/, business/), each
+│                         #   with one per dialect (mysql/, postgres/)
 ├── internal/
 │   ├── core/             # kernel (read-only; upgrade = make sync-upstream): perm
 │   │                     #   permission registry, permdata ApplyScope, middleware (principal/authz/audit), captcha,
@@ -40,8 +41,10 @@ Built in:
 │   │                     #   transactions
 │   ├── biz|data|service/ # business area (keel-layout layering, notice is the example)
 │   ├── conf/             # application config proto (app.proto, the sys: node + business fields)
-│   ├── server/           # HTTP registration, SPA/brand mounting, providers
+│   ├── server/           # kernel assembly (NewKernel), HTTP registration, SPA/brand mounting
+│   ├── testdb/           # per-test databases for integration and end-to-end tests (shared from keel-layout)
 │   └── i18n/             # error messages en / zh-CN
+├── e2e/                  # end-to-end tests: run the built binary and test it from outside
 └── web/                  # React SPA (make build-web → web/dist): Vite + TanStack Router/Query/Table + shadcn/ui +
                           #   Tailwind; zones (kernel / generated / third-party components / assembly seams /
                           #   business area): docs/admin/shell.md, "Frontend zones"
@@ -71,7 +74,7 @@ make all           # proto + config + generate
 mysql -h127.0.0.1 -uroot -p -e 'CREATE DATABASE IF NOT EXISTS `keel-admin`; CREATE DATABASE IF NOT EXISTS `keel-biz`;'
 mysql -h127.0.0.1 -uroot -p keel-admin < migrations/admin/mysql/0_schema.sql
 mysql -h127.0.0.1 -uroot -p keel-biz   < migrations/business/mysql/0_schema.sql
-# On PostgreSQL: create the two databases, run migrations/admin/postgres/0_schema.sql and
+# On PostgreSQL (18 or later, docs/practices/database.md): create the two databases, run migrations/admin/postgres/0_schema.sql and
 # migrations/business/postgres/0_schema.sql with psql -v ON_ERROR_STOP=1 -f, and switch driver and source as the
 # database section of configs/config.yaml says. Each database picks its own driver.
 

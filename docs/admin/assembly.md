@@ -18,7 +18,7 @@ path in this repository's `go.mod`.
   "Adding a cmd" below, so the admin binary stays one deployable unit.
 - **The kernel is read-only for derived repos**: on the backend `internal/core/` (the permission registry `perm`,
   data scope `permdata`, the `principal` / `authz` / `audit` middleware, the system domain `sys`, TOTP) and
-  `internal/server/` (kernel HTTP registration, SPA and brand mounting, the providers), the kernel's contracts
+  `internal/server/` (the kernel assembly, kernel HTTP registration, SPA and brand mounting), the kernel's contracts
   `api/keel_admin/v1/`, plus the admin database's complete schema `migrations/admin/`; on the frontend the kernel
   zone listed in `docs/admin/shell.md` "Frontend zones". An upgrade rewrites these directories whole from upstream
   (`make sync-upstream`), so anything a derived repo puts inside them is wiped. The package-by-package
