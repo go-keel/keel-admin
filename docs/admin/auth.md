@@ -15,9 +15,15 @@ issuing tokens, checks after authentication); this page covers what the kernel o
 
 The whole chain of login, issuing, invalidation and logout lives in the kernel (`internal/core/sys/`):
 
-- **A single token, no refresh token.** `sys.session_ttl` is a hard limit with no renewal: when it expires, the user
-  logs in again, so it must be long enough to cover a whole working session. A refresh token would rotate on every
-  use, and several browser tabs refreshing at once would sign each other out.
+- **A single token with a fixed lifetime, no renewal.** `sys.session_ttl` is a hard limit: when it expires, the user
+  logs in again, so it must be long enough to cover a whole working session. This is the balance between convenience
+  and security: the user is not asked to log in during their work, and a session in the wrong hands does not wait for
+  the lifetime to run out, because changing the password, disabling the user or kicking them out ends every session
+  of that user at once (`token_version`, below). Both kinds of renewal were left out. A refresh token would rotate on
+  every use, and several browser tabs refreshing at once would sign each other out. Sliding renewal (the server
+  reissuing the cookie while the user is active) has no such problem, since all tabs share one cookie, but needs an
+  idle window, an absolute cap and reissuing on every request, to end sessions nobody uses; ending a session on
+  demand already covers the case that matters.
 - **The token is delivered in an httpOnly cookie**, and the frontend never touches it: it cannot read it, and XSS
   cannot steal it. The cookie name comes from `server.http.default.auth.cookie_name`; issuing, clearing and the
   authentication middleware share that one name (how Keel reads a token from a cookie:
