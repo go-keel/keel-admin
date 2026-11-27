@@ -80,7 +80,7 @@ export function DeptForm({
         name="name"
         control={form.control}
         render={({ field, fieldState }) => (
-          <Field data-invalid={fieldState.invalid}>
+          <Field orientation="responsive" data-invalid={fieldState.invalid}>
             <FieldLabel htmlFor="dept-name">{t('depts.name')}</FieldLabel>
             <Input
               {...field}
@@ -98,7 +98,7 @@ export function DeptForm({
         name="sort"
         control={form.control}
         render={({ field, fieldState }) => (
-          <Field data-invalid={fieldState.invalid}>
+          <Field orientation="responsive" data-invalid={fieldState.invalid}>
             <FieldLabel htmlFor="dept-sort">{t('depts.sort')}</FieldLabel>
             <Input
               id="dept-sort"

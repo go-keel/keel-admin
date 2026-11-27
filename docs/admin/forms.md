@@ -18,31 +18,48 @@ may use a popover instead; a drawer is only for viewing; a related list that nee
 Not chosen: by noun and verb (viewing and editing in a drawer whose open state is in the URL), because a one-field
 form then slides out a whole panel, an outside click silently drops a half-filled form, and the URL state reopens on
 Back and loses its context on refresh; by form length (short in a dialog, long in a drawer), because every form would
-weigh its field count, while long forms use the dialog's wide sizes. The cost: a refresh closes whatever popped up and
-returns to page 1, and the record being edited cannot be shared as a link; a detail that must be shareable gets its own
-page. Seven supporting rules:
+weigh its field count, while long forms use the dialog's section navigation. The cost: a refresh closes whatever
+popped up and returns to page 1, and the record being edited cannot be shared as a link; a detail that must be
+shareable gets its own page. Eight supporting rules:
 
-1. **Form dialog** (`FormDialog`): create and edit share one form and one dialog, and whatever the same people can
-   change under the same threshold is merged into one submit. **No edit form sits on a page, settings pages
-   included**: the page shows only the current values, a button opens the dialog to change them, and the initial
-   values are fetched when it opens (`docs/adr/admin-0006-form-initial-values-fetch-detail.md`); the model is the
-   profile page. Three widths (`size`), chosen only from these three: the default for ordinary forms with few fields,
-   `wide` for large forms that fit in two columns (role configuration), `xl` for settings forms that would run past
-   one screen even in two columns and need three. Clicking outside does not close it; closing after changes first asks
-   whether to discard them.
-2. **Action dialog** (`ActionDialog`) is the default container for confirming one action and collecting its
+1. **Form dialog** (`FormDialog`): create and edit share one form and one dialog, and whatever is one action on one
+   object and is changed under the same threshold is merged into one submit. **No edit form sits on a page**: the page
+   shows only the current values, a button opens the dialog to change them, and the initial values are fetched when it
+   opens (`docs/adr/admin-0006-form-initial-values-fetch-detail.md`). A form with **up to two groups** of fields uses
+   the default size: the groups follow each other in one scroll, separated by headings. A form with **three or more
+   groups** passes `sections` and becomes the large dialog with section navigation on the left (role configuration):
+   still one form and one Save for every section; a failed submit switches to the first section with an error, and
+   every section with an error carries a red dot in the navigation until it is fixed. The large dialog has a fixed size
+   and height, so switching sections does not make it jump. Count groups and pick from these two; no width of your
+   own, so forms of a kind look alike. Clicking outside does not close it; closing after changes first asks whether to
+   discard them.
+2. **Section dialog** (`SectionDialog`): the same large dialog with section navigation, for sections that are
+   **independent topics**, each with its own content: its own form with its own Save (`SectionForm`), a list of actions,
+   or read-only information (the profile: "Basic info" is a form edited in place, "Security" is rows of actions and
+   read-only items). Leaving a section that has unsaved changes, by switching sections or by closing, first asks whether
+   to discard them; nothing saves automatically, because a save can fail server-side validation and an automatic save
+   has nowhere good to say so. **Whether sections are one form or independent is decided by one question: does saving
+   one section on its own make sense?** No (they are parts of one object, so a half-saved object is a state nobody
+   wants; and always when creating, since the object does not exist yet) → `FormDialog` with `sections`. Yes, or a
+   section is not a form at all → `SectionDialog`. When the use case does not settle it, ask whoever asked for the
+   feature instead of picking one. Permission is a constraint, not the criterion: content under different thresholds (a
+   different permission code, or step-up versus none) never shares one form. Inside a section dialog, **a change that
+   affects signing in or needs a one-time code (password, authenticator) is a row whose button opens its own dialog**:
+   such a change must close its input when it is done (a new password ends the session), which a section that stays
+   open cannot do. Ordinary fields are edited in the section's form.
+3. **Action dialog** (`ActionDialog`) is the default container for confirming one action and collecting its
    parameters on the way (disable, delete, reset, collecting the step-up code). **Greying out while submitting, refusing
    to close during the request, staying put on failure and closing itself on success all belong to the container**
    (as with `ConfirmPopover`); the page supplies only a confirm function. While parameters the action collects are not
    filled in yet, grey out the confirm button with `confirmDisabled`.
-3. **Popover confirmation** (`ConfirmPopover`; on a table row, the `confirm` of a `RowAction`): a button exposed
+4. **Popover confirmation** (`ConfirmPopover`; on a table row, the `confirm` of a `RowAction`): a button exposed
    directly on the page (on a row, in the page header, on the bulk bar) may use a popover next to the button instead;
    the page decides by consistency across the page and by feel. An action tucked into the "⋯" menu can only use a
    dialog (`RowActions` routes it automatically). Within one page, one action does not mix the two.
-4. **Popovers** (Popover / Select) also serve instant choices that change no data (time zone, language, preset), and
+5. **Popovers** (Popover / Select) also serve instant choices that change no data (time zone, language, preset), and
    reversible "tick a few, look, then decide" values (permission preview). Color mode has only two sides and is one
    toggle button in the header; the login page has no color mode toggle.
-5. **Drawer** (`ResourceSheet`): viewing one row's information, plus related summaries that fit on one screen (when
+6. **Drawer** (`ResourceSheet`): viewing one row's information, plus related summaries that fit on one screen (when
    there are more, show only the first few plus "View all ↗"); each related summary is shown or hidden by its own view
    permission. Whether it holds buttons is up to the page. **The list hands the drawer only the ID, and the drawer
    fetches the details by that ID**, and the same goes for dialogs, so what is shown is never a stale copy of a list
@@ -50,7 +67,7 @@ page. Seven supporting rules:
    title), which may travel with the ID while the action itself sends only the ID
    (`docs/adr/admin-0006-form-initial-values-fetch-detail.md` "Viewing also goes by ID"). A dialog may float over a
    drawer; **a drawer never opens another drawer**.
-6. **A related list that needs paging opens its own list page in a new browser tab, with the filter values carried
+7. **A related list that needs paging opens its own list page in a new browser tab, with the filter values carried
    along** (a real `<a href target=_blank rel=noopener>`, with ↗ in the text), instead of embedding a copy in the
    current page. A row-level entry goes in the `href` of a `RowAction`, **generated by the router from the target
    page** (`router.buildLocation({ to, search }).href`, never assembled by hand, so a misspelled key fails to
@@ -58,18 +75,21 @@ page. Seven supporting rules:
    click, Cmd+click and right-click "copy link". This is about **jumping from a row to the list it relates to** (for
    example "View articles in this category ↗" on each row of article category management), not a header button that
    jumps somewhere the sidebar menu already goes: that is a duplicate entry and is not built.
-7. **Flows with an order**: a flow that is the page itself (forced binding at login) unfolds in place; one started
-   from a button on a page (binding an authenticator in the profile) goes into a plain dialog (`Dialog`) that does not
-   close on an outside click.
+8. **Flows with an order**: a flow that is the page itself (forced binding at login) unfolds in place; one started
+   from a button (binding an authenticator in the profile) goes into a plain dialog (`Dialog`) that does not close on
+   an outside click, above the section dialog when that is where the button is.
 
 An overlay you build yourself from `Dialog` / `Sheet` wraps its content in `KeepLastOpen`
 (`web/src/components/containers.tsx`): after closing it holds the last frame until the exit animation finishes;
-otherwise the state the page clears on close is drawn as an empty box during the exit. The kernel's four containers
+otherwise the state the page clears on close is drawn as an empty box during the exit. The kernel's containers
 already wrap it, so do not wrap them again.
 
-On mobile, form dialogs and drawers go full screen and action dialogs stay centred; the rules are the same. **A form
-has at most one step-up point** (`OtpField`); the reasons are in
-`docs/adr/admin-0007-operation-split-and-step-up-placement.md`.
+On mobile, form dialogs, section dialogs and drawers go full screen and action dialogs stay centred; section
+navigation becomes a scrolling row on top; the rules are the same. **A form has at most one step-up point**; the
+reasons are in `docs/adr/admin-0007-operation-split-and-step-up-placement.md`. A form that needs it asks for the code
+when Save passes validation, in a small dialog holding only the code (`needOtp`; `docs/admin/permission.md`, "step-up"):
+Enter there submits; a refused code (wrong, already used) keeps the dialog open for the next one, and any other failure
+goes back to the form.
 
 ### Forms
 
@@ -87,16 +107,23 @@ first one, and the button is greyed out only while submitting, or while editing 
 Server errors are still shown as a toast and are not attached to fields. Required controls carry `aria-required` (a
 group of checkboxes carries `data-required` on its `FieldSet`), and the label gets a red asterisk automatically.
 
+**Fields in a dialog are rows: the name, with at most one line of description under it, on the left; the control on
+the right.** A form of labels stacked above controls in a narrow dialog is a tall strip that takes twice the scrolling.
+Write it with shadcn's own `orientation="responsive"` on `Field`, which turns back to stacked on a narrow screen;
+the name column's width is the container's, and pages pass none. A control that needs room (a list of checkboxes, a
+tree, multi-line text) keeps the default stacked layout and takes the whole row.
+
 **Form initial values always come fresh from the detail endpoint (`Get<Resource>`), never from list rows or frontend
 cache; correspondingly, list endpoints send only the fields the list shows.** Writing stale data back is data loss,
 not a display lag: a form filled from an old list row silently overwrites whatever changed since
 (`docs/adr/admin-0006-form-initial-values-fetch-detail.md`). Every editable resource has a detail endpoint; without
 one, build no edit entry.
 
-**Operations are split along permission boundaries, not by how many backend endpoints there are**: whatever the same
-people can change under the same threshold (permission code, with or without step-up) is merged into one form and one
-submit, and only what needs different permissions is split. **A form has at most one step-up point**, so the user
-enters a one-time code once per submit (`docs/adr/admin-0007-operation-split-and-step-up-placement.md`).
+**Operations are split along permission boundaries, not by how many backend endpoints there are**: within one action
+on one object, whatever the same people can change under the same threshold (permission code, with or without step-up)
+is merged into one form and one submit, and only what needs different permissions is split. Independent topics (the
+sections of a section dialog) are not merged even under the same threshold. **A form has at most one step-up point**,
+so the user enters a one-time code once per submit (`docs/adr/admin-0007-operation-split-and-step-up-placement.md`).
 
 **The frontend never infers whether a configuration takes effect.** Function codes, data scope and management
 boundary are orthogonal dimensions and none can be inferred from another, so a frontend guess is wrong in exactly the
@@ -159,7 +186,7 @@ to write it: see "Confirming an action" below.
      onClose={onClose}
      title={id ? t('xxx.edit') : t('xxx.create')}
      form={form}
-     needOtp // only when step-up is required: the code is passed to onSubmit with the submit
+     needOtp // only when step-up is required: Save asks for the code, which is passed to onSubmit
      // details and options: skeleton while pending, error and retry on failure; no saving in either case
      queries={[detail, deptsQuery]}
      onSubmit={(v, otp) => saveXxx(id, v, otp)}
@@ -173,8 +200,26 @@ to write it: see "Confirming an action" below.
    `onSubmit` throwing = failure (the request layer has shown the toast), and the dialog stays put; returning `false`
    = the page blocked it itself (call `form.setError(...)` first to mark the field), and it also stays put; anything
    else is success and the dialog closes. Not closing on an outside click, confirming discarded changes and greying
-   out while submitting are all handled by `FormDialog`; the page writes none of them. For a large form, pick
-   `size="wide"` or `size="xl"` by rule 1 under "Container roles" above.
+   out while submitting are all handled by `FormDialog`; the page writes none of them. A form with three or more
+   groups passes `sections` instead of children (rule 1 under "Container roles" above), and switching to the section
+   with an error is the container's too:
+
+   ```tsx
+   <FormDialog
+     /* …the same props as above… */
+     sections={[
+       { id: 'basic', title: t('xxx.basic'), content: <>…fields…</> },
+       { id: 'perms', title: t('xxx.perms'), content: <>…fields…</> },
+       { id: 'scope', title: t('xxx.scope'), content: <>…fields…</> },
+     ]}
+   />
+   ```
+
+   Every section stays mounted while the dialog is open (only the current one is shown), so values and errors survive
+   switching. A section with independent topics instead uses `SectionDialog` with the same `sections` shape, and a
+   section that is a form wraps its fields in `SectionForm` (`form`, `onSubmit`, `queries`, `needOtp`, `success`, as
+   above): it has its own Save, and success keeps the dialog open with the saved values as the new unchanged state.
+   Only the current section of a `SectionDialog` is mounted, so its forms start fresh on every visit.
 
 4. **Fields** follow the shadcn docs, one `Controller` per field:
 
@@ -183,7 +228,7 @@ to write it: see "Confirming an action" below.
      name="name"
      control={form.control}
      render={({ field, fieldState }) => (
-       <Field data-invalid={fieldState.invalid}>
+       <Field orientation="responsive" data-invalid={fieldState.invalid}>
          <FieldLabel htmlFor="xxx-name">{t('xxx.name')}</FieldLabel>
          <Input {...field} id="xxx-name" aria-required aria-invalid={fieldState.invalid} />
          {fieldState.invalid ? <FieldError errors={[fieldState.error]} /> : null}

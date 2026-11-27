@@ -164,7 +164,7 @@ function CategoryForm({
         name="name"
         control={form.control}
         render={({ field, fieldState }) => (
-          <Field data-invalid={fieldState.invalid}>
+          <Field orientation="responsive" data-invalid={fieldState.invalid}>
             <FieldLabel htmlFor="category-name">
               {t('notices.category')}
             </FieldLabel>

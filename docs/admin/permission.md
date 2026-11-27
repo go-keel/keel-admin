@@ -469,16 +469,19 @@ the entry gate is a mismatch. Fix it in one of two ways, by the nature of the da
 
 Run this comparison after changing a page's data sources or adjusting bindings.
 
-### step-up: the frontend collects the code in the form
+### step-up: the frontend asks for the code before the request
 
-For operations that need step-up (those with `RequireOTP` in the bindings), the frontend **collects the code in the
-form up front**, instead of "hit `OTP_STEPUP` first, then pop up a dialog and replay":
+For operations that need step-up (those with `RequireOTP` in the bindings), the frontend **knows from the operation that
+a code is needed and asks for it before sending**, instead of "hit `OTP_STEPUP` first, then pop up a dialog and
+replay", which sends a request that is bound to fail:
 
-- An operation with other inputs → embed an OTP field in the form, submitted together with the other inputs.
+- An operation with other inputs (a form) → `needOtp` on `FormDialog` / `SectionForm`: Save validates the fields, then
+  a small dialog asks for the code alone, and the code goes with the submission. Not a field of the form: it is the
+  confirmation of this save, not part of any one section, and a long form does not end with a box that reads like data.
 - An operation with no other inputs (resetting someone else's OTP, deleting a role) → confirm and collect the code in
-  one dialog.
-- No authenticator bound → render guidance in place (go to the profile page to bind one), rather than letting the user
-  fill everything in and then hit a wall.
+  one dialog (`ActionDialog` / `ConfirmPopover` with `needOtp`).
+- No authenticator bound → render guidance in place (bind one in the profile, from the avatar menu) and disable Save,
+  rather than letting the user fill everything in and then hit a wall.
 
 Every request goes through `stepUp(otpCode)` in `web/src/lib/api.ts`, spread into the request init:
 `api.POST(path, { body, ...stepUp(code) })`. **`X-OTP-Code` appears only in that one function in the whole frontend;

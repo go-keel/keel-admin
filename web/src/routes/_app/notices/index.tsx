@@ -225,7 +225,7 @@ function NoticeForm({ open, onClose }: { open: boolean; onClose: () => void }) {
         name="title"
         control={form.control}
         render={({ field, fieldState }) => (
-          <Field data-invalid={fieldState.invalid}>
+          <Field orientation="responsive" data-invalid={fieldState.invalid}>
             <FieldLabel htmlFor="notice-title">
               {t('notices.notice')}
             </FieldLabel>
@@ -245,7 +245,7 @@ function NoticeForm({ open, onClose }: { open: boolean; onClose: () => void }) {
         name="categoryId"
         control={form.control}
         render={({ field, fieldState }) => (
-          <Field data-invalid={fieldState.invalid}>
+          <Field orientation="responsive" data-invalid={fieldState.invalid}>
             <FieldLabel htmlFor="notice-category">
               {t('notices.category')}
             </FieldLabel>

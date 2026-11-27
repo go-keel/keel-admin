@@ -416,6 +416,15 @@ own. What goes into which: `docs/admin/forms.md`, "Container roles".
 A window popping up in the middle of the screen, covering the whole page.
 _Avoid_: popup, modal box, modal
 
+**Section dialog**:
+A large dialog with section navigation on the left whose sections are independent topics, each saved on its own or not
+a form at all (the profile). One form split into sections is a form dialog with sections, not this.
+_Avoid_: settings page, settings modal, preferences window
+
+**Section**:
+One entry of the navigation on the left of a large dialog, and the content shown for it.
+_Avoid_: tab (a tab is a sub-view of a page), panel, pane
+
 **Popover**:
 A small box popping up next to the button that triggered it, without covering the page.
 _Avoid_: confirmation bubble, popconfirm

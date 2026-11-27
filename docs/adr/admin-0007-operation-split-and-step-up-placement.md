@@ -5,9 +5,9 @@
 
 Two decisions used together:
 
-1. Operations are split or merged along **permission** lines, not by how many endpoints the backend has: what the same
-   people can change under the same gate (permission code + step-up or not) is merged into one form submitted once;
-   only what needs different permissions is split.
+1. Within one action on one object, operations are split or merged along **permission** lines, not by how many
+   endpoints the backend has: what the same people can change under the same gate (permission code + step-up or not)
+   is merged into one form submitted once; only what needs different permissions is split.
 2. **A form has at most one step-up point.**
 
 ## Why split and merge by permission
@@ -34,6 +34,11 @@ do". Three ready-made examples:
 Every write in user management requires step-up: create / edit / disable / unlock / force logout / reset password /
 reset OTP / set root all change someone else's account, and any of them can affect another person's login and
 permissions, so all are bound to `RequireOTP`.
+
+Merging is about one action, not about everything a person may change. Independent topics, where saving one on its
+own makes sense (the sections of a section dialog, such as the profile's basic info and security), are separate
+submits even under the same gate: merging them would make a person save, and pass validation on, things they did not
+touch.
 
 ## Why a form can have only one step-up point
 

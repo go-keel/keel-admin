@@ -10,7 +10,7 @@ import {
   ResourceSheet,
 } from '@/components/containers';
 import { DataRegion } from '@/components/data-region';
-import { Section } from '@/components/fields';
+import { TitledGroup } from '@/components/fields';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/collapsible';
 import {
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   FieldLegend,
@@ -200,7 +201,6 @@ export function RoleForm({
     <FormDialog
       open={open}
       onClose={onClose}
-      size="wide"
       title={id ? t('roles.edit') : t('roles.create')}
       form={form}
       needOtp
@@ -212,210 +212,262 @@ export function RoleForm({
       // manageable departments or data scope, none shown in the list, so only edit speaks up (criterion in
       // docs/admin/forms.md, "Success messages").
       success={id ? t('roles.saved') : undefined}
-    >
-      <Section title={t('roles.basic')}>
-        <Controller
-          name="code"
-          control={form.control}
-          render={({ field, fieldState }) => (
-            <Field data-invalid={fieldState.invalid}>
-              <FieldLabel htmlFor="role-code">{t('roles.code')}</FieldLabel>
-              <Input
-                {...field}
-                id="role-code"
-                // The code is the role's identity and cannot be changed on edit: changing it means a different role.
-                disabled={Boolean(id)}
-                aria-required={!id}
-                aria-invalid={fieldState.invalid}
-              />
-              {fieldState.invalid ? (
-                <FieldError errors={[fieldState.error]} />
-              ) : null}
-            </Field>
-          )}
-        />
-        <Controller
-          name="name"
-          control={form.control}
-          render={({ field, fieldState }) => (
-            <Field data-invalid={fieldState.invalid}>
-              <FieldLabel htmlFor="role-name">{t('roles.name')}</FieldLabel>
-              <Input
-                {...field}
-                id="role-name"
-                aria-required
-                aria-invalid={fieldState.invalid}
-              />
-              {fieldState.invalid ? (
-                <FieldError errors={[fieldState.error]} />
-              ) : null}
-            </Field>
-          )}
-        />
-        <Controller
-          name="forceOtp"
-          control={form.control}
-          render={({ field }) => (
-            <SwitchRow
-              id="role-force-otp"
-              label={t('roles.forceOtp')}
-              checked={field.value === 1}
-              onChange={(c) => field.onChange(c ? 1 : 0)}
-            />
-          )}
-        />
-        <Controller
-          name="sensitive"
-          control={form.control}
-          render={({ field }) => (
-            <SwitchRow
-              id="role-sensitive"
-              label={t('roles.sensitive')}
-              hint={t('roles.sensitiveHint')}
-              checked={field.value === 1}
-              onChange={(c) => field.onChange(c ? 1 : 0)}
-            />
-          )}
-        />
-        <Controller
-          name="status"
-          control={form.control}
-          render={({ field }) => (
-            <SwitchRow
-              id="role-status"
-              label={t('users.enabled')}
-              checked={field.value === 1}
-              onChange={(c) => field.onChange(c ? 1 : 0)}
-            />
-          )}
-        />
-      </Section>
-
-      <Section title={t('roles.perms')} hint={t('roles.permsHint')}>
-        <PermTree
-          defs={perms?.items ?? []}
-          groups={perms?.groups ?? []}
-          selected={selectedPerms}
-          onChange={(next) => form.setValue('perms', asSet(next), dirty)}
-        />
-      </Section>
-
-      <Section title={t('roles.assignable')} hint={t('roles.assignableHint')}>
-        <div className="grid grid-cols-2 gap-1">
-          {allRoles
-            // Exclude itself: a role being able to hand out itself is meaningless.
-            .filter((x) => x.id !== id)
-            .map((x) => (
-              <CheckRow
-                key={x.id}
-                id={`assign-${x.id}`}
-                label={x.name ?? ''}
-                checked={assignable.includes(x.id ?? '')}
-                onChange={(c) =>
-                  form.setValue(
-                    'assignableRoleIds',
-                    asSet(
-                      c
-                        ? [...assignable, x.id ?? '']
-                        : assignable.filter((y) => y !== x.id),
-                    ),
-                    dirty,
-                  )
-                }
-              />
-            ))}
-        </div>
-      </Section>
-
-      <Section title={t('roles.manageDepts')} hint={t('roles.manageDeptsHint')}>
-        {/* One column in tree order: two columns would read a tree row by row across them. */}
-        <div className="grid gap-1">
-          {flattenTree(depts).map(({ node: d, depth }) => (
-            <CheckRow
-              key={d.id}
-              id={`dept-${d.id}`}
-              label={indentLabel(d.name ?? '', depth)}
-              checked={manageDepts.includes(d.id ?? '')}
-              onChange={(c) =>
-                form.setValue(
-                  'manageDeptIds',
-                  asSet(
-                    c
-                      ? [...manageDepts, d.id ?? '']
-                      : manageDepts.filter((y) => y !== d.id),
-                  ),
-                  dirty,
-                )
-              }
-            />
-          ))}
-        </div>
-      </Section>
-
-      <Section title={t('roles.scopes')} hint={t('roles.scopesHint')}>
-        {resources.map((res) => {
-          const cur = scopes.find((s) => s.resourceType === res.res);
-          return (
-            <FieldSet key={res.res} className="gap-2 rounded-md border p-2">
-              <FieldLegend variant="label">{res.name || res.res}</FieldLegend>
-              <RadioGroup
-                // "Not configured" uses none as a placeholder: the radio group needs a value meaning it is selected.
-                value={cur?.scopeType || 'none'}
-                onValueChange={(v) =>
-                  setScope(
-                    res.res ?? '',
-                    v === 'none'
-                      ? { scopeType: '' }
-                      : { scopeType: String(v), resourceIds: [] },
-                  )
-                }
-                className="flex flex-wrap gap-3"
-              >
-                {[
-                  ...SCOPE_TYPES.filter((tp) => scopeAllowed(res, tp)),
-                  'none' as const,
-                ].map((tp) => (
-                  <Field key={tp} orientation="horizontal" className="w-auto">
-                    <RadioGroupItem value={tp} id={`scope-${res.res}-${tp}`} />
-                    <FieldLabel
-                      htmlFor={`scope-${res.res}-${tp}`}
-                      className="font-normal text-xs"
-                    >
-                      {t(`roles.scope.${tp}`)}
+      sections={[
+        {
+          id: 'basic',
+          title: t('roles.basic'),
+          content: (
+            <>
+              <Controller
+                name="code"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field
+                    orientation="responsive"
+                    data-invalid={fieldState.invalid}
+                  >
+                    <FieldLabel htmlFor="role-code">
+                      {t('roles.code')}
                     </FieldLabel>
+                    <Input
+                      {...field}
+                      id="role-code"
+                      // The code is the role's identity and cannot be changed on edit: changing it means a different role.
+                      disabled={Boolean(id)}
+                      aria-required={!id}
+                      aria-invalid={fieldState.invalid}
+                    />
+                    {fieldState.invalid ? (
+                      <FieldError errors={[fieldState.error]} />
+                    ) : null}
                   </Field>
-                ))}
-              </RadioGroup>
-              {/* Explicit assignment is selectable only when the resource registered an option source; otherwise there
-                  is nothing to pick. */}
-              {cur?.scopeType === 'RESOURCE_GRANT' ? (
-                <div className="grid grid-cols-2 gap-1 pt-1">
-                  {(res.grantOptions ?? []).map((o) => (
+                )}
+              />
+              <Controller
+                name="name"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field
+                    orientation="responsive"
+                    data-invalid={fieldState.invalid}
+                  >
+                    <FieldLabel htmlFor="role-name">
+                      {t('roles.name')}
+                    </FieldLabel>
+                    <Input
+                      {...field}
+                      id="role-name"
+                      aria-required
+                      aria-invalid={fieldState.invalid}
+                    />
+                    {fieldState.invalid ? (
+                      <FieldError errors={[fieldState.error]} />
+                    ) : null}
+                  </Field>
+                )}
+              />
+              <Controller
+                name="forceOtp"
+                control={form.control}
+                render={({ field }) => (
+                  <SwitchRow
+                    id="role-force-otp"
+                    label={t('roles.forceOtp')}
+                    checked={field.value === 1}
+                    onChange={(c) => field.onChange(c ? 1 : 0)}
+                  />
+                )}
+              />
+              <Controller
+                name="sensitive"
+                control={form.control}
+                render={({ field }) => (
+                  <SwitchRow
+                    id="role-sensitive"
+                    label={t('roles.sensitive')}
+                    hint={t('roles.sensitiveHint')}
+                    checked={field.value === 1}
+                    onChange={(c) => field.onChange(c ? 1 : 0)}
+                  />
+                )}
+              />
+              <Controller
+                name="status"
+                control={form.control}
+                render={({ field }) => (
+                  <SwitchRow
+                    id="role-status"
+                    label={t('users.enabled')}
+                    checked={field.value === 1}
+                    onChange={(c) => field.onChange(c ? 1 : 0)}
+                  />
+                )}
+              />
+            </>
+          ),
+        },
+        {
+          id: 'perms',
+          title: t('roles.perms'),
+          content: (
+            <>
+              <PermTree
+                defs={perms?.items ?? []}
+                groups={perms?.groups ?? []}
+                selected={selectedPerms}
+                onChange={(next) => form.setValue('perms', asSet(next), dirty)}
+              />
+            </>
+          ),
+        },
+        {
+          id: 'assignable',
+          title: t('roles.assignable'),
+          content: (
+            <>
+              <div className="grid grid-cols-2 gap-1">
+                {allRoles
+                  // Exclude itself: a role being able to hand out itself is meaningless.
+                  .filter((x) => x.id !== id)
+                  .map((x) => (
                     <CheckRow
-                      key={o.id}
-                      id={`grant-${res.res}-${o.id}`}
-                      label={o.label ?? ''}
-                      checked={(cur.resourceIds ?? []).includes(o.id ?? '')}
+                      key={x.id}
+                      id={`assign-${x.id}`}
+                      label={x.name ?? ''}
+                      checked={assignable.includes(x.id ?? '')}
                       onChange={(c) =>
-                        setScope(res.res ?? '', {
-                          resourceIds: asSet(
+                        form.setValue(
+                          'assignableRoleIds',
+                          asSet(
                             c
-                              ? [...(cur.resourceIds ?? []), o.id ?? '']
-                              : (cur.resourceIds ?? []).filter(
-                                  (x) => x !== o.id,
-                                ),
+                              ? [...assignable, x.id ?? '']
+                              : assignable.filter((y) => y !== x.id),
                           ),
-                        })
+                          dirty,
+                        )
                       }
                     />
                   ))}
-                </div>
-              ) : null}
-            </FieldSet>
-          );
-        })}
-      </Section>
-    </FormDialog>
+              </div>
+            </>
+          ),
+        },
+        {
+          id: 'manageDepts',
+          title: t('roles.manageDepts'),
+          content: (
+            <>
+              <FieldDescription>{t('roles.manageDeptsHint')}</FieldDescription>
+              {/* One column in tree order: two columns would read a tree row by row across them. */}
+              <div className="grid gap-1">
+                {flattenTree(depts).map(({ node: d, depth }) => (
+                  <CheckRow
+                    key={d.id}
+                    id={`dept-${d.id}`}
+                    label={indentLabel(d.name ?? '', depth)}
+                    checked={manageDepts.includes(d.id ?? '')}
+                    onChange={(c) =>
+                      form.setValue(
+                        'manageDeptIds',
+                        asSet(
+                          c
+                            ? [...manageDepts, d.id ?? '']
+                            : manageDepts.filter((y) => y !== d.id),
+                        ),
+                        dirty,
+                      )
+                    }
+                  />
+                ))}
+              </div>
+            </>
+          ),
+        },
+        {
+          id: 'scopes',
+          title: t('roles.scopes'),
+          content: (
+            <>
+              {resources.map((res) => {
+                const cur = scopes.find((s) => s.resourceType === res.res);
+                return (
+                  <FieldSet
+                    key={res.res}
+                    className="gap-2 rounded-md border p-2"
+                  >
+                    <FieldLegend variant="label">
+                      {res.name || res.res}
+                    </FieldLegend>
+                    <RadioGroup
+                      // "Not configured" uses none as a placeholder: the radio group needs a value meaning it is selected.
+                      value={cur?.scopeType || 'none'}
+                      onValueChange={(v) =>
+                        setScope(
+                          res.res ?? '',
+                          v === 'none'
+                            ? { scopeType: '' }
+                            : { scopeType: String(v), resourceIds: [] },
+                        )
+                      }
+                      className="flex flex-wrap gap-3"
+                    >
+                      {[
+                        ...SCOPE_TYPES.filter((tp) => scopeAllowed(res, tp)),
+                        'none' as const,
+                      ].map((tp) => (
+                        <Field
+                          key={tp}
+                          orientation="horizontal"
+                          className="w-auto"
+                        >
+                          <RadioGroupItem
+                            value={tp}
+                            id={`scope-${res.res}-${tp}`}
+                          />
+                          <FieldLabel
+                            htmlFor={`scope-${res.res}-${tp}`}
+                            className="font-normal text-xs"
+                          >
+                            {t(`roles.scope.${tp}`)}
+                          </FieldLabel>
+                        </Field>
+                      ))}
+                    </RadioGroup>
+                    {/* Explicit assignment is selectable only when the resource registered an option source; otherwise there
+                        is nothing to pick. */}
+                    {cur?.scopeType === 'RESOURCE_GRANT' ? (
+                      <div className="grid grid-cols-2 gap-1 pt-1">
+                        {(res.grantOptions ?? []).map((o) => (
+                          <CheckRow
+                            key={o.id}
+                            id={`grant-${res.res}-${o.id}`}
+                            label={o.label ?? ''}
+                            checked={(cur.resourceIds ?? []).includes(
+                              o.id ?? '',
+                            )}
+                            onChange={(c) =>
+                              setScope(res.res ?? '', {
+                                resourceIds: asSet(
+                                  c
+                                    ? [...(cur.resourceIds ?? []), o.id ?? '']
+                                    : (cur.resourceIds ?? []).filter(
+                                        (x) => x !== o.id,
+                                      ),
+                                ),
+                              })
+                            }
+                          />
+                        ))}
+                      </div>
+                    ) : null}
+                  </FieldSet>
+                );
+              })}
+            </>
+          ),
+        },
+      ]}
+    />
   );
 }
 
@@ -735,15 +787,15 @@ export function RoleDetail({
       <DataRegion query={detail} requires={[permsQuery, resourcesQuery]}>
         {(data) => (
           <div className="flex flex-col gap-4 text-sm">
-            <Section title={t('roles.basic')}>
+            <TitledGroup title={t('roles.basic')}>
               <p>
                 {t('format.withDetail', {
                   main: data.name ?? '',
                   detail: data.code ?? '',
                 })}
               </p>
-            </Section>
-            <Section title={t('roles.perms')}>
+            </TitledGroup>
+            <TitledGroup title={t('roles.perms')}>
               {granted.size === 0 ? (
                 none
               ) : (
@@ -788,22 +840,22 @@ export function RoleDetail({
                   ) : null}
                 </div>
               )}
-            </Section>
-            <Section title={t('roles.assignable')}>
+            </TitledGroup>
+            <TitledGroup title={t('roles.assignable')}>
               {(data.assignableRoles ?? []).length === 0
                 ? none
                 : (data.assignableRoles ?? [])
                     .map((r) => r.name)
                     .join(t('format.listSeparator'))}
-            </Section>
-            <Section title={t('roles.manageDepts')}>
+            </TitledGroup>
+            <TitledGroup title={t('roles.manageDepts')}>
               {(data.manageDepts ?? []).length === 0
                 ? none
                 : (data.manageDepts ?? [])
                     .map((d) => d.name)
                     .join(t('format.listSeparator'))}
-            </Section>
-            <Section title={t('roles.scopes')}>
+            </TitledGroup>
+            <TitledGroup title={t('roles.scopes')}>
               {(data.scopes ?? []).length === 0
                 ? none
                 : (data.scopes ?? []).map((s) => {
@@ -835,7 +887,7 @@ export function RoleDetail({
                       </p>
                     );
                   })}
-            </Section>
+            </TitledGroup>
           </div>
         )}
       </DataRegion>

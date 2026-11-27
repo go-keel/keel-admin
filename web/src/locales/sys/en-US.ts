@@ -55,10 +55,10 @@ export default {
     cancel: 'Cancel',
     confirm: 'Confirm',
     otp: 'One-time code',
-    otpHint: 'Enter the current code from your authenticator app.',
     otpBindFirst:
       'This operation needs a one-time code, and your account has no authenticator bound.',
-    otpBindLink: 'Bind one on your profile page.',
+    otpBindLink:
+      'Bind one under Security in your profile (avatar menu, top right).',
     save: 'Save',
     saving: 'Saving…',
     edit: 'Edit',
@@ -67,12 +67,13 @@ export default {
     viewAll: 'View all',
   },
   field: {
+    passwordMismatch: 'Does not match the password above',
+    confirmPassword: 'Confirm password',
     avatar: 'Avatar',
     pickImage: 'Choose image',
     clearAvatar: 'Clear avatar',
     avatarTooLarge: 'Image is too large. Compress it or pick a smaller one.',
     ipWhitelist: 'Login IP allowlist',
-    ipHint: 'Comma-separated IPs or CIDRs. Leave empty for no restriction.',
     ipInvalid: 'Not a valid IP or CIDR: {{entry}}',
     email: 'Email',
     emailInvalid: 'Not a valid email address',
@@ -89,6 +90,9 @@ export default {
     tooBig: 'Must be at most {{max}}',
     pickAtLeast: 'Pick at least {{min}}',
     invalid: 'Invalid value',
+    otpTitle: 'Enter the one-time code',
+    otpDesc: 'Enter the current code from your authenticator app to save.',
+    sectionInvalid: 'Has errors',
     discardTitle: 'Discard unsaved changes?',
     discardDesc: 'What you entered in this form will not be saved.',
     keepEditing: 'Keep editing',
@@ -119,7 +123,6 @@ export default {
     ipRestricted: 'Restricted',
     basic: 'Profile',
     access: 'Access',
-    accessHint: 'Department, roles and login IP restriction.',
     manage: 'Account actions',
     reset_pwd: 'Reset password',
     resetPassword: 'Reset password',
@@ -161,8 +164,6 @@ export default {
     no: 'No',
     basic: 'Basic info',
     perms: 'Permissions',
-    permsHint:
-      'Prerequisites are selected and locked automatically — that is how the permission works, not a limit of this screen.',
     permSearch: 'Search by name or code',
     kernel: 'Kernel',
     lockedBy: 'Required by {{names}}',
@@ -172,12 +173,9 @@ export default {
     permNeedsHint: 'Granting it also grants {{names}}',
     toggleGroup: 'Expand or collapse',
     assignable: 'Assignable roles',
-    assignableHint: 'Which roles this role may hand out to other accounts.',
     manageDepts: 'Manageable departments',
     manageDeptsHint: 'Each one implies its whole subtree.',
     scopes: 'Data scopes',
-    scopesHint:
-      'One scope per resource; which scopes are available depends on the resource itself.',
     none: 'Not configured',
     scope: {
       ALL: 'All',
@@ -217,7 +215,8 @@ export default {
     noPayload: 'Nothing was recorded for this action.',
   },
   profile: {
-    base: 'Profile',
+    saved: 'Profile saved.',
+    base: 'Basic info',
     editBase: 'Edit profile',
     security: 'Security',
     password: 'Password',
@@ -226,20 +225,14 @@ export default {
     passwordChanged: 'Password changed. Sign in again with the new one.',
     changePassword: 'Change password',
     otp: 'Authenticator',
-    otpHint: 'Two-factor authentication for sensitive operations.',
     otpBoundAt: 'Bound on',
-    ipWhitelistHint:
-      'You can only sign in from these IPs. Set by an administrator.',
     ipUnlimited: 'No restriction',
-    recentLoginsHint:
-      'Your last 5 sign-in attempts. If one was not you, change your password now.',
     currentPassword: 'Current password',
     bind: 'Bind authenticator',
     unbind: 'Unbind',
     unbindHint:
       'After unbinding, operations that need a verification code are blocked until you bind again.',
     perms: 'My permissions',
-    permsHint: 'The permission codes currently in effect for you.',
     allPerms: 'All permissions (super administrator)',
   },
   table: {

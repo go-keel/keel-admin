@@ -437,7 +437,19 @@ export function DataTable<T extends RowData>({
                       header.column.getIsPinned() && PINNED_CELL,
                     )}
                   >
-                    {header.isPlaceholder ? null : (
+                    {/* A text header longer than its column (a narrow default, or a column dragged narrow) is cut
+                        with an ellipsis instead of running into the next column, the full text in the hover title. A
+                        header that is a control (the select-all checkbox) is left alone: clipping would cut its focus
+                        ring. */}
+                    {header.isPlaceholder ? null : typeof header.column
+                        .columnDef.header === 'string' ? (
+                      <span
+                        className="block truncate"
+                        title={header.column.columnDef.header}
+                      >
+                        <table.FlexRender header={header} />
+                      </span>
+                    ) : (
                       <table.FlexRender header={header} />
                     )}
                     {/* No handle on the last column: there is no next column to its right to squeeze, dragging it

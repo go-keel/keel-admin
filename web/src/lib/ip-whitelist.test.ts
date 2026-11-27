@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { firstInvalidIPEntry } from './ip-whitelist';
+import { addIPEntries, firstInvalidIPEntry, ipEntries } from './ip-whitelist';
 
 describe('firstInvalidIPEntry', () => {
   it('empty string = no restriction, valid', () => {
@@ -19,5 +19,46 @@ describe('firstInvalidIPEntry', () => {
     expect(firstInvalidIPEntry('10.0.0.0/33')).toBe('10.0.0.0/33');
     expect(firstInvalidIPEntry('10.0.0.0/')).toBe('10.0.0.0/');
     expect(firstInvalidIPEntry('not-an-ip')).toBe('not-an-ip');
+  });
+});
+
+describe('allowlist tags', () => {
+  it('adds a pasted list split on commas, semicolons, spaces and line breaks, skipping duplicates', () => {
+    expect(
+      addIPEntries(
+        ['9.9.9.9'],
+        '1.1.1.1, 2.2.2.2;3.3.3.3\uFF1B4.4.4.4\n9.9.9.9 \uFF0C10.0.0.0/8',
+      ),
+    ).toEqual({
+      entries: [
+        '9.9.9.9',
+        '1.1.1.1',
+        '2.2.2.2',
+        '3.3.3.3',
+        '4.4.4.4',
+        '10.0.0.0/8',
+      ],
+      rest: '',
+      bad: undefined,
+    });
+  });
+
+  it('keeps bad entries out of the tags and returns them for fixing', () => {
+    expect(addIPEntries([], '1.1.1.1 1.1.1.300, x')).toEqual({
+      entries: ['1.1.1.1'],
+      rest: '1.1.1.300 x',
+      bad: '1.1.1.300',
+    });
+  });
+});
+
+describe('ipEntries', () => {
+  it('reads a stored allowlist, whatever its spacing, without empty entries', () => {
+    expect(ipEntries('1.1.1.1,2.2.2.2 , ,10.0.0.0/8,')).toEqual([
+      '1.1.1.1',
+      '2.2.2.2',
+      '10.0.0.0/8',
+    ]);
+    expect(ipEntries('')).toEqual([]);
   });
 });

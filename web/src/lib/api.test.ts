@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  ApiError,
   api,
   applyRequestHeaders,
   dispatchError,
+  isCodeRejected,
   performErrorAction,
   stepUp,
 } from './api';
@@ -120,5 +122,16 @@ describe('network failure: one localized toast, not the browser wording', () => 
     expect(first).toEqual(second);
     expect(first?.[0]).not.toContain('Failed to fetch');
     expect(first?.[1]).toEqual({ id: first?.[0] });
+  });
+});
+
+describe('isCodeRejected', () => {
+  it('is true only for a refused code', () => {
+    const err = (reason: string) =>
+      new ApiError({ code: 401, reason, message: '' }, 401);
+    expect(isCodeRejected(err('OTP_INVALID'))).toBe(true);
+    expect(isCodeRejected(err('OTP_ALREADY_USED'))).toBe(true);
+    expect(isCodeRejected(err('ROLE_EXISTS'))).toBe(false);
+    expect(isCodeRejected(new Error('x'))).toBe(false);
   });
 });

@@ -1,22 +1,31 @@
 import { XIcon } from 'lucide-react';
-import { type ReactNode, useId, useRef } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import type { DateZone } from '@/components/date-picker';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+} from '@/components/ui/combobox';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { useZone } from '@/hooks/use-timezone';
+import { addIPEntries, IP_SEPARATORS, ipEntries } from '@/lib/ip-whitelist';
 import {
   EMPTY_TIME,
   formatDateTime,
   formatTimeZoneShortName,
 } from '@/lib/timezone';
 
-/** Section heading inside drawers and form dialogs. A long form needs sections with a readable boundary between
- * them. */
-export function Section({
+/**
+ * A titled group of content inside drawers and form dialogs: a form with up to two groups of fields needs a readable
+ * boundary between them. Not a section of a dialog with section navigation (`sections` on the dialogs).
+ */
+export function TitledGroup({
   title,
   hint,
   children,
@@ -174,7 +183,7 @@ export function AvatarField({
   const id = useId();
 
   return (
-    <Field>
+    <Field orientation="responsive">
       <FieldLabel htmlFor={id}>{t('field.avatar')}</FieldLabel>
       <div className="flex items-center gap-3">
         <Avatar className="size-16">
@@ -227,5 +236,134 @@ export function AvatarField({
         ) : null}
       </div>
     </Field>
+  );
+}
+
+/**
+ * The login IP allowlist as tags in one input: each entry is a removable tag, so the field reads as one value made of
+ * a few entries. Enter or a separator (`IP_SEPARATORS`) turns the typed text into tags, a paste turns the whole list
+ * into tags, Backspace in the empty input takes the last tag back for editing. A bad entry never becomes a tag: it
+ * stays in the input with its error. The value stays the comma-separated text the server stores, the untagged text
+ * included, so finishing the last entry without Enter loses nothing and the form still validates it.
+ */
+export function IpTagInput({
+  id,
+  value,
+  onChange,
+  onBlur,
+  invalid,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  onBlur?: () => void;
+  invalid?: boolean;
+}) {
+  const { t } = useTranslation();
+  const [draft, setDraft] = useState('');
+  const [bad, setBad] = useState<string>();
+  const all = ipEntries(value);
+  const typed = draft.trim();
+  // The value ends with the untagged text while there is some; the rest are tags.
+  const entries = typed && all.at(-1) === typed ? all.slice(0, -1) : all;
+
+  // The form reset the value (opened again, or for another user): the text left in the input belongs to the old one.
+  useEffect(() => {
+    if (typed && all.at(-1) !== typed) {
+      setDraft('');
+      setBad(undefined);
+    }
+  });
+
+  const emit = (next: string[], text: string) => {
+    setDraft(text);
+    onChange([...next, text.trim()].filter(Boolean).join(', '));
+  };
+  const add = (text: string, keep = '') => {
+    const r = addIPEntries(entries, text);
+    setBad(r.bad);
+    emit(r.entries, [r.rest, keep].filter(Boolean).join(' '));
+  };
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Combobox
+        multiple
+        items={[]}
+        value={entries}
+        onValueChange={(next: string[]) => emit(next, draft)}
+        inputValue={draft}
+        onInputValueChange={(text, { reason }) => {
+          // Only typing counts: the combobox also clears its input on its own (on blur, finding no matching item),
+          // which would throw away what was typed.
+          if (reason !== 'input-change') return;
+          const parts = text.split(IP_SEPARATORS);
+          // A separator was typed: what is before it becomes tags, what follows keeps being typed.
+          if (parts.length > 1) add(parts.slice(0, -1).join(' '), parts.at(-1));
+          else {
+            setBad(undefined);
+            emit(entries, text);
+          }
+        }}
+      >
+        <ComboboxChips>
+          {entries.map((entry) => (
+            <ComboboxChip key={entry}>{entry}</ComboboxChip>
+          ))}
+          <ComboboxChipsInput
+            id={id}
+            placeholder={entries.length === 0 ? '10.0.0.0/8' : undefined}
+            aria-invalid={invalid || bad !== undefined}
+            onPaste={(e) => {
+              e.preventDefault();
+              e.preventBaseUIHandler();
+              add(`${draft} ${e.clipboardData.getData('text')}`);
+            }}
+            onKeyDown={(e) => {
+              // Keys pressed while an input method is composing belong to it.
+              if (e.nativeEvent.isComposing) return;
+              if (e.key === 'Enter') {
+                // Never submits the form from here: Enter means "this entry is done".
+                e.preventDefault();
+                e.preventBaseUIHandler();
+                if (typed) add(draft);
+              } else if (
+                e.key === 'Backspace' &&
+                draft === '' &&
+                entries.length > 0
+              ) {
+                e.preventDefault();
+                e.preventBaseUIHandler();
+                emit(entries.slice(0, -1), entries.at(-1) ?? '');
+              }
+            }}
+            onBlur={() => {
+              if (typed) add(draft);
+              onBlur?.();
+            }}
+          />
+        </ComboboxChips>
+      </Combobox>
+      {/* The form reports a bad entry on submit; until then, say right away why the text did not become a tag. */}
+      {bad !== undefined && !invalid ? (
+        <p className="text-destructive text-sm">
+          {t('field.ipInvalid', { entry: bad })}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** A stored login IP allowlist, read-only: the same tags as `IpTagInput`, so it reads the same where it is shown. */
+export function IpTags({ value }: { value: string }) {
+  return (
+    <span className="flex flex-wrap gap-1">
+      {ipEntries(value).map((entry) => (
+        // Square corners like the input's tags, not the pill of a status badge.
+        <Badge key={entry} variant="secondary" className="rounded-sm">
+          {entry}
+        </Badge>
+      ))}
+    </span>
   );
 }

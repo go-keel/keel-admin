@@ -98,6 +98,23 @@ export const ipWhitelist = () =>
       }
     });
 
+/**
+ * A new password is typed twice: pass to the schema's `.refine(...)`. A mismatch is reported on the second field, and
+ * is checked even while other fields still have errors, so one submit shows every problem.
+ */
+export const samePassword = (
+  field: string,
+  confirm: string,
+): [(v: Record<string, unknown>) => boolean, z.core.$ZodCustomParams] => [
+  (v: Record<string, unknown>) => v[field] === v[confirm],
+  {
+    path: [confirm],
+    error: tr('field.passwordMismatch'),
+    when: (p: z.core.ParsePayload) =>
+      p.issues.every((i) => i.path?.[0] !== field && i.path?.[0] !== confirm),
+  },
+];
+
 /** Loose phone format: digits, a leading +, spaces and hyphens in between, digits at both ends. */
 const PHONE = /^\+?[0-9][0-9 -]*[0-9]$/;
 

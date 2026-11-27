@@ -16,15 +16,16 @@ import {
   AvatarField,
   DateTimeText,
   DetailRow,
+  IpTagInput,
+  IpTags,
   LoginAttempts,
-  Section,
+  TitledGroup,
 } from '@/components/fields';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldLabel,
   FieldLegend,
@@ -47,6 +48,7 @@ import {
   ipWhitelist,
   optionalEmail,
   optionalPhone,
+  samePassword,
   useDetailForm,
 } from '@/lib/form';
 import { flattenTree, indentLabel } from '@/lib/tree';
@@ -77,15 +79,19 @@ const userFields = {
   ipWhitelist: ipWhitelist(),
 };
 
-const createUserSchema = z.object({
-  username: z.string().trim().min(1).max(64),
-  password: z.string().min(1).max(128),
-  ...userFields,
-});
+const createUserSchema = z
+  .object({
+    username: z.string().trim().min(1).max(64),
+    password: z.string().min(1).max(128),
+    confirmPassword: z.string(),
+    ...userFields,
+  })
+  .refine(...samePassword('password', 'confirmPassword'));
 
 const editUserSchema = z.object({
   username: z.string(),
   password: z.string(),
+  confirmPassword: z.string(),
   ...userFields,
 });
 
@@ -94,6 +100,7 @@ type UserValues = z.infer<typeof createUserSchema>;
 const EMPTY: UserValues = {
   username: '',
   password: '',
+  confirmPassword: '',
   nickname: '',
   avatar: '',
   email: '',
@@ -146,6 +153,7 @@ export function UserForm({
           toValues: (u) => ({
             username: u.username ?? '',
             password: '',
+            confirmPassword: '',
             nickname: u.nickname ?? '',
             avatar: u.avatar ?? '',
             email: u.email ?? '',
@@ -171,12 +179,12 @@ export function UserForm({
       queries={[detail, deptsQuery, rolesQuery]}
       onSubmit={submit}
     >
-      <Section title={t('users.basic')}>
+      <TitledGroup title={t('users.basic')}>
         <Controller
           name="username"
           control={form.control}
           render={({ field, fieldState }) => (
-            <Field data-invalid={fieldState.invalid}>
+            <Field orientation="responsive" data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="username">{t('users.username')}</FieldLabel>
               <Input
                 {...field}
@@ -194,33 +202,63 @@ export function UserForm({
           )}
         />
         {id ? null : (
-          <Controller
-            name="password"
-            control={form.control}
-            render={({ field, fieldState }) => (
-              <Field data-invalid={fieldState.invalid}>
-                <FieldLabel htmlFor="password">
-                  {t('users.initialPassword')}
-                </FieldLabel>
-                <PasswordInput
-                  {...field}
-                  id="password"
-                  autoComplete="new-password"
-                  aria-required
-                  aria-invalid={fieldState.invalid}
-                />
-                {fieldState.invalid ? (
-                  <FieldError errors={[fieldState.error]} />
-                ) : null}
-              </Field>
-            )}
-          />
+          <>
+            <Controller
+              name="password"
+              control={form.control}
+              rules={{ deps: 'confirmPassword' }}
+              render={({ field, fieldState }) => (
+                <Field
+                  orientation="responsive"
+                  data-invalid={fieldState.invalid}
+                >
+                  <FieldLabel htmlFor="password">
+                    {t('users.initialPassword')}
+                  </FieldLabel>
+                  <PasswordInput
+                    {...field}
+                    id="password"
+                    autoComplete="new-password"
+                    aria-required
+                    aria-invalid={fieldState.invalid}
+                  />
+                  {fieldState.invalid ? (
+                    <FieldError errors={[fieldState.error]} />
+                  ) : null}
+                </Field>
+              )}
+            />
+            <Controller
+              name="confirmPassword"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field
+                  orientation="responsive"
+                  data-invalid={fieldState.invalid}
+                >
+                  <FieldLabel htmlFor="confirm-password">
+                    {t('field.confirmPassword')}
+                  </FieldLabel>
+                  <PasswordInput
+                    {...field}
+                    id="confirm-password"
+                    autoComplete="new-password"
+                    aria-required
+                    aria-invalid={fieldState.invalid}
+                  />
+                  {fieldState.invalid ? (
+                    <FieldError errors={[fieldState.error]} />
+                  ) : null}
+                </Field>
+              )}
+            />
+          </>
         )}
         <Controller
           name="nickname"
           control={form.control}
           render={({ field, fieldState }) => (
-            <Field data-invalid={fieldState.invalid}>
+            <Field orientation="responsive" data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="nickname">{t('users.nickname')}</FieldLabel>
               <Input
                 {...field}
@@ -245,7 +283,7 @@ export function UserForm({
           name="email"
           control={form.control}
           render={({ field, fieldState }) => (
-            <Field data-invalid={fieldState.invalid}>
+            <Field orientation="responsive" data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="email">{t('field.email')}</FieldLabel>
               <Input
                 {...field}
@@ -264,7 +302,7 @@ export function UserForm({
           name="phone"
           control={form.control}
           render={({ field, fieldState }) => (
-            <Field data-invalid={fieldState.invalid}>
+            <Field orientation="responsive" data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="phone">{t('field.phone')}</FieldLabel>
               <Input
                 {...field}
@@ -279,14 +317,14 @@ export function UserForm({
             </Field>
           )}
         />
-      </Section>
+      </TitledGroup>
 
-      <Section title={t('users.access')} hint={t('users.accessHint')}>
+      <TitledGroup title={t('users.access')}>
         <Controller
           name="deptId"
           control={form.control}
           render={({ field }) => (
-            <Field>
+            <Field orientation="responsive">
               <FieldLabel htmlFor="deptId">{t('users.dept')}</FieldLabel>
               <Select
                 value={field.value}
@@ -355,27 +393,26 @@ export function UserForm({
           name="ipWhitelist"
           control={form.control}
           render={({ field, fieldState }) => (
-            <Field data-invalid={fieldState.invalid}>
+            <Field orientation="responsive" data-invalid={fieldState.invalid}>
               <FieldLabel htmlFor="ip-whitelist">
                 {t('field.ipWhitelist')}
               </FieldLabel>
-              <Input
-                {...field}
+              <IpTagInput
                 id="ip-whitelist"
-                placeholder="10.0.0.0/8, 203.0.113.7"
-                aria-invalid={fieldState.invalid}
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                invalid={fieldState.invalid}
               />
               {/* Empty = unrestricted (the state of nearly every account), so not marked required; only a bad entry is
                   reported, naming which one. */}
               {fieldState.invalid ? (
                 <FieldError errors={[fieldState.error]} />
-              ) : (
-                <FieldDescription>{t('field.ipHint')}</FieldDescription>
-              )}
+              ) : null}
             </Field>
           )}
         />
-      </Section>
+      </TitledGroup>
     </FormDialog>
   );
 }
@@ -439,7 +476,9 @@ export function UserDetail({
             />
             <DetailRow
               label={t('field.ipWhitelist')}
-              value={data.ipWhitelist || '-'}
+              value={
+                data.ipWhitelist ? <IpTags value={data.ipWhitelist} /> : '-'
+              }
             />
             <DetailRow
               label={t('table.createdAt')}
@@ -472,7 +511,7 @@ function RecentLogins({ userId }: { userId: string }) {
   );
 
   return (
-    <Section title={t('users.recentLogins')}>
+    <TitledGroup title={t('users.recentLogins')}>
       <DataRegion query={logins}>
         {(data) => <LoginAttempts items={data.items ?? []} />}
       </DataRegion>
@@ -499,7 +538,7 @@ function RecentLogins({ userId }: { userId: string }) {
         {t('action.viewAll')}
         <ExternalLinkIcon />
       </Button>
-    </Section>
+    </TitledGroup>
   );
 }
 
@@ -522,11 +561,18 @@ export function UserActionDialog({
 }) {
   const { t } = useTranslation();
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  // Shown once the second entry can no longer become the first: while it is still a prefix, it is unfinished, not
+  // wrong. Confirm stays disabled until the two are equal.
+  const mismatch = !password.startsWith(confirm);
 
   // Switching action clears the new password typed last time: keeping it would fill one account's password into
   // another.
   useEffect(() => {
-    if (pending) setPassword('');
+    if (pending) {
+      setPassword('');
+      setConfirm('');
+    }
   }, [pending]);
 
   const run = async (otp: string) => {
@@ -578,22 +624,44 @@ export function UserActionDialog({
         pending?.kind === 'kick' ||
         (pending?.kind === 'root' && !revoking)
       }
-      confirmDisabled={pending?.kind === 'reset_pwd' && password.length < 8}
+      confirmDisabled={
+        pending?.kind === 'reset_pwd' &&
+        (password.length < 8 || confirm !== password)
+      }
       success={success}
       onConfirm={run}
     >
       {pending?.kind === 'reset_pwd' ? (
-        <Field>
-          <FieldLabel htmlFor="new-password">
-            {t('users.newPassword')}
-          </FieldLabel>
-          <PasswordInput
-            id="new-password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </Field>
+        <>
+          <Field>
+            <FieldLabel htmlFor="new-password">
+              {t('users.newPassword')}
+            </FieldLabel>
+            <PasswordInput
+              id="new-password"
+              autoComplete="new-password"
+              aria-required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </Field>
+          <Field data-invalid={mismatch}>
+            <FieldLabel htmlFor="confirm-new-password">
+              {t('field.confirmPassword')}
+            </FieldLabel>
+            <PasswordInput
+              id="confirm-new-password"
+              autoComplete="new-password"
+              aria-required
+              value={confirm}
+              aria-invalid={mismatch}
+              onChange={(e) => setConfirm(e.target.value)}
+            />
+            {mismatch ? (
+              <FieldError>{t('field.passwordMismatch')}</FieldError>
+            ) : null}
+          </Field>
+        </>
       ) : null}
     </ActionDialog>
   );

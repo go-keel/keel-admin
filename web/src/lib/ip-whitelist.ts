@@ -47,3 +47,31 @@ export function firstInvalidIPEntry(raw: string): string | undefined {
   }
   return undefined;
 }
+
+/** What separates entries typed or pasted into the allowlist input: a list copied from elsewhere uses any of these. */
+// \uFF0C and \uFF1B: the full-width comma and semicolon of CJK input methods.
+export const IP_SEPARATORS = /[\s,;\uFF0C\uFF1B]+/;
+
+/**
+ * Adds the entries in `text` to the allowlist tags: duplicates are skipped, bad entries are not added but returned in
+ * `rest` (space-separated) to stay in the input for fixing, the first of them in `bad`.
+ */
+export function addIPEntries(
+  entries: readonly string[],
+  text: string,
+): { entries: string[]; rest: string; bad?: string } {
+  const next = [...entries];
+  const bad: string[] = [];
+  for (const piece of text.split(IP_SEPARATORS).filter(Boolean)) {
+    if (firstInvalidIPEntry(piece) !== undefined) bad.push(piece);
+    else if (!next.includes(piece)) next.push(piece);
+  }
+  return { entries: next, rest: bad.join(' '), bad: bad[0] };
+}
+
+/** The entries of a stored allowlist, as shown: trimmed, empty ones dropped. */
+export const ipEntries = (raw: string): string[] =>
+  raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);

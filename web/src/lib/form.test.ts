@@ -9,6 +9,7 @@ import {
   issueMessage,
   optionalEmail,
   optionalPhone,
+  samePassword,
 } from './form';
 
 // The fake t echoes the entry and its parameters: the assertions check which error maps to which entry,
@@ -103,6 +104,23 @@ describe('optionalPhone', () => {
     for (const bad of ['138abc0000', '1234', '1'.repeat(21), '138-']) {
       expect(optionalPhone().safeParse(bad).success).toBe(false);
     }
+  });
+});
+
+describe('samePassword', () => {
+  const schema = z
+    .object({ name: z.string().min(1), pwd: z.string(), again: z.string() })
+    .refine(...samePassword('pwd', 'again'));
+  const paths = (input: unknown) =>
+    (schema.safeParse(input).error?.issues ?? []).map((i) => i.path.join('.'));
+
+  it('reports a mismatch on the second field, even while another field has an error', () => {
+    expect(paths({ name: 'a', pwd: 'x', again: 'x' })).toEqual([]);
+    expect(paths({ name: 'a', pwd: 'x', again: 'y' })).toEqual(['again']);
+    expect(paths({ name: '', pwd: 'x', again: 'y' })).toEqual([
+      'name',
+      'again',
+    ]);
   });
 });
 

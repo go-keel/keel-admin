@@ -162,7 +162,7 @@ rules; if one seems wrong, change it in keel-admin, so that every admin keeps th
   privileges), except the two endpoints needed for assigning roles, which are bound to `sys:account:update`, and
   `ListRoleOptions` (role filter options), bound to `sys:account:view`.
 - **User management cannot edit oneself**: every write a non-root user makes on their own account is refused, and
-  self-service changes go through the profile page; root cannot disable itself, set its own IP allowlist or change
+  self-service changes go through the profile; root cannot disable itself, set its own IP allowlist or change
   its own root status either, so no one can lock themselves out or widen their own rights in passing.
 - **A sensitive role has a single meaning: a non-root user cannot assign it to others**; it does not restrict root
   from editing or deleting it: only root can change roles at all, with a one-time code and an audit record.

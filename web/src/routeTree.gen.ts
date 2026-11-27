@@ -18,7 +18,6 @@ import { Route as AppNoticesCategoriesRouteImport } from './routes/_app/notices/
 import { Route as AppSysAuditRouteImport } from './routes/_app/sys/audit'
 import { Route as AppSysDeptsRouteImport } from './routes/_app/sys/depts'
 import { Route as AppSysLoginLogsRouteImport } from './routes/_app/sys/login-logs'
-import { Route as AppSysProfileRouteImport } from './routes/_app/sys/profile'
 import { Route as AppSysRolesRouteImport } from './routes/_app/sys/roles'
 import { Route as AppSysUsersRouteImport } from './routes/_app/sys/users'
 
@@ -66,11 +65,6 @@ const AppSysLoginLogsRoute = AppSysLoginLogsRouteImport.update({
   path: '/sys/login-logs',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSysProfileRoute = AppSysProfileRouteImport.update({
-  id: '/sys/profile',
-  path: '/sys/profile',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppSysRolesRoute = AppSysRolesRouteImport.update({
   id: '/sys/roles',
   path: '/sys/roles',
@@ -90,7 +84,6 @@ export interface FileRoutesByFullPath {
   '/sys/audit': typeof AppSysAuditRoute
   '/sys/depts': typeof AppSysDeptsRoute
   '/sys/login-logs': typeof AppSysLoginLogsRoute
-  '/sys/profile': typeof AppSysProfileRoute
   '/sys/roles': typeof AppSysRolesRoute
   '/sys/users': typeof AppSysUsersRoute
   '/notices/': typeof AppNoticesIndexRoute
@@ -103,7 +96,6 @@ export interface FileRoutesByTo {
   '/sys/audit': typeof AppSysAuditRoute
   '/sys/depts': typeof AppSysDeptsRoute
   '/sys/login-logs': typeof AppSysLoginLogsRoute
-  '/sys/profile': typeof AppSysProfileRoute
   '/sys/roles': typeof AppSysRolesRoute
   '/sys/users': typeof AppSysUsersRoute
   '/notices': typeof AppNoticesIndexRoute
@@ -118,7 +110,6 @@ export interface FileRoutesById {
   '/_app/sys/audit': typeof AppSysAuditRoute
   '/_app/sys/depts': typeof AppSysDeptsRoute
   '/_app/sys/login-logs': typeof AppSysLoginLogsRoute
-  '/_app/sys/profile': typeof AppSysProfileRoute
   '/_app/sys/roles': typeof AppSysRolesRoute
   '/_app/sys/users': typeof AppSysUsersRoute
   '/_app/notices/': typeof AppNoticesIndexRoute
@@ -133,7 +124,6 @@ export interface FileRouteTypes {
     | '/sys/audit'
     | '/sys/depts'
     | '/sys/login-logs'
-    | '/sys/profile'
     | '/sys/roles'
     | '/sys/users'
     | '/notices/'
@@ -146,7 +136,6 @@ export interface FileRouteTypes {
     | '/sys/audit'
     | '/sys/depts'
     | '/sys/login-logs'
-    | '/sys/profile'
     | '/sys/roles'
     | '/sys/users'
     | '/notices'
@@ -160,7 +149,6 @@ export interface FileRouteTypes {
     | '/_app/sys/audit'
     | '/_app/sys/depts'
     | '/_app/sys/login-logs'
-    | '/_app/sys/profile'
     | '/_app/sys/roles'
     | '/_app/sys/users'
     | '/_app/notices/'
@@ -237,13 +225,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSysLoginLogsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/sys/profile': {
-      id: '/_app/sys/profile'
-      path: '/sys/profile'
-      fullPath: '/sys/profile'
-      preLoaderRoute: typeof AppSysProfileRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/sys/roles': {
       id: '/_app/sys/roles'
       path: '/sys/roles'
@@ -267,7 +248,6 @@ interface AppRouteChildren {
   AppSysAuditRoute: typeof AppSysAuditRoute
   AppSysDeptsRoute: typeof AppSysDeptsRoute
   AppSysLoginLogsRoute: typeof AppSysLoginLogsRoute
-  AppSysProfileRoute: typeof AppSysProfileRoute
   AppSysRolesRoute: typeof AppSysRolesRoute
   AppSysUsersRoute: typeof AppSysUsersRoute
   AppNoticesIndexRoute: typeof AppNoticesIndexRoute
@@ -279,7 +259,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppSysAuditRoute: AppSysAuditRoute,
   AppSysDeptsRoute: AppSysDeptsRoute,
   AppSysLoginLogsRoute: AppSysLoginLogsRoute,
-  AppSysProfileRoute: AppSysProfileRoute,
   AppSysRolesRoute: AppSysRolesRoute,
   AppSysUsersRoute: AppSysUsersRoute,
   AppNoticesIndexRoute: AppNoticesIndexRoute,

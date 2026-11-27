@@ -3,6 +3,73 @@
 This file holds entries only, one per change that actually happened; how to write entries and how to follow
 upstream: `docs/upgrading-protocol.md`.
 
+## 2026-11-27 · 2
+
+**What changed.** The login IP allowlist is entered as tags (`IpTagInput` in `web/src/components/fields.tsx`): Enter,
+a comma, a semicolon or a space turns an entry into a tag, a pasted list is split, a bad entry stays in the input with
+its error. Where it is shown read-only (profile, user details) it is the same tags (`IpTags`). The stored value is
+still the comma-separated text. Hints that only restated a name are gone, and their entries removed from
+`web/src/locales/sys/`: `field.ipHint`, `users.accessHint`, `roles.permsHint`, `roles.assignableHint`,
+`roles.scopesHint`, `action.otpHint`, `profile.otpHint`, `profile.ipWhitelistHint`, `profile.recentLoginsHint`,
+`profile.permsHint`. The rule for when a hint is written is in `docs/admin/pages.md`, "User-facing text".
+
+**Why.** A comma-separated line is hard to read and to edit one entry of. Hints that repeat the name make a page read
+as filler, and the ones that matter get skipped with them.
+
+**How to apply.**
+
+1. Take the frontend kernel and the shared docs with `make sync-upstream`.
+2. If your own code used one of the removed locale entries, drop that hint or write your own entry.
+3. Review your own hints against the rule in `docs/admin/pages.md` and remove those that restate a name.
+
+## 2026-11-27 · 1
+
+**What changed.** Every place that sets a new password asks for it twice: changing your own password, a new user's
+initial password and resetting someone's password. `samePassword` in `web/src/lib/form.ts` checks the pair in a zod
+schema (`docs/admin/pages.md`, "Controls and sizes").
+
+**Why.** A typo in a new password locks the account until someone resets it; after changing your own password, that
+someone is not you.
+
+**How to apply.**
+
+1. Take the frontend kernel and the shared docs with `make sync-upstream`.
+2. If your own forms set a password, add a second `PasswordInput` labelled `field.confirmPassword` and
+   `.refine(...samePassword('<field>', '<confirm field>'))` on the schema.
+
+## 2026-11-26 · 1
+
+**What changed.** Dialog forms are laid out differently (`docs/admin/forms.md`, "Container roles" and "Forms"):
+
+- Fields in a dialog are rows, name on the left and control on the right: a `Field` takes `orientation="responsive"`.
+  Controls that need room (checkbox lists, trees, multi-line text) keep the default stacked layout.
+- `FormDialog` loses `size` (`wide`, `xl`) and is a little wider by default. A form with three or more groups of
+  fields passes `sections` instead of children and gets section navigation on the left, still one form and one Save.
+- New `SectionDialog` and `SectionForm` in `web/src/components/containers.tsx`: a large dialog with section
+  navigation whose sections are independent topics, each section's form saved on its own. The criterion for choosing
+  between the two, and the narrowed merging rule, are in `docs/admin/forms.md` and
+  `docs/adr/admin-0007-operation-split-and-step-up-placement.md`.
+- `Section` in `web/src/components/fields.tsx` (the titled group inside a form or drawer) is renamed `TitledGroup`:
+  "section" now means one entry of a dialog's section navigation.
+- The profile is no longer the page `/sys/profile`: the avatar menu opens it as a section dialog
+  (`web/src/components/profile-dialog.tsx`). Without an authenticator bound, the one-time code field says where to
+  bind one instead of linking to the page.
+- A form with `needOtp` (`FormDialog`, `SectionForm`) no longer shows a one-time code field: Save validates the fields
+  and then asks for the code in a small dialog. Without an authenticator bound, the form says so on top and Save is
+  disabled. `ActionDialog` and `ConfirmPopover` still collect the code in the confirmation.
+
+**Why.** A narrow dialog with labels stacked above controls became a tall strip once a form had more than a few
+fields, and the large sizes only made long forms wider.
+
+**How to apply.**
+
+1. Take the frontend kernel and the shared docs with `make sync-upstream`.
+2. In your own dialog forms, add `orientation="responsive"` to each `Field` that holds a single-line control.
+3. Remove `size="wide"` / `size="xl"` from your `FormDialog`s. If the form has three or more groups, turn each group
+   into an entry of `sections` (`{ id, title, content }`); otherwise leave the groups as children.
+4. Rename your uses of `Section` from `@/components/fields` to `TitledGroup`.
+5. Replace any link of your own to `/sys/profile` with a sentence pointing at the avatar menu.
+
 ## 2026-11-25 · 13
 
 > Follows keel-layout 6fa085f

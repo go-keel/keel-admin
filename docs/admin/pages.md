@@ -132,6 +132,9 @@ two: the hidden file input (choosing an avatar image) and the table's column-wid
 - **Password fields always use the kernel's `PasswordInput`**: it ends with an eye button that toggles plain text,
   written as shadcn's `InputGroup`; give `autoComplete` for the context (`current-password` / `new-password`). A
   hand-written `type="password"` Input lacks the button and differs from other pages.
+- **A new password is typed twice**: a second `PasswordInput` labelled with `field.confirmPassword`, checked by
+  `samePassword` from `lib/form.ts` (the mismatch shows on the second field). The eye button lets someone check what
+  they typed, but nothing makes them look; a typo in a new password locks the account until someone resets it.
 - **Hover hints always use shadcn's `Tooltip`, not an element's `title` attribute**: the browser's native hint takes a
   second or two to appear, looks different in each browser and ignores the theme, unlike every other popover on the
   site. `TooltipProvider` is already mounted at the root in `main.tsx`, so pages use `Tooltip` / `TooltipTrigger` /
@@ -157,6 +160,12 @@ shared by several business pages go in `routes/_app/-shared/` (under `web/src/`)
 **`docs/practices/user-text.md` also covers all frontend text in an admin**: hints, help text, confirmation bodies
 and empty states, because users read them just like error messages. A success message states the consequence on the
 user's side, neither "Operation succeeded" nor the implementation, since that is the only part the user can act on.
+
+**A hint under a field, a group or a dialog title is written only when it says what the name cannot**: a consequence
+the user would not expect (changing the password signs out every device) or a rule the control does not show (picking
+a department includes its subtree). A hint that restates the name, lists what follows, or explains how to type into a
+control is noise; a page full of them reads as filler, and the hints that matter get skipped with the rest. A dialog
+whose title says it all keeps its description for screen readers only (`className="sr-only"`).
 
 ## Displaying time
 

@@ -130,7 +130,8 @@ function useRoleColumns({
       {
         id: 'forceOtp',
         header: t('roles.forceOtp'),
-        size: 110,
+        // The header is the widest content: measured 142px in English and 98px in Chinese, plus 24px cell padding.
+        size: widthFor({ default: 170, 'zh-CN': 130 }, i18n.language),
         cell: ({ row }) => yesNo(row.original.forceOtp),
       },
       {

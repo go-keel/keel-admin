@@ -62,6 +62,17 @@ const SESSION_KILLED: ReadonlySet<ErrorReason> = new Set<ErrorReason>([
   'SESSION_EXPIRED', // token_version bumped (password change / disabled / kicked out)
 ]);
 
+/**
+ * Whether the server refused the one-time code itself (wrong, or already used) rather than the submission: the code
+ * prompt of a form stays open for another code instead of going back to the form.
+ */
+export function isCodeRejected(error: unknown): boolean {
+  return (
+    error instanceof ApiError &&
+    (error.reason === 'OTP_INVALID' || error.reason === 'OTP_ALREADY_USED')
+  );
+}
+
 /** Whether this error means "the identity no longer holds" (one of the three session-killing reasons). */
 export function isSessionKilled(error: unknown): boolean {
   return (

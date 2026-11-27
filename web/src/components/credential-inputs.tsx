@@ -1,4 +1,3 @@
-import { Link } from '@tanstack/react-router';
 import { EyeIcon, EyeOffIcon } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -93,9 +92,11 @@ export function OtpField({
   onChange,
   id,
   invalid,
+  autoFocus,
 }: {
   value: string;
   onChange: (value: string) => void;
+  autoFocus?: boolean;
   /**
    * Give it only when the input must be targeted from outside; by default an id is generated, avoiding clashes on one
    * page.
@@ -116,10 +117,8 @@ export function OtpField({
       <Field>
         <FieldLabel>{t('action.otp')}</FieldLabel>
         <FieldDescription>
-          {t('action.otpBindFirst')}{' '}
-          <Link to="/sys/profile" className="underline">
-            {t('action.otpBindLink')}
-          </Link>
+          {/* Text, not a link: this field sits inside a dialog, and the profile is a dialog of its own. */}
+          {t('action.otpBindFirst')} {t('action.otpBindLink')}
         </FieldDescription>
       </Field>
     );
@@ -131,14 +130,11 @@ export function OtpField({
         id={fieldId}
         aria-required
         aria-invalid={invalid || undefined}
+        autoFocus={autoFocus}
         value={value}
         onChange={onChange}
       />
-      {invalid ? (
-        <FieldError>{t('form.required')}</FieldError>
-      ) : (
-        <FieldDescription>{t('action.otpHint')}</FieldDescription>
-      )}
+      {invalid ? <FieldError>{t('form.required')}</FieldError> : null}
     </Field>
   );
 }
